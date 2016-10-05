@@ -87,7 +87,7 @@ _nuser() {
 	fi
 	_puser
 }
-_puser () { #benutzer passwort
+_puser () {
 	PASSWD1=$(dialog --backtitle "$op_title" --title " -| Benutzer $USER |- " --stdout --clear --insecure --passwordbox "Passwort" 0 0 "")
 	PASSWD2=$(dialog --backtitle "$op_title" --title " -| Benutzer $USER |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen" 0 0 "")
 	if [[ $PASSWD1 == $PASSWD2 ]]; then
@@ -98,7 +98,7 @@ _puser () { #benutzer passwort
 	fi
 	_inst
 }
-_inst() { #Fragen
+_inst() {
 	op_title=" -| Gebietsschema einstellen |- "
 	LOCALE=$(dialog --backtitle "$op_title" --nocancel --menu "Wählen Sie Ihr Gebietsschema aus:" 10 35 11 "de_CH.UTF-8" "Schweiz" "$other""Auswahl" 3>&1 1>&2 2>&3)
 	if [ "$LOCALE" = "$other" ]; then
@@ -154,7 +154,7 @@ _inst() { #Fragen
 	op_title=" -| Arch Linux - ($(uname -m)) $SYSTEM $HD_SD |- "
 	_mirrors
 }
-_mirrors() { #mirror
+_mirrors() {
 	if ! (</etc/pacman.d/mirrorlist2 grep "rankmirrors" &>/dev/null) then
 		(wget --no-check-certificate --append-output=/dev/null "https://www.archlinux.org/mirrorlist/?country=$code&protocol=http" -O /etc/pacman.d/mirrorlist.bak
 		echo "$?" > /tmp/ex_status.var ; sleep 0.5) &> /dev/null & pid=$! pri=0.1 msg="Eine neue Spiegelserver-Liste wird abgerufen..." load
@@ -168,7 +168,7 @@ _mirrors() { #mirror
 	fi
 	_part
 }
-_part() { #partitionen
+_part() {
 	_umount
 	if [[ $WIPE == "YES" ]]; then
 		clear
@@ -205,7 +205,7 @@ _part() { #partitionen
 	fi
 	_base
 }
-_base() { #Base
+_base() {
 	pac_strap "base base-devel"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pac_strap "grub dosfstools"
@@ -240,15 +240,15 @@ _sets() { #Einstellungen
 	genfstab -U -p /mnt >> /mnt/etc/fstab 2>> $log
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab 2>> $log
 	#hostname
-	echo "${HOSTN}" > /mnt/etc/hostname 2>> $log
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTN}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTN}" > /mnt/etc/hosts 2>> $log
+	echo ${HOSTN} > /mnt/etc/hostname 2>> $log
+	sed -i "/127.0.0.1/s/$/ ${HOSTN}/" /mnt/etc/host 2>> $log
+	sed -i "/::1/s/$/ ${HOSTN}/" /mnt/etc/hosts 2>> $log
 	#loc
-	echo "LANG=\'${LOCALE}\'" > /mnt/etc/locale.conf 2>> $log
-	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen 2>> $log
-	arch_chroot "locale-gen" >/dev/null
-	#zon
-	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
-	#utc
+	echo "${LOCALE} UTF-8" /mnt/etc/locale.gen 2>> $log
+	arch_chroot "locale-gen"
+	echo "LANG=${LOCALE}" > /mnt/etc/locale.conf 2>> $log
+	export "LANG=${LOCALE}" 2>> $log
+	arch_chroot "ln -sf /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	arch_chroot "hwclock --systohc --utc"
 	#rpw
 	arch_chroot "passwd root" < /tmp/.rpasswd
@@ -450,7 +450,8 @@ _appsinst() {
 #	pac_strap "wine wine_gecko steam yaourt"
 #	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
-	_mediaelch
+	_MENU
+#	_mediaelch
 }
 _mediaelch() {
 	if [[ $MPC == "YES" ]]; then		
@@ -550,11 +551,6 @@ _MENU() {
 	reboot
 	exit 0
 }
-	#"b43-fwcutter" "Broadcom 802.11b/g/n" off \
-	#"bluez-firmware" "Broadcom BCM203x / STLC2300 Bluetooth" off \
-	#"ipw2100-fw" "Intel PRO/Wireless 2100" off \
-	#"ipw2200-fw" "Intel PRO/Wireless 2200" off \
-	#"zd1211-firmware" "ZyDAS ZD1211(b) 802.11a/b/g USB WLAN" off
 
 opt="$1"
 init
