@@ -1,17 +1,17 @@
 #!/bin/bash
 op_title=" -| Arch Linux |- "
 arch_chroot() {
-    arch-chroot /mnt /bin/bash -c "${1}"
+	arch-chroot /mnt /bin/bash -c "${1}"
 }  
 pac_strap() {
-    pacstrap /mnt ${1} --needed
+	pacstrap /mnt ${1} --needed
 }  
 load() {
 	{	int="1"
         	while ps | grep "$pid" &> /dev/null
     	    	do
-    	            sleep $pri
-    	            echo $int
+    	        	sleep $pri
+    	        	echo $int
     	        	if [ "$int" -lt "100" ]; then
     	        		int=$((int+1))
     	        	fi
