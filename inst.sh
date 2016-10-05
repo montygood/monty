@@ -1,6 +1,5 @@
 #!/bin/bash
-op_title=" -| Arch Linux |- " #Titel
-#Befehle
+op_title=" -| Arch Linux |- "
 arch_chroot() {
     arch-chroot /mnt /bin/bash -c "${1}"
 }  
@@ -29,7 +28,7 @@ _umount() {
 		umount $i >/dev/null
 	done
 }
-init() { #start
+init() {
 	title=" -| Systemprüfung |- "
 	#root
 	if [[ `whoami` != "root" ]]; then
@@ -44,21 +43,21 @@ init() { #start
 	clear
 	pacman -Syy
 	#mac
-    if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
+	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true  # if MAC
-    else
+	else
 		modprobe -q efivarfs
-    fi
+	fi
 	#efi
-    if [[ -d "/sys/firmware/efi/" ]]; then
+	if [[ -d "/sys/firmware/efi/" ]]; then
 		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then mount -t efivarfs efivarfs /sys/firmware/efi/efivars ; fi
 		SYSTEM="UEFI"
-    else
+	else
 		SYSTEM="BIOS"
-    fi
+	fi
 	_keys
 }
-_keys() { #Tastatur
+_keys() {
 	op_title=" -| Tastaturlayout einstellen |- "
 	keyboard=$(dialog --backtitle "$op_title" --nocancel --menu "Wählen Sie Ihr Tastatur aus:" 10 35 10 "de_CH-latin1" "Schweiz" "$other" "Auswahl" 3>&1 1>&2 2>&3)
 	if [ "$keyboard" = "$other" ]; then
@@ -68,18 +67,18 @@ _keys() { #Tastatur
 	loadkeys $keyboard
 	_rpass
 }
-_rpass() { #root passwort
+_rpass() {
 	RPASSWD1=$(dialog --backtitle "$op_title" --title " -| Root |- " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
 	RPASSWD2=$(dialog --backtitle "$op_title" --title " -| Root |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
 	if [[ $RPASSWD1 == $RPASSWD2 ]]; then 
-	   echo -e "${RPASSWD1}\n${RPASSWD1}" > /tmp/.rpasswd
+		echo -e "${RPASSWD1}\n${RPASSWD1}" > /tmp/.rpasswd
 	else
 		dialog --backtitle "$op_title" --title " -| FEHLER |- " --infobox "\nDie eingegebenen Passwörter stimmen nicht überein." 0 0
 		_rpass
 	fi
 	_nuser
 }
-_nuser() { #neuer benutzer
+_nuser() {
 	USER=$(dialog --backtitle "$op_title" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
 	if [[ ${#USER} -eq 0 ]] || [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$op_title" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
@@ -87,7 +86,7 @@ _nuser() { #neuer benutzer
 	fi
 	_puser
 }
-_puser () { #benutzer passwort
+_puser () {
 	PASSWD1=$(dialog --backtitle "$op_title" --title " -| Benutzer $USER |- " --stdout --clear --insecure --passwordbox "Passwort" 0 0 "")
 	PASSWD2=$(dialog --backtitle "$op_title" --title " -| Benutzer $USER |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen" 0 0 "")
 	if [[ $PASSWD1 == $PASSWD2 ]]; then
@@ -98,7 +97,7 @@ _puser () { #benutzer passwort
 	fi
 	_inst
 }
-_inst() { #Fragen
+_inst() {
 	op_title=" -| Gebietsschema einstellen |- "
 	LOCALE=$(dialog --backtitle "$op_title" --nocancel --menu "Wählen Sie Ihr Gebietsschema aus:" 10 35 11 "de_CH.UTF-8" "Schweiz" "$other""Auswahl" 3>&1 1>&2 2>&3)
 	if [ "$LOCALE" = "$other" ]; then
@@ -154,7 +153,7 @@ _inst() { #Fragen
 	op_title=" -| Arch Linux - ($(uname -m)) $SYSTEM $HD_SD |- "
 	_mirrors
 }
-_mirrors() { #mirror
+_mirrors() {
 	if ! (</etc/pacman.d/mirrorlist2 grep "rankmirrors" &>/dev/null) then
 		(wget --no-check-certificate --append-output=/dev/null "https://www.archlinux.org/mirrorlist/?country=$code&protocol=http" -O /etc/pacman.d/mirrorlist.bak
 		echo "$?" > /tmp/ex_status.var ; sleep 0.5) &> /dev/null & pid=$! pri=0.1 msg="Eine neue Spiegelserver-Liste wird abgerufen..." load
@@ -168,7 +167,7 @@ _mirrors() { #mirror
 	fi
 	_part
 }
-_part() { #partitionen
+_part() {
 	_umount
 	if [[ $WIPE == "YES" ]]; then
 		clear
@@ -205,7 +204,7 @@ _part() { #partitionen
 	fi
 	_base
 }
-_base() { #Base
+_base() {
 	pac_strap "base base-devel"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pac_strap "grub dosfstools"
@@ -225,9 +224,9 @@ _base() { #Base
 	echo "KEYMAP=${ILANG}" > /mnt/etc/vconsole.conf
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
 	if [ $(uname -m) == x86_64 ]; then
-			sed -i '/\[multilib]$/ {
-			N
-			/Include/s/#//g}' /mnt/etc/pacman.conf
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then
 		echo -e "\n[archlinuxfr]\nServer = http://repo.archlinux.fr/$(uname -m)\nSigLevel = Never" >> /mnt/etc/pacman.conf
@@ -235,7 +234,7 @@ _base() { #Base
 	arch_chroot "pacman -Syy"
 	_sets
 }
-_sets() { #Einstellungen
+_sets() {
 	#genf
 	genfstab -U -p /mnt >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
@@ -269,7 +268,7 @@ _sets() { #Einstellungen
 	done
 	_xorg
 }
-_xorg() { #XORG
+_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit"
 	pac_strap "xf86-input-synaptics xf86-input-mouse xf86-input-keyboard xf86-input-libinput"
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
@@ -288,10 +287,10 @@ _graphics_card() {
 		fi
 		# Systemd-boot
 		if [[ -e /mnt/boot/loader/loader.conf ]]; then
-				update=$(ls /mnt/boot/loader/entries/*.conf)
-				for i in ${upgate}; do
-					sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
-				done
+			update=$(ls /mnt/boot/loader/entries/*.conf)
+			for i in ${upgate}; do
+				sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
+			done
 		fi			 
 	}
 	install_ati(){
@@ -392,7 +391,7 @@ _desktopde() {
 	pac_strap "bash-completion gamin gksu python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils poppler polkit"
 
 	pac_strap "lightdm lightdm-gtk-greeter"
-    arch_chroot "systemctl enable lightdm"
+	arch_chroot "systemctl enable lightdm"
 
 	sed -i 's/#autologin-user=/autologin-user=$USER/' /mnt/etc/lightdm/lightdm.conf
 	sed -i 's/#autologin-user-timeout=0/autologin-user-timeout=0/' /mnt/etc/lightdm/lightdm.conf
@@ -537,14 +536,14 @@ _mediaelch() {
 _yaourtinst() {
 	[[ $(uname -m) == x86_64 ]] && arch_chroot "yaourt -S codecs64 --noconfirm --needed"
 	[[ $(uname -m) == i686  ]] && arch_chroot "yaourt -S codecs --noconfirm --needed"
-    arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
-    arch_chroot "yaourt -S teamviewer --noconfirm --needed"
+	arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
+	arch_chroot "yaourt -S teamviewer --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
-    arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
-    arch_chroot "yaourt -S mp3gain --noconfirm --needed"
-    arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
-    arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
-    arch_chroot "yaourt -S skype --noconfirm --needed"
+	arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
+	arch_chroot "yaourt -S mp3gain --noconfirm --needed"
+	arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
+	arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
+	arch_chroot "yaourt -S skype --noconfirm --needed"
 	_MENU
 }
 _MENU() {
