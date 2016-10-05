@@ -85,19 +85,19 @@ select_language() {
 }
 
 check_requirements() {
-  dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Überprüfe technische Anforderungen " --infobox "\nÜberprüfen der Internetverbindung und ob der Installer als root ausgeführt wurde. Bitte warten...\n\n" 0 0
+  dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " technische Anforderungen " --infobox "\nÜberprüfen der Internetverbindung und ob der Installer als root ausgeführt wurde. Bitte warten...\n\n" 0 0
   sleep 2
   if [[ `whoami` != "root" ]]; then
-     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --infobox " Root FEHLER " 0 0
+     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --infobox "\ndu bist nicht 'root'\nScript wird beendet" 0 0
      sleep 2
      exit 1
   fi
   if [[ ! $(ping -c 1 google.com) ]]; then
-     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --infobox "$_ConFailBody" 0 0
+     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0
      sleep 2
      exit 1
   fi
-  dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Technische Anforderungen erfüllt " --infobox "\nAlle Tests erfolgreich!\n\n" 0 0
+  dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Anforderungen erfüllt " --infobox "\nAlle Tests erfolgreich!\n\n" 0 0
   sleep 2   
   clear
   echo "" > /tmp/.errlog
@@ -126,7 +126,7 @@ arch_chroot() {
 
 check_for_error() {
  if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
-    dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_ErrTitle " --msgbox "$(cat /tmp/.errlog)" 0 0
+    dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehleranzeige " --msgbox "$(cat /tmp/.errlog)" 0 0
     echo "" > /tmp/.errlog
     main_menu_online
  fi
@@ -134,28 +134,28 @@ check_for_error() {
 
 check_mount() {
     if [[ $(lsblk -o MOUNTPOINT | grep ${MOUNTPOINT}) == "" ]]; then
-       dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_ErrTitle " --msgbox "$_ErrNoMount" 0 0
+       dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --msgbox "Mountpunkt nicht vorhanden" 0 0
        main_menu_online
     fi
 }
 
 check_base() {
     if [[ ! -e ${MOUNTPOINT}/etc ]]; then
-        dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_ErrTitle " --msgbox "$_ErrNoBase" 0 0
+        dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " Fehler " --msgbox "Base nicht installiert" 0 0
         main_menu_online
     fi
 }
 
 show_devices() {
      lsblk -o NAME,MODEL,TYPE,FSTYPE,SIZE,MOUNTPOINT | grep "disk\|part\|lvm\|crypt\|NAME\|MODEL\|TYPE\|FSTYPE\|SIZE\|MOUNTPOINT" > /tmp/.devlist
-     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_DevShowOpt " --textbox /tmp/.devlist 0 0
+     dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " D " --textbox /tmp/.devlist 0 0
 }
 
 ######################################################################
 ##                 Configuration Functions							##
 ######################################################################
 
-configure_mirrorlist() {
+configure_mirrorlist.org() {
 
 mirror_by_country() {
  COUNTRY_LIST=""
@@ -217,6 +217,26 @@ dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_MirrorlistTitle " \
              ;;
     esac  	
     configure_mirrorlist
+}
+
+configure_mirrorlist() {
+	code="CH"
+	URL="https://www.archlinux.org/mirrorlist/?country=${code}&use_mirror_status=on"
+	MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "  Mirrorlist  " --infobox "\n...Bitte warten..." 0 0
+	curl -so ${MIRROR_TEMP} ${URL} 2>/tmp/.errlog
+	check_for_error
+	sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "  Mirrorlist  " --infobox "$_MirrorRankBody \n...Bitte warten..." 0 0
+	cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+	rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist 2>/tmp/.errlog
+	check_for_error
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "  Mirrorlist  " --infobox "\n$_Done!\n\n" 0 0
+	sleep 2
+	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
+	mv -f ${MIRROR_TEMP} /etc/pacman.d/mirrorlist
+	chmod +r /etc/pacman.d/mirrorlist
+	configure_mirrorlist
 }
 
 set_keymap() { 
