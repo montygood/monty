@@ -81,7 +81,7 @@ _rpass() {
 }
 _nuser() {
 	USER=$(dialog --backtitle "$op_title" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
-	if [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
+	if [[ $USER -eq 0 ]] || [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$op_title" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
 		_nuser
 	fi
@@ -158,11 +158,11 @@ _mirrors() { #mirror
 	if ! (</etc/pacman.d/mirrorlist2 grep "rankmirrors" &>/dev/null) then
 		(wget --no-check-certificate --append-output=/dev/null "https://www.archlinux.org/mirrorlist/?country=$code&protocol=http" -O /etc/pacman.d/mirrorlist.bak
 		echo "$?" > /tmp/ex_status.var ; sleep 0.5) &> /dev/null & pid=$! pri=0.1 msg="Eine neue Spiegelserver-Liste wird abgerufen..." load
-		sed -i 's/#//' /etc/pacman.d/mirrorlist.bak 2>> $log
-		rankmirrors -n 6 /etc/pacman.d/mirrorlist.bak > /etc/pacman.d/mirrorlist 2>> $log & pid=$! pri=0.8 msg="Bitte warten. Spiegelserver werden nach Schnelligkeit sortiert..." load
+		sed -i 's/#//' /etc/pacman.d/mirrorlist.bak
+		rankmirrors -n 6 /etc/pacman.d/mirrorlist.bak > /etc/pacman.d/mirrorlist & pid=$! pri=0.8 msg="Bitte warten. Spiegelserver werden nach Schnelligkeit sortiert..." load
 		chmod +r /etc/pacman.d/mirrorlist
 		pacman-key --init
-		pacman-key --populate archlinux >/dev/null 2>> $log
+		pacman-key --populate archlinux >/dev/null
 		pacman-key --refresh-keys  2>> $log & pid=$! pri=0.8 msg="Spiegelserver-Schlüssel werden geupdatet..." load
 		pacman -Syy
 	fi
@@ -225,9 +225,9 @@ _base() { #Base
 	echo "KEYMAP=${ILANG}" > /mnt/etc/vconsole.conf 2>> $log
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
 	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf 2>> $log
+			sed -i '/\[multilib]$/ {
+			N
+			/Include/s/#//g}' /mnt/etc/pacman.conf 2>> $log
 	fi
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then
 		echo -e "\n[archlinuxfr]\nServer = http://repo.archlinux.fr/$(uname -m)\nSigLevel = Never" >> /mnt/etc/pacman.conf 2>> $log
@@ -288,10 +288,10 @@ _graphics_card() {
 		fi
 		# Systemd-boot
 		if [[ -e /mnt/boot/loader/loader.conf ]]; then
-			update=$(ls /mnt/boot/loader/entries/*.conf)
-			for i in ${upgate}; do
-				sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
-			done
+				update=$(ls /mnt/boot/loader/entries/*.conf)
+				for i in ${upgate}; do
+					sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
+				done
 		fi			 
 	}
 	install_ati(){
@@ -389,7 +389,7 @@ _graphics_card() {
 }
 _desktopde() {
 	pac_strap "cinnamon gnome-terminal nemo-fileroller nemo-preview"
-	pac_strap "bash-completion gamin gksu python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils poppler polkit"
+	pac_strap "bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 
 	pac_strap "lightdm lightdm-gtk-greeter"
     arch_chroot "systemctl enable lightdm"
@@ -409,11 +409,8 @@ _hardware() {
 	#Netzwerkkarte
 	WIRED_DEV=`ip link | grep "ens\|eno\|enp" | awk '{print $2}'| sed 's/://' | sed '1!d'`
 	if [[ -n $WIRED_DEV ]]; then arch_chroot "systemctl enable dhcpcd@${WIRED_DEV}.service" ; fi
-	#Netzwerkmanager
-	pac_strap "networkmanager network-manager-applet"
-	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Drucker
-	pac_strap "cups ghostscript system-config-printer gsfonts hplip splix cups-pdf"
+	pac_strap "cups system-config-printer hplip splix cups-pdf"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#bluetooth
 	if (dmesg | grep -i "blue" &> /dev/null); then 
@@ -446,19 +443,18 @@ _jdownloader() {
 }
 _appsinst() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation"
-	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld"
-	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent yaourt"
-	pac_strap "libaacs btrfs-progs f2fs-tools tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx"
-	pac_strap "bc mlocate pkgstats zip unzip unrar p7zip lzop cpio nss-mdns libquicktime libdvdcss cdrdao"
-	pac_strap "alsa-utils alsa-plugins pulseaudio pulseaudio-alsa fuse fuse-exfat autofs mtpfs"
-	pac_strap "icoutils wine wine_gecko wine-mono winetricks steam playonlinux nfs-utils gparted gst-plugins-ugly gst-libav"
-	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
+	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
+	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats"
+	pac_strap "libaacs btrfs-progs f2fs-tools tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils wine-mono playonlinux winetricks nfs-utils gparted gst-plugins-ugly gst-libav"
+#	pac_strap "wine wine_gecko steam yaourt"
+#	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	_mediaelch
 }
 _mediaelch() {
 	if [[ $MPC == "YES" ]]; then		
-		arch_chroot "yaourt -S mediaelch --noconfirm --needed"
+#		arch_chroot "yaourt -S mediaelch --noconfirm --needed"
 		echo "#!/bin/sh" >> /mnt/usr/bin/elch 2>> $log
 		echo "wakeonlan 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 		echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
@@ -537,14 +533,14 @@ _mediaelch() {
 _yaourtinst() {
 	[[ $(uname -m) == x86_64 ]] && arch_chroot "yaourt -S codecs64 --noconfirm --needed"
 	[[ $(uname -m) == i686  ]] && arch_chroot "yaourt -S codecs --noconfirm --needed"
-	arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
-	arch_chroot "yaourt -S teamviewer --noconfirm --needed"
+    arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
+    arch_chroot "yaourt -S teamviewer --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
-	arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
-	arch_chroot "yaourt -S mp3gain --noconfirm --needed"
-	arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
-	arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
-	arch_chroot "yaourt -S skype --noconfirm --needed"
+    arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
+    arch_chroot "yaourt -S mp3gain --noconfirm --needed"
+    arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
+    arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
+    arch_chroot "yaourt -S skype --noconfirm --needed"
 	_MENU
 }
 _MENU() {
