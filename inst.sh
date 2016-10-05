@@ -81,7 +81,7 @@ _rpass() {
 }
 _nuser() {
 	USER=$(dialog --backtitle "$op_title" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
-	if [[ $USER -eq 0 ]] || [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
+	if [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$op_title" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
 		_nuser
 	fi
