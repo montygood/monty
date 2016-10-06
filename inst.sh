@@ -400,8 +400,8 @@ install_de_wm() {
 	install_dm
 }
 install_dm() {
-	pac_strap "lightdm lightdm-gtk-greeter"
-	arch_chroot "systemctl enable lightdm-gtk-greeter"
+	pac_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
+	arch_chroot "systemctl enable lightdm.service"
 	sed -i "s/#autologin-user=/autologin-user=${USER}/" /mnt/etc/lightdm/lightdm.conf 2>>/tmp/.errlog
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf 2>>/tmp/.errlog
 	check_for_error
@@ -533,11 +533,12 @@ set_mediaelch() {
 	install_apps
 }
 install_apps() {
-	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation"
+	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats"
-	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav"
+	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator libdvdread libdvdnav "
+	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid cantarell-fonts"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pulseaudio-alsa pulseaudio pavucontrol gvfs"
+	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg 
 	pac_strap "pacman -Syu && pacman -Syy"
 	pac_strap "playonlinux winetricks wine_gecko wine-mono steam yaourt"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
@@ -545,6 +546,8 @@ install_apps() {
 	install_yaourt
 }
 install_yaourt() {
+
+
 	[[ $(uname -m) == x86_64 ]] && arch_chroot "yaourt -S codecs64 --noconfirm --needed"
 	[[ $(uname -m) == i686  ]] && arch_chroot "yaourt -S codecs --noconfirm --needed"
 	arch_chroot "yaourt -S mediaelch --noconfirm --needed"
