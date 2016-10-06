@@ -537,8 +537,9 @@ install_apps() {
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
 	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats"
 	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils wine-mono playonlinux winetricks nfs-utils gparted gst-plugins-ugly gst-libav"
-	pac_strap "wine wine_gecko steam yaourt"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav"
+	pac_strap "pacman -Syu && pacman -Syy"
+	pac_strap "playonlinux winetricks wine_gecko wine-mono steam yaourt"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	install_yaourt
