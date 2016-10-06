@@ -530,8 +530,7 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USER}/.config/kvibes/MediaElch.conf 2>>/tmp/.errlog
 	chmod +x /mnt/usr/bin/elch 2>>/tmp/.errlog
 	check_for_error
-	install_finish
-#	install_apps
+	install_apps
 }
 install_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
@@ -545,7 +544,7 @@ install_apps() {
 	pac_strap "playonlinux winetricks wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
-	install_yaourt
+	install_finish
 }
 install_yaourt() {
 	[[ $(uname -m) == x86_64 ]] && arch_chroot "yaourt -S codecs64 --noconfirm --needed"
