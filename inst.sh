@@ -530,7 +530,8 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USER}/.config/kvibes/MediaElch.conf 2>>/tmp/.errlog
 	chmod +x /mnt/usr/bin/elch 2>>/tmp/.errlog
 	check_for_error
-	install_apps
+	install_finish
+#	install_apps
 }
 install_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
@@ -559,6 +560,7 @@ install_yaourt() {
 	arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
 	arch_chroot "yaourt -S skype --noconfirm --needed"
 	arch_chroot "yaourt -S mint-x-icons --noconfirm --needed"
+install_finish() {
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
