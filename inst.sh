@@ -21,8 +21,8 @@ pac_strap() {
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$op_title" --title " -| Fehleranzeige |- " --msgbox "$(cat /tmp/.errlog)" 0 0
-		echo "" > /tmp/.errlog
 	fi
+	echo "" > /tmp/.errlog
 }
 umount_partitions(){
 	MOUNTED=""
