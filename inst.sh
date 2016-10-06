@@ -24,6 +24,20 @@ check_for_error() {
 	fi
 	echo "" > /tmp/.errlog
 }
+load() {
+	{	int="1"
+        	while ps | grep "$pid" &> /dev/null
+    	    	do
+    	            sleep $pri
+    	            echo $int
+    	        	if [ "$int" -lt "100" ]; then
+    	        		int=$((int+1))
+    	        	fi
+    	        done
+            echo 100
+            sleep 1
+	} | dialog --gauge "$msg" 9 79 0
+}
 umount_partitions(){
 	MOUNTED=""
 	MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
@@ -157,14 +171,15 @@ set_mirrorlist() {
 		curl -so ${MIRROR_TEMP} ${URL} 2>>/tmp/.errlog
 		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP} 2>>/tmp/.errlog
 		cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup 2>>/tmp/.errlog
-		rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
+		rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog & pid=$! pri=0.8 msg="Bitte warten. Spiegelserver werden nach Schnelligkeit sortiert..." load
 		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig 2>>/tmp/.errlog
 		mv -f ${MIRROR_TEMP} /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		chmod +r /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		clear
 		pacman-key --init 2>>/tmp/.errlog
 		pacman-key --populate archlinux 2>>/tmp/.errlog
-		pacman-key --refresh-keys 2>>/tmp/.errlog
+		pacman-key --refresh-keys 2>>/tmp/.errlog & pid=$! pri=0.8 msg="Spiegelserver-Schlüssel werden geupdatet..." load
+		pacman -Syy
 		check_for_error
 	fi
 	install_base
