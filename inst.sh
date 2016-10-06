@@ -559,7 +559,7 @@ install_yaourt() {
 	arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
 	arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
 	arch_chroot "yaourt -S skype --noconfirm --needed"
-
+	arch_chroot "yaourt -S mint-x-icons --noconfirm --needed"
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
