@@ -230,8 +230,6 @@ install_bootloader() {
 }
 set_fstab() {
 	genfstab -U -p /mnt >> /mnt/etc/fstab 2>>/tmp/.errlog
-	echo "genstab" 
-	check_for_error
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab 2>>/tmp/.errlog
 	check_for_error
 	set_hostname
@@ -280,7 +278,7 @@ set_mkinitcpio() {
 	install_xorg
 }
 install_xorg() {
-	pac_strap /mnt "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
+	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
 		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc 2>>/tmp/.errlog
@@ -291,7 +289,7 @@ install_xorg() {
 }
 install_graphics_card() {
 	install_intel(){
-		pac_strap /mnt xf86-video-intel libva-intel-driver intel-ucode
+		pac_strap "xf86-video-intel libva-intel-driver intel-ucode"
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
