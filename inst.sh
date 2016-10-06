@@ -564,6 +564,14 @@ install_yaourt() {
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
 	check_for_error
+	rm -rf /mnt/etc/bashcolor
+	rm -rf /mnt/etc/bashcolor-root
+	rm -rf /mnt/etc/bashcolor-user
+	cp bashcolor /mnt/etc/
+	cp bashcolor-root /mnt/etc/
+	cp bashcolor-user /mnt/etc/
+	sed -i 's/PS1=/# PS1=/g' /mnt/etc/bash.bashrc
+	sed -i '/PS1=/a . /etc/bashcolor' /mnt/etc/bash.bashrc
 	_menu
 }
 ## Running
