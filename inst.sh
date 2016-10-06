@@ -535,12 +535,13 @@ set_mediaelch() {
 install_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator libdvdread libdvdnav "
+	pac_strap "flashplugin geany leafpad pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator libdvdread libdvdnav"
 	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid cantarell-fonts"
 	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pulseaudio-alsa pulseaudio pavucontrol gvfs"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
-	pac_strap "pacman -Syu && pacman -Syy"
-	pac_strap "playonlinux winetricks wine_gecko wine-mono steam yaourt"
+	pac_strap "pacman -Syy && pacman -Syu"
+	pac_strap "pacman -Syu yaourt"
+	pac_strap "playonlinux winetricks wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	install_yaourt
