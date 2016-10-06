@@ -11,12 +11,12 @@ XKBMAP="ch"
 SPRA="de"
 ## Functions
 arch_chroot() {
-    arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
-    check_for_error
+	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
+	check_for_error
 }  
 pac_strap() {
-    pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
-    check_for_error
+	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
+	check_for_error
 }  
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
@@ -55,17 +55,17 @@ _menu() {
 }
 ## Configuration
 id_system() {
-    if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
+	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true  # if MAC
-    else
+	else
 		modprobe -q efivarfs
-    fi
-    if [[ -d "/sys/firmware/efi/" ]]; then
+	fi
+	if [[ -d "/sys/firmware/efi/" ]]; then
 		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then mount -t efivarfs efivarfs /sys/firmware/efi/efivars ; fi
 		SYSTEM="UEFI"
-    else
+	else
 		SYSTEM="BIOS"
-    fi
+	fi
 	if [[ `whoami` != "root" ]]; then
 		dialog --backtitle "$op_title" --title " -| Systemprüfung ergab |- " --msgbox "\ndu bist nicht 'root'\nScript wird beendet" 0 0
 		exit 1
@@ -77,22 +77,22 @@ id_system() {
 	clear
 	echo "" > /tmp/.errlog
 	#Locale
-    sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen 2>>/tmp/.errlog
-    locale-gen >/dev/null 2>&1
-    export LANG=${LOCALE}
-    [[ $FONT != "" ]] && setfont $FONT	
+	sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen 2>>/tmp/.errlog
+	locale-gen >/dev/null 2>&1
+	export LANG=${LOCALE}
+	[[ $FONT != "" ]] && setfont $FONT	
 	#Keymap
 	loadkeys $KEYMAP 2>>/tmp/.errlog
-    check_for_error
+	check_for_error
 	select_device
 }
 select_device() {
-    DEVICE=""
-    devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
-    for i in ${devices_list[@]}; do
-        DEVICE="${DEVICE} ${i}"
-    done
-    DEVICE=$(dialog --nocancel --backtitle "$op_title" --title " -| Laufwerk |- " --menu "Welche HDD wird verwendet" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+	DEVICE=""
+	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
+	for i in ${devices_list[@]}; do
+		DEVICE="${DEVICE} ${i}"
+	done
+	DEVICE=$(dialog --nocancel --backtitle "$op_title" --title " -| Laufwerk |- " --menu "Welche HDD wird verwendet" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 	IDEV=`echo $DEVICE | cut -c6-`
 	HD_SD="HDD"
 	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
@@ -135,11 +135,11 @@ set_partitions() {
 		dialog --backtitle "$op_title" --title " -| Wipen |- " --infobox "\n...Bitte warten..." 0 0
 		wipe -Ifre ${DEVICE} 2>>/tmp/.errlog
 		check_for_error
-    else
+	else
 		sgdisk --zap-all ${DEVICE} 2>>/tmp/.errlog
 		check_for_error
 	fi
-    if [[ $SYSTEM == "BIOS" ]]; then
+	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} 2>>/tmp/.errlog
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null 2>>/tmp/.errlog
 		mount ${DEVICE}2 /mnt 2>>/tmp/.errlog
@@ -187,7 +187,7 @@ set_mirrorlist() {
 install_base() {
 	clear
 	pac_strap "base base-devel btrfs-progs f2fs-tools sudo"
-    echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf 2>>/tmp/.errlog
+	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf 2>>/tmp/.errlog
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf 2>>/tmp/.errlog
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
@@ -235,17 +235,17 @@ set_fstab() {
 	set_hostname
 }
 set_hostname() {
-   echo "${hostname}" > /mnt/etc/hostname 2>>/tmp/.errlog
-   echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${hostname}\n::1\tlocalhost.localdomain\tlocalhost\t${hostname}" > /mnt/etc/hosts 2>>/tmp/.errlog
-   check_for_error
-   set_locale
+	echo "${hostname}" > /mnt/etc/hostname 2>>/tmp/.errlog
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${hostname}\n::1\tlocalhost.localdomain\tlocalhost\t${hostname}" > /mnt/etc/hosts 2>>/tmp/.errlog
+	check_for_error
+	set_locale
 }
 set_locale() {
-  echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf 2>>/tmp/.errlog
-  sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen 2>>/tmp/.errlog
-  check_for_error
-  arch_chroot "locale-gen" >/dev/null
-  set_timezone
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf 2>>/tmp/.errlog
+	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen 2>>/tmp/.errlog
+	check_for_error
+	arch_chroot "locale-gen" >/dev/null
+	set_timezone
 }
 set_timezone() {
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -296,10 +296,10 @@ install_graphics_card() {
 		fi
 		# Systemd-boot
 		if [[ -e /mnt/boot/loader/loader.conf ]]; then
-				update=$(ls /mnt/boot/loader/entries/*.conf)
-				for i in ${upgate}; do
-					sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
-				done
+			update=$(ls /mnt/boot/loader/entries/*.conf)
+			for i in ${upgate}; do
+				sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
+			done
 		fi			 
 	}
 	install_ati(){
@@ -311,12 +311,12 @@ install_graphics_card() {
 	GRAPHIC_CARD=""
 	INTEGRATED_GC="N/A"
 	GRAPHIC_CARD=$(lspci | grep -i "vga" | sed 's/.*://' | sed 's/(.*//' | sed 's/^[ \t]*//')
-	if 	[[ $(echo $GRAPHIC_CARD | grep -i "nvidia") != "" ]]; then
+	if [[ $(echo $GRAPHIC_CARD | grep -i "nvidia") != "" ]]; then
 		[[ $(lscpu | grep -i "intel\|lenovo") != "" ]] && INTEGRATED_GC="Intel" || INTEGRATED_GC="ATI"
 		if [[ $(dmesg | grep -i 'chipset' | grep -i 'nvc\|nvd\|nve') != "" ]]; then HIGHLIGHT_SUB_GC=4
-			elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'﻿) != "" ]]; then HIGHLIGHT_SUB_GC=5
-			elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nv4\|nv6') != "" ]]; then HIGHLIGHT_SUB_GC=6
-			else HIGHLIGHT_SUB_GC=3
+		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'﻿) != "" ]]; then HIGHLIGHT_SUB_GC=5
+		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nv4\|nv6') != "" ]]; then HIGHLIGHT_SUB_GC=6
+		else HIGHLIGHT_SUB_GC=3
 		fi	
 	elif [[ $(echo $GRAPHIC_CARD | grep -i 'intel\|lenovo') != "" ]]; then HIGHLIGHT_SUB_GC=2
 	elif [[ $(echo $GRAPHIC_CARD | grep -i 'ati') != "" ]]; then HIGHLIGHT_SUB_GC=1
@@ -380,7 +380,7 @@ install_graphics_card() {
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
 		pac_strap "xf86-video-fbdev"
 	fi
-    check_for_error	 
+	check_for_error	 
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 		echo "        Identifier "\"Nvidia Card"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -395,9 +395,7 @@ install_graphics_card() {
 	install_de_wm
 }
 install_de_wm() {
-	clear
 	pac_strap "cinnamon nemo-fileroller nemo-preview"
-	clear
 	pac_strap "gnome-terminal bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils"
 	install_dm
 }
@@ -412,7 +410,7 @@ install_dm() {
 	set_xkbmap
 }
 set_xkbmap() {
-    echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf 2>>/tmp/.errlog
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf 2>>/tmp/.errlog
 	check_for_error
 	install_network
 }
@@ -423,10 +421,10 @@ install_network() {
 	fi
 	WIRED_DEV=`ip link | grep "ens\|eno\|enp" | awk '{print $2}'| sed 's/://' | sed '1!d'`
 	if [[ -n $WIRED_DEV ]]; then 
-		pac_strap "networkmanager network-manager-applet"
 		arch_chroot "systemctl enable dhcpcd@${WIRED_DEV}.service"
-		arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	fi	
+	pac_strap "networkmanager network-manager-applet"
+	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	pac_strap "cups system-config-printer hplip splix cups-pdf ghostscript gsfonts"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	if (dmesg | grep -i "blue" &> /dev/null); then 
@@ -549,21 +547,20 @@ install_yaourt() {
 	[[ $(uname -m) == x86_64 ]] && arch_chroot "yaourt -S codecs64 --noconfirm --needed"
 	[[ $(uname -m) == i686  ]] && arch_chroot "yaourt -S codecs --noconfirm --needed"
 	arch_chroot "yaourt -S mediaelch --noconfirm --needed"
-    arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
-    arch_chroot "yaourt -S teamviewer --noconfirm --needed"
+	arch_chroot "yaourt -S pamac-aur --noconfirm --needed"
+	arch_chroot "yaourt -S teamviewer --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
-    arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
-    arch_chroot "yaourt -S mp3gain --noconfirm --needed"
-    arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
-    arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
-    arch_chroot "yaourt -S skype --noconfirm --needed"
+	arch_chroot "yaourt -S wakeonlan --noconfirm --needed"
+	arch_chroot "yaourt -S mp3gain --noconfirm --needed"
+	arch_chroot "yaourt -S mintstick-git --noconfirm --needed"
+	arch_chroot "yaourt -S mp3diags-unstable --noconfirm --needed"
+	arch_chroot "yaourt -S skype --noconfirm --needed"
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/ 2>>/tmp/.errlog
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
 	check_for_error
 	_menu
 }
-
 ## Running
 id_system
 
