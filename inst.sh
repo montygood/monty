@@ -15,7 +15,7 @@ arch_chroot() {
     check_for_error
 }  
 pac_strap() {
-    pacstrap /mnt "${1}" --needed 2>>/tmp/.errlog
+    pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
     check_for_error
 }  
 check_for_error() {
