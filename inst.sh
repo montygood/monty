@@ -230,6 +230,8 @@ install_bootloader() {
 }
 set_fstab() {
 	genfstab -U -p /mnt >> /mnt/etc/fstab 2>>/tmp/.errlog
+	echo "genstab" 
+	check_for_error
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab 2>>/tmp/.errlog
 	check_for_error
 	set_hostname
