@@ -20,11 +20,16 @@ SPRA="de"
 arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
 	check_for_error
+	clear
 }  
 pac_strap() {
 	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
 	check_for_error
-}  
+	clear
+}
+yao_urt() {
+	arch-chroot /mnt /bin/bash -c "su - ${USER} -c 'yaourt -S ${1} --noconfirm --needed'"	
+}
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
@@ -50,13 +55,13 @@ id_sys() {
 	loadkeys $KEYMAP
 	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /tmp/vconsole.conf
 	# Test
-		dialog --backtitle "$VERSION" --title " -| Systemprüfung |- " --infobox "\nTeste Voraussetzungen" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Systemprüfung |- " --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
-		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\ndu bist nicht 'root'\nScript wird beendet" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
 	fi
 	if [[ ! $(ping -c 1 google.com) ]]; then
-		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
 	fi
 	clear
@@ -95,31 +100,31 @@ sel_device() {
 	HD_SD="HDD"
 	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
 	VERSION=" -| Arch Installation ($ARCHI) |- $SYSTEM auf $HD_SD |- "
-	dialog --backtitle "$VERSION" --title " -| Wipen |- " --yesno "WARNUNG: Alle Daten unwiederuflich auf ${DEVICE} entfernen\nsauber aber dauert etwas" 0 0
+	dialog --backtitle "$VERSION" --title " -| Wipen |- " --yesno "\nWARNUNG: Alle Daten unwiederuflich auf ${DEVICE} gelöscht\nist sauber aber dauert etwas\n\n" 0 0
 	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 }
 sel_hostname() {
-	HOSTNAME=$(dialog --backtitle "$VERSION" --title " -| Hostname |- " --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
-	if [[ $HOSTNAME =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
-		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --msgbox "Ungültiger PC-Name." 0 0
-		set_hostname
+	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title " -| Hostname |- " --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
+	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
+		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --msgbox "\nUngültiger PC-Name\n\n" 0 0
+		sel_hostname
 	fi
 }
 sel_user() {
-	USER=$(dialog --backtitle "$VERSION" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
+	USER=$(dialog --nocancel --backtitle "$VERSION" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
 	if [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
-		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
-		set_user
+		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --msgbox "\nUngültiger Benutzername\n\n" 0 0
+		sel_user
 	fi
 }
 sel_password() {
-	RPASSWD=$(dialog --backtitle "$VERSION" --title " -| Root & $USER |- " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-	RPASSWD2=$(dialog --backtitle "$VERSION" --title " -| Root & $USER |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
+	RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title " -| Root & $USER |- " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+	RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " -| Root & $USER |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
 	if [[ $RPASSWD == $RPASSWD2 ]]; then 
 		echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
 	else
-		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --infobox "\nDie eingegebenen Passwörter stimmen nicht überein." 0 0
-		set_password
+		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --infobox "\nPasswörter stimmen nicht überein\n\n" 0 0
+		sel_password
 	fi
 }
 
@@ -132,7 +137,7 @@ set_partitions() {
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm --needed wipe
 		fi	
-		dialog --backtitle "$VERSION" --title " -| Wipe |- " --infobox "\n...Bitte warten..." 0 0
+		dialog --backtitle "$VERSION" --title " -| Wipe |- " --infobox "\n    Bitte warten    \n\n" 0 0
 		wipe -Ifre ${DEVICE} 2>>/tmp/.errlog
 		check_for_error
 	else
@@ -141,14 +146,14 @@ set_partitions() {
 	fi
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "Harddisk $DEVICE wird Formatiert" 0 0
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null 2>>/tmp/.errlog
 		mount ${DEVICE}2 /mnt 2>>/tmp/.errlog
 		check_for_error
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE} 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "Harddisk $DEVICE wird Formatiert" 0 0
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 -L boot ${DEVICE}1 >/dev/null 2>>/tmp/.errlog
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null 2>>/tmp/.errlog
 		mount ${DEVICE}2 /mnt 2>>/tmp/.errlog
@@ -157,7 +162,7 @@ set_partitions() {
 		check_for_error
 	fi		
 	if [[ $HD_SD == "HDD" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "wird angelegt" 0 0
+		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile 2>>/tmp/.errlog
 		chmod 600 /mnt/swapfile 2>>/tmp/.errlog
@@ -168,13 +173,13 @@ set_partitions() {
 }
 set_mirrorlist() {
 	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
-		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\n    Bitte warten    \n\n" 0 0
 		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
 		MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
 		curl -so ${MIRROR_TEMP} ${URL} 2>>/tmp/.errlog
 		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP} 2>>/tmp/.errlog
 		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nSortiere\n    Bitte warten    \n\n" 0 0
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		chmod +r /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		clear
@@ -208,7 +213,7 @@ set_root_password() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 }
 set_new_user() {
-	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "wird erstellt" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\n wird erstellt\n\n" 0 0 && sleep 2
 	arch_chroot "useradd ${USER} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USER}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
@@ -333,7 +338,7 @@ ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
+			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "\n    Bitte warten    \n\n" 0 0
 			pac_strap "grub dosfstools"
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>>/tmp/.errlog
@@ -344,7 +349,7 @@ ins_bootloader() {
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
+			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "\n    Bitte warten    \n\n" 0 0
 			pac_strap "grub efibootmgr dosfstools"
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>>/tmp/.errlog
@@ -588,6 +593,6 @@ ins_apps
 ins_finish
 
 umount_partitions
-dialog --backtitle "$VERSION" --title " -| Installation Fertig |- " --infobox "Install Medium nach dem Neustart entfernen" 0 0
-#reboot
+dialog --backtitle "$VERSION" --title " -| Installation Fertig |- " --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
+reboot
 exit 0
