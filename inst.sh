@@ -293,9 +293,9 @@ mirror_by_country() {
 	URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
 	MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
-	curl -so $ {MIRROR_TEMP} $ {URL} 2>/tmp/.errlog
+	curl -so ${MIRROR_TEMP} $ {URL} 2>/tmp/.errlog
 	check_for_error
-	sed -i 's/^#Server/Server/g' $ {MIRROR_TEMP}
+	sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
 	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
 	mv -f ${MIRROR_TEMP} /etc/pacman.d/mirrorlist
 	chmod +r /etc/pacman.d/mirrorlist
@@ -818,9 +818,7 @@ done
 }	
 
 ######################################################################
-##																	##
 ##                    Installation Functions						##
-##																	##
 ######################################################################	
 
 # The linux kernel package will be removed from the base group as it and/or the lts version will be
