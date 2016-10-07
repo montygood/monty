@@ -618,8 +618,7 @@ install_base() {
 	cp -f /etc/pacman.conf ${MOUNTPOINT}/etc/pacman.conf 2>>/tmp/.errlog
 	check_for_error
 }
-uefi_bootloader() {
-	select_device
+install_bootloader() {
 	check_mount
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl" 2>/tmp/.errlog
 	check_for_error
