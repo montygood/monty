@@ -28,7 +28,7 @@ pac_strap() {
 	clear
 }
 yao_urt() {
-	arch-chroot /mnt /usr/bin/bash/su - ${USER}	
+	arch-chroot /mnt /usr/bin/su - ${USER}	-c "yaourt -S ${1} --needed --noconfirm"
 }
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
@@ -540,8 +540,7 @@ ins_apps() {
 	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pulseaudio-alsa pulseaudio pavucontrol gvfs"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
 	arch_chroot "pacman -Syy && pacman -Syu"
-	pac_strap "yaourt"
-	pac_strap "playonlinux winetricks wine_gecko wine-mono steam"
+	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
@@ -558,7 +557,7 @@ ins_finish() {
 	cp bashcolor-user /mnt/etc/
 	sed -i 's/PS1=/# PS1=/g' /mnt/etc/bash.bashrc
 	sed -i '/PS1=/a . /etc/bashcolor' /mnt/etc/bash.bashrc
-	yao_urt
+	yao_urt "pamac-aur"
 }
 
 ###########
@@ -590,7 +589,7 @@ ins_network
 set_security
 ins_jdownloader
 set_mediaelch
-#ins_apps
+
 ins_finish
 
 umount_partitions
