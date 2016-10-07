@@ -884,7 +884,7 @@ security_menu(){
 	sed -i "s/SystemMaxUse.*/#&/g" ${MOUNTPOINT}/etc/systemd/journald.conf
 	sed -i "s/#Storage.*\|Storage.*/Storage=none/g" ${MOUNTPOINT}/etc/systemd/coredump.conf
 	echo "kernel.dmesg_restrict = 1" > ${MOUNTPOINT}/etc/sysctl.d/50-dmesg-restrict.conf
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Protokollierung |-" --infobox "\nFertig!\n\n" 0 0 && sleep 2 ;;
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Protokollierung |-" --infobox "\nFertig!\n\n" 0 0 && sleep 2
 }
 
 ######################################################################
