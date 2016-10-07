@@ -28,7 +28,7 @@ pac_strap() {
 	clear
 }
 yao_urt() {
-	arch-chroot /mnt /bin/bash -c "su - ${USER} -c 'yaourt -S ${1} --noconfirm --needed'"	
+	arch-chroot /mnt /usr/bin/bash/su - ${USER}	
 }
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
@@ -558,6 +558,7 @@ ins_finish() {
 	cp bashcolor-user /mnt/etc/
 	sed -i 's/PS1=/# PS1=/g' /mnt/etc/bash.bashrc
 	sed -i '/PS1=/a . /etc/bashcolor' /mnt/etc/bash.bashrc
+	yao_urt
 }
 
 ###########
@@ -589,7 +590,7 @@ ins_network
 set_security
 ins_jdownloader
 set_mediaelch
-ins_apps
+#ins_apps
 ins_finish
 
 umount_partitions
