@@ -96,19 +96,19 @@ check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
 	echo "" > /tmp/.errlog
-	main_menu_online
+#	main_menu_online
 fi
 }
 check_mount() {
 	if [[ $(lsblk -o MOUNTPOINT | grep ${MOUNTPOINT}) == "" ]]; then
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst die Partition Mounten" 0 0
-	main_menu_online
+#	main_menu_online
 fi
 }
 check_base() {
 	if [[ ! -e ${MOUNTPOINT}/etc ]]; then
 		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst BASE installieren" 0 0
-		main_menu_online
+#		main_menu_online
 	fi
 }
 configure_mirrorlist() {
@@ -145,7 +145,6 @@ set_hw_clock() {
 generate_fstab() {
 	genfstab -U -p ${MOUNTPOINT} > ${MOUNTPOINT}/etc/fstab 2>/tmp/.errlog && check_for_error
 	[[ -f ${MOUNTPOINT}/swapfile ]] && sed -i "s/\\${MOUNTPOINT}//" ${MOUNTPOINT}/etc/fstab
-	config_base_menu
 }
 set_hostname() {
 	HOSTNAME=$(dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Hostname |- " --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
@@ -204,7 +203,6 @@ confirm_mount() {
 		NUMBER_PARTITIONS=$(( NUMBER_PARTITIONS - 1 ))
 	else
 		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Mount Status |- " --infobox "\nfehlgeschlagen" 0 0 && sleep 2
-		prep_menu
 	fi
 }
 select_device() {
@@ -297,7 +295,6 @@ auto_partition(){
 	[[ $(cat ${ANSWER}) == "Sicher" ]] && secure_wipe && create_partitions
 	[[ $(cat ${ANSWER}) == "Automatisch" ]] && auto_partition
 	fi
-	prep_menu
 }	
 select_filesystem(){
 
@@ -355,7 +352,7 @@ fs_opts="acl nolog notail replayonly user_xattr"
 CHK_NUM=9
 fs_opts="discard filestreams ikeep largeio noalign nobarrier norecovery noquota wsync"
 ;;
-*) 			prep_menu ;;
+#*) 			prep_menu ;;
 esac
 
 # Warn about formatting!
@@ -471,7 +468,7 @@ fi
 make_swap(){
 
 # Ask user to select partition or create swapfile
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelSwpBody" 0 0 7 "_SelSwpNone" $"-" "_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu  
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelSwpBody" 0 0 7 "_SelSwpNone" $"-" "_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} 
 
 if [[ $(cat ${ANSWER}) != "_SelSwpNone" ]]; then    
 PARTITION=$(cat ${ANSWER})
@@ -528,7 +525,7 @@ umount_partitions
 find_partitions
 
 # Identify and mount root
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 ROOT_PART=${PARTITION}
 
@@ -544,7 +541,7 @@ make_swap
 # Extra Step for VFAT UEFI Partition. This cannot be in an LVM container.
 if [[ $SYSTEM == "UEFI" ]]; then
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu  
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 UEFI_PART=${PARTITION}
 
@@ -561,7 +558,7 @@ dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu
 "/boot" "systemd-boot"\
 "/boot/efi" "-" 2>${ANSWER}
 
-[[ $(cat ${ANSWER}) != "" ]] && UEFI_MOUNT=$(cat ${ANSWER}) || prep_menu
+[[ $(cat ${ANSWER}) != "" ]] && UEFI_MOUNT=$(cat ${ANSWER})
 
 mkdir -p ${MOUNTPOINT}${UEFI_MOUNT} 2>/tmp/.errlog
 mount ${PARTITION} ${MOUNTPOINT}${UEFI_MOUNT} 2>>/tmp/.errlog
@@ -571,7 +568,7 @@ fi
 
 # All other partitions
 while [[ $NUMBER_PARTITIONS > 0 ]]; do 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu 
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 
 if [[ $PARTITION == Fertig ]]; then
@@ -582,7 +579,7 @@ select_filesystem
 
 # Ask user for mountpoint. Don't give /boot as an example for UEFI systems!
 [[ $SYSTEM == "UEFI" ]] && MNT_EXAMPLES="/home\n/var" || MNT_EXAMPLES="/boot\n/home\n/var"
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
 MOUNT=$(cat ${ANSWER})
 
 # loop while the mountpoint specified is incorrect (is only '/', is blank, or has spaces). 
@@ -590,7 +587,7 @@ while [[ ${MOUNT:0:1} != "/" ]] || [[ ${#MOUNT} -le 1 ]] || [[ $MOUNT =~ \ |\' ]
 # Warn user about naming convention
 dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "_ExtErrBody" 0 0
 # Ask user for mountpoint again
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
 MOUNT=$(cat ${ANSWER})                     
 done
 
@@ -683,7 +680,6 @@ install_xorg_input() {
 		cp -f ${MOUNTPOINT}/etc/X11/xinit/xinitrc ${MOUNTPOINT}/home/$i/.xinitrc
 		arch_chroot "chown -R ${i}:users /home/${i}"
 	done
-	install_graphics_menu
 }
 setup_graphics_card() {
 # Save repetition
@@ -837,7 +833,7 @@ pacstrap ${MOUNTPOINT} xf86-video-vmware xf86-input-vmmouse 2>/tmp/.errlog
 "10") # Generic / Unknown
 pacstrap ${MOUNTPOINT} xf86-video-fbdev 2>/tmp/.errlog
 ;;
-*) install_graphics_menu
+#*) install_graphics_menu
 ;;
 esac
 check_for_error
@@ -861,9 +857,6 @@ if [[ $NVIDIA_INST == 1 ]]; then
 dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _NvidiaConfTitle " --msgbox "_NvidiaConfBody" 0 0
 nano ${MOUNTPOINT}/etc/X11/xorg.conf.d/20-nvidia.conf
 fi
-
-install_graphics_menu
-
 }
 install_de_wm() {
 	clear
@@ -891,181 +884,6 @@ security_menu(){
 ##                 Main Interfaces       							##
 ######################################################################
 
-# Preparation
-prep_menu() {
-
-if [[ $SUB_MENU != "prep_menu" ]]; then
-SUB_MENU="prep_menu"
-HIGHLIGHT_SUB=1
-else
-if [[ $HIGHLIGHT_SUB != 7 ]]; then
-HIGHLIGHT_SUB=$(( HIGHLIGHT_SUB + 1 ))
-fi
-fi
-
-dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMenuTitle " --menu "_PrepMenuBody" 0 0 7 \
-"1" "_VCKeymapTitle" \
-"2" "_PrepPartDisk" \
-"3" "_PrepMntPart" \
-"4" "_Back" 2>${ANSWER}
-
-HIGHLIGHT_SUB=$(cat ${ANSWER})
-case $(cat ${ANSWER}) in
-"1") set_keymap 
-;;
-"2") umount_partitions
-select_device
-create_partitions
-;;
-"3") mount_partitions
-;;        
-*) main_menu_online
-;;
-esac
-
-prep_menu  	
-
-}
-
-# Base Installation
-install_base_menu() {
-
-if [[ $SUB_MENU != "install_base_menu" ]]; then
-SUB_MENU="install_base_menu"
-HIGHLIGHT_SUB=1
-else
-if [[ $HIGHLIGHT_SUB != 5 ]]; then
-HIGHLIGHT_SUB=$(( HIGHLIGHT_SUB + 1 ))
-fi
-fi
-
-dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _InstBsMenuTitle " --menu "_InstBseMenuBody" 0 0 5 \
-"1"	"_PrepMirror" \
-"2" "Refresch" \
-"3" "_InstBse" \
-"4" "_InstBootldr" \
-"5" "_Back" 2>${ANSWER}	
-
-HIGHLIGHT_SUB=$(cat ${ANSWER})
-case $(cat ${ANSWER}) in
-"1") configure_mirrorlist
-;;
-"2") clear
-pacman-key --init
-pacman-key --populate archlinux
-pacman-key --refresh-keys
-;;
-"3") install_base
-;;
-"4") install_bootloader
-;;
-*) main_menu_online
-;;
-esac
-
-install_base_menu 	
-}
-
-# Base Configuration
-config_base_menu() {
-
-# Set the default PATH variable
-arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl" 2>/tmp/.errlog
-check_for_error
-
-if [[ $SUB_MENU != "config_base_menu" ]]; then
-SUB_MENU="config_base_menu"
-HIGHLIGHT_SUB=1
-else
-if [[ $HIGHLIGHT_SUB != 8 ]]; then
-HIGHLIGHT_SUB=$(( HIGHLIGHT_SUB + 1 ))
-fi
-fi
-
-dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _ConfBseMenuTitle " --menu "_ConfBseBody" 0 0 8 \
-"1" "_ConfBseFstab" \
-"2" "_ConfBseHost" \
-"3" "_ConfBseSysLoc" \
-"4" "_ConfBseTimeHC" \
-"5" "_ConfUsrRoot" \
-"6" "_ConfUsrNew" \
-"7" "_MMRunMkinit" \
-"8" "_Back" 2>${ANSWER}	
-
-HIGHLIGHT_SUB=$(cat ${ANSWER})
-case $(cat ${ANSWER}) in
-"1") generate_fstab 
-;;
-"2") set_hostname
-;;
-"3") set_locale
-;;        
-"4") set_timezone
-set_hw_clock
-;;
-"5") set_root_password 
-;;
-"6") create_new_user
-;;
-"7") run_mkinitcpio
-;;
-*) main_menu_online
-;;
-esac
-
-config_base_menu
-
-}
-
-install_graphics_menu() {
-
-if [[ $SUB_MENU != "install_graphics_menu" ]]; then
-SUB_MENU="install_graphics_menu"
-HIGHLIGHT_SUB=1
-else
-if [[ $HIGHLIGHT_SUB != 6 ]]; then
-HIGHLIGHT_SUB=$(( HIGHLIGHT_SUB + 1 ))
-fi
-fi
-
-dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _InstGrMenuTitle " --menu "_InstGrMenuBody" 0 0 6 \
-"1" "_InstGrMenuDS" \
-"2" "_InstGrMenuDD" \
-"3" "_InstGrMenuGE" \
-"4" "_InstGrMenuDM" \
-"5"	"_PrepKBLayout" \
-"6" "_Back" 2>${ANSWER}
-
-HIGHLIGHT_SUB=$(cat ${ANSWER})
-case $(cat ${ANSWER}) in
-"1") install_xorg_input
-;;
-"2") setup_graphics_card 
-;;
-"3") install_de_wm
-;;
-"4") install_dm
-;;
-"5") set_xkbmap
-;;
-*) main_menu_online
-;;
-esac
-
-install_graphics_menu
-
-}
-
-main_menu_online() {
-umount_partitions
-clear
-prep_menu 
-install_base_menu
-config_base_menu
-install_graphics_menu
-install_network_menu
-security_menu
-}
 main_menu_onlineO() {
 
 if [[ $HIGHLIGHT != 9 ]]; then
@@ -1130,7 +948,44 @@ main_menu_online
 id_system
 select_language
 check_requirements
+umount_partitions
+clear
+set_keymap 
+select_device
+create_partitions
+mount_partitions
+ 
+#configure_mirrorlist
+clear
+pacman-key --init
+pacman-key --populate archlinux
+pacman-key --refresh-keys
+install_base
+install_bootloader
 
-while true; do
-main_menu_online      
-done
+generate_fstab 
+set_hostname
+set_locale
+set_timezone
+set_hw_clock
+set_root_password 
+create_new_user
+run_mkinitcpio
+
+install_xorg_input
+setup_graphics_card 
+install_de_wm
+install_dm
+set_xkbmap
+
+install_network_menu
+
+security_menu
+
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --yesno "-| Installer beenden |-" 0 0
+
+if [[ $? -eq 0 ]]; then
+umount_partitions
+clear
+exit 0
+fi
