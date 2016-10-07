@@ -59,7 +59,6 @@ id_sys() {
 		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0 && sleep 2
 		exit 1
 	fi
-	dialog --backtitle "$VERSION" --title " -| Systemprüfung |- " --infobox "\n... OK ..." 0 0 && sleep 2   
 	clear
 	echo "" > /tmp/.errlog
 	pacman -Syy
@@ -142,14 +141,14 @@ set_partitions() {
 	fi
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --yesno "Harddisk $DEVICE wird Formatiert" 0 0
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "Harddisk $DEVICE wird Formatiert" 0 0
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null 2>>/tmp/.errlog
 		mount ${DEVICE}2 /mnt 2>>/tmp/.errlog
 		check_for_error
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE} 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --yesno "Harddisk $DEVICE wird Formatiert" 0 0
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "Harddisk $DEVICE wird Formatiert" 0 0
 		echo j | mkfs.vfat -F32 -L boot ${DEVICE}1 >/dev/null 2>>/tmp/.errlog
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null 2>>/tmp/.errlog
 		mount ${DEVICE}2 /mnt 2>>/tmp/.errlog
@@ -158,7 +157,7 @@ set_partitions() {
 		check_for_error
 	fi		
 	if [[ $HD_SD == "HDD" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --yesno "wird angelegt" 0 0
+		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "wird angelegt" 0 0
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile 2>>/tmp/.errlog
 		chmod 600 /mnt/swapfile 2>>/tmp/.errlog
@@ -166,7 +165,6 @@ set_partitions() {
 		swapon /mnt/swapfile >/dev/null 2>>/tmp/.errlog
 		check_for_error		
 	fi
-	dialog --backtitle "$VERSION" --title "wurde Erstellt" --infobox "\n     OK     " 0 0
 }
 set_mirrorlist() {
 	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
@@ -179,7 +177,6 @@ set_mirrorlist() {
 		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		chmod +r /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
 		clear
 		pacman-key --init
 		pacman-key --populate archlinux
@@ -586,10 +583,11 @@ set_xkbmap
 ins_network
 set_security
 ins_jdownloader
+set_mediaelch
 ins_apps
 ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title " -| Installation Fertig |- " --infobox "Install Medium nach dem Neustart entfernen" 0 0
-reboot
+#reboot
 exit 0
