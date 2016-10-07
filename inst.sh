@@ -242,7 +242,7 @@ check_requirements() {
 		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0 && sleep 2
 		exit 1
 	fi
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Systemprüfung |- " --infobox "\alles OK" 0 0 && sleep 2   
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Systemprüfung |- " --infobox "\nalles OK" 0 0 && sleep 2   
 	clear
 	echo "" > /tmp/.errlog
 	pacman -Syy
@@ -290,14 +290,11 @@ check_base() {
 configure_mirrorlist() {
 # Generate a mirrorlist based on the country chosen.	
 mirror_by_country() {
-	URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
-	MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
-	curl -so ${MIRROR_TEMP} $ {URL} 2>/tmp/.errlog
-	check_for_error
-	sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
 	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-	mv -f ${MIRROR_TEMP} /etc/pacman.d/mirrorlist
+	curl -so /etc/pacman.d/mirrorlist $ https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on 2>/tmp/.errlog
+	check_for_error
+	sed -i 's/^#Server/Server/g' /etc/pacman.d/mirrorlist
 	chmod +r /etc/pacman.d/mirrorlist
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
 }
