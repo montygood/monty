@@ -6,11 +6,10 @@
 ANSWER="/tmp/.aif"
 PACKAGES="/tmp/.pkgs"
 MOUNT_OPTS="/tmp/.mnt_opts"
-VERSION="Architect Installation Framework 2.3.1"
 
 #Variablen
 ARCHI=$(uname -m)
-op_title=" -| Arch Installation - $ARCHI |- "
+VERSION=" -| Arch Installation - $ARCHI |- "
 LOCALE="de_CH.UTF-8"
 FONT=""
 KEYMAP="de_CH-latin1"
@@ -32,16 +31,16 @@ select_language() {
 	[[ $FONT != "" ]] && setfont $FONT
 }
 check_requirements() {
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Systemprüfung |- " --infobox "\nTeste Voraussetzungen" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title " -| Systemprüfung |- " --infobox "\nTeste Voraussetzungen" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --infobox "\ndu bist nicht 'root'\nScript wird beendet" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\ndu bist nicht 'root'\nScript wird beendet" 0 0 && sleep 2
 		exit 1
 	fi
 	if [[ ! $(ping -c 1 google.com) ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --infobox "\nkein Internet Zugang.\nScript wird beendet" 0 0 && sleep 2
 		exit 1
 	fi
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Systemprüfung |- " --infobox "\nalles OK" 0 0 && sleep 2   
+	dialog --backtitle "$VERSION" --title " -| Systemprüfung |- " --infobox "\n... OK ..." 0 0 && sleep 2   
 	clear
 	echo "" > /tmp/.errlog
 	pacman -Syy
@@ -69,30 +68,30 @@ arch_chroot() {
 }  
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
-	echo "" > /tmp/.errlog
-fi
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
+		echo "" > /tmp/.errlog
+	fi
 }
 check_mount() {
 	if [[ $(lsblk -o MOUNTPOINT | grep ${MOUNTPOINT}) == "" ]]; then
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst die Partition Mounten" 0 0
-fi
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "\nzuerst die Partition Mounten" 0 0
+	fi
 }
 check_base() {
 	if [[ ! -e ${MOUNTPOINT}/etc ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst BASE installieren" 0 0
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "\nzuerst BASE installieren" 0 0
 	fi
 }
 configure_mirrorlist() {
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
+	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
 	curl -so /etc/pacman.d/mirrorlist.new https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on
 	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
 	sed -i 's/#//' /etc/pacman.d/mirrorlist.new
 	chmod +r /etc/pacman.d/mirrorlist.new
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
+	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
 	rankmirrors -n 10 /etc/pacman.d/mirrorlist.new > /etc/pacman.d/mirrorlist 2>/tmp/.errlog
 	check_for_error
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
 }
 set_keymap() { 
 	loadkeys $KEYMAP 2>/tmp/.errlog
@@ -119,29 +118,29 @@ generate_fstab() {
 	[[ -f ${MOUNTPOINT}/swapfile ]] && sed -i "s/\\${MOUNTPOINT}//" ${MOUNTPOINT}/etc/fstab
 }
 set_hostname() {
-	HOSTNAME=$(dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Hostname |- " --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
+	HOSTNAME=$(dialog --backtitle "$VERSION" --title " -| Hostname |- " --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
 	echo "${HOSTNAME}" > ${MOUNTPOINT}/etc/hostname 2>/tmp/.errlog
 	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > ${MOUNTPOINT}/etc/hosts 2>>/tmp/.errlog
 	check_for_error
 }
 set_root_password() {
-	RPASSWD=$(dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Root |- " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-	RPASSWD2=$(dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Root |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
+	RPASSWD=$(dialog --backtitle "$VERSION" --title " -| Passwort |- " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+	RPASSWD2=$(dialog --backtitle "$VERSION" --title " -| Passwort |- " --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
 	if [[ $RPASSWD == $RPASSWD2 ]]; then 
 		echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
 		arch_chroot "passwd root" < /tmp/.passwd >/dev/null 2>/tmp/.errlog
 	else
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| FEHLER |- " --infobox "\nDie eingegebenen Passwörter stimmen nicht überein." 0 0
+		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --infobox "\nDie eingegebenen Passwörter stimmen nicht überein." 0 0
 		set_root_password
 	fi
 }
 create_new_user() {
-	USER=$(dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
+	USER=$(dialog --backtitle "$VERSION" --title " -| Benutzer |- " --stdout --inputbox "Namen des Benutzers in Kleinbuchstaben." 0 0 "")
 	if [[ $USER =~ \ |\' ]] || [[ $USER =~ [^a-z0-9\ ] ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
+		dialog --backtitle "$VERSION" --title " -| FEHLER |- " --msgbox "Ungültiger Benutzername." 0 0
 		set_user
 	fi
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Benutzer |-" --infobox "erstelle Berechtigungen" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "erstelle Berechtigungen" 0 0 && sleep 2
 	arch_chroot "useradd ${USER} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash" 2>/tmp/.errlog
 	check_for_error
 	arch_chroot "passwd ${USER}" < /tmp/.passwd >/dev/null 2>/tmp/.errlog
@@ -170,11 +169,11 @@ umount_partitions(){
 }
 confirm_mount() {
 	if [[ $(mount | grep $1) ]]; then   
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Mount Status |- " --infobox "\nerstellt" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Mount Status |- " --infobox "\n... OK ..." 0 0 && sleep 2
 		PARTITIONS=$(echo $PARTITIONS | sed "s~${PARTITION} [0-9]*[G-M]~~" | sed "s~${PARTITION} [0-9]*\.[0-9]*[G-M]~~" | sed s~${PARTITION}$' -'~~)
 		NUMBER_PARTITIONS=$(( NUMBER_PARTITIONS - 1 ))
 	else
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Mount Status |- " --infobox "\nfehlgeschlagen" 0 0 && sleep 2
+		dialog --backtitle "$VERSION" --title " -| Mount Status |- " --infobox "\nfehlgeschlagen" 0 0 && sleep 2
 	fi
 }
 select_device() {
@@ -183,7 +182,7 @@ select_device() {
 	for i in ${devices_list[@]}; do
 		DEVICE="${DEVICE} ${i}"
 	done
-	DEVICE=$(dialog --nocancel --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Laufwerk |- " --menu "Welche HDD wird verwendet" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+	DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title " -| Laufwerk |- " --menu "Welche HDD wird verwendet" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 }
 find_partitions() {
 	PARTITIONS=""
@@ -197,19 +196,19 @@ find_partitions() {
 	case $INCLUDE_PART in
 	'part\|lvm\|crypt') # Deal with incorrect partitioning for main mounting function
 	if ([[ $SYSTEM == "UEFI" ]] && [[ $NUMBER_PARTITIONS -lt 2 ]]) || ([[ $SYSTEM == "BIOS" ]] && [[ $NUMBER_PARTITIONS -eq 0 ]]); then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "Partitionen sind falsch" 0 0
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "Partitionen sind falsch" 0 0
 		create_partitions
 	fi
 	;;
 	'part\|crypt') # Ensure there is at least one partition for LVM 
 	if [[ $NUMBER_PARTITIONS -eq 0 ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "Volumen falsch" 0 0
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "Volumen falsch" 0 0
 		create_partitions
 	fi
 	;;
 	'part\|lvm') # Ensure there are at least two partitions for LUKS
 	if [[ $NUMBER_PARTITIONS -lt 2 ]]; then
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "Verschlüsselung fehlerhaft" 0 0
+		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "Verschlüsselung fehlerhaft" 0 0
 		create_partitions
 	fi
 	;;
@@ -217,7 +216,7 @@ find_partitions() {
 }
 create_partitions(){
 secure_wipe(){
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Wipen |-" --yesno "unwiederuflich löschen auf ${DEVICE} sauber dauert aber etwas länger" 0 0
+	dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "unwiederuflich löschen auf ${DEVICE} sauber dauert aber etwas länger" 0 0
 	if [[ $? -eq 0 ]]; then
 		clear
 		if [[ ! -e /usr/bin/wipe ]]; then
@@ -232,7 +231,7 @@ secure_wipe(){
 	fi
 }
 auto_partition(){
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Harddisk |-" --yesno "Harddisk $DEVICE wird bearbeitet" 0 0
+	dialog --backtitle "$VERSION" --title "-| Harddisk |-" --yesno "Harddisk $DEVICE wird bearbeitet" 0 0
 	if [[ $? -eq 0 ]]; then
 		parted -s ${DEVICE} print | awk '/^ / {print $1}' > /tmp/.del_parts
 		for del_part in $(tac /tmp/.del_parts); do
@@ -252,12 +251,12 @@ auto_partition(){
 		parted -s ${DEVICE} mkpart primary ext3 513MiB 100% 2>>/tmp/.errlog
 		check_for_error
 		lsblk ${DEVICE} -o NAME,TYPE,FSTYPE,SIZE > /tmp/.devlist
-		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "wurde so Erstellt" --textbox /tmp/.devlist 0 0
+		dialog --backtitle "$VERSION" --title "wurde so Erstellt" --textbox /tmp/.devlist 0 0
 	else
 		create_partitions
 	fi
 }
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Harddisk | -" --menu "Auswahl" 0 0 7 \
+	dialog --backtitle "$VERSION" --title "-| Harddisk | -" --menu "Auswahl" 0 0 7 \
 	"Sicher" "Wipen sauber aber langsam" \
 	"Automatisch" "BIOS & UEFI" 2>${ANSWER}
 	clear
@@ -274,7 +273,7 @@ select_filesystem(){
 fs_opts=""
 CHK_NUM=0
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _FSTitle " --menu "_FSBody" 0 0 12 \
+dialog --backtitle "$VERSION" --title " _FSTitle " --menu "_FSBody" 0 0 12 \
 "_FSSkip" "-" \
 "btrfs" "mkfs.btrfs -f" \
 "ext2" "mkfs.ext2 -q" \
@@ -329,7 +328,7 @@ esac
 
 # Warn about formatting!
 if [[ $FILESYSTEM != _FSSkip ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " FS-System " --yesno "\n$FILESYSTEM $PARTITION\n\n" 0 0
+dialog --backtitle "$VERSION" --title " FS-System " --yesno "\n$FILESYSTEM $PARTITION\n\n" 0 0
 if [[ $? -eq 0 ]]; then
 ${FILESYSTEM} ${PARTITION} >/dev/null 2>/tmp/.errlog
 check_for_error
@@ -348,7 +347,7 @@ for i in ${fs_opts}; do
 FS_OPTS="${FS_OPTS} ${i} - off"
 done
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $(echo $FILESYSTEM | sed "s/.*\.//g" | sed "s/-.*//g") " --checklist "Auswahl" 0 0 $CHK_NUM \
+dialog --backtitle "$VERSION" --title " $(echo $FILESYSTEM | sed "s/.*\.//g" | sed "s/-.*//g") " --checklist "Auswahl" 0 0 $CHK_NUM \
 $FS_OPTS 2>${MOUNT_OPTS}
 
 # Now clean up the file
@@ -357,7 +356,7 @@ sed -i '$s/,$//' ${MOUNT_OPTS}
 
 # If mount options selected, confirm choice 
 if [[ $(cat ${MOUNT_OPTS}) != "" ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Mount Status |- " --yesno "\n${_btrfsMntConfBody}$(cat ${MOUNT_OPTS})\n" 10 75
+dialog --backtitle "$VERSION" --title " -| Mount Status |- " --yesno "\n${_btrfsMntConfBody}$(cat ${MOUNT_OPTS})\n" 10 75
 [[ $? -eq 1 ]] && mount_opts
 fi 
 
@@ -440,19 +439,19 @@ fi
 make_swap(){
 
 # Ask user to select partition or create swapfile
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelSwpBody" 0 0 7 "_SelSwpNone" $"-" "_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} 
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --menu "_SelSwpBody" 0 0 7 "_SelSwpNone" $"-" "_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} 
 
 if [[ $(cat ${ANSWER}) != "_SelSwpNone" ]]; then    
 PARTITION=$(cat ${ANSWER})
 
 if [[ $PARTITION == "_SelSwpFile" ]]; then
 total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
+dialog --backtitle "$VERSION" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
 m_or_g=$(cat ${ANSWER})
 
 while [[ $(echo ${m_or_g: -1} | grep "M\|G") == "" ]]; do
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --msgbox "\n_SelSwpFile  -| Fehler |- : M = MB, G = GB\n\n" 0 0
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
+dialog --backtitle "$VERSION" --title " _SelSwpFile " --msgbox "\n_SelSwpFile  -| Fehler |- : M = MB, G = GB\n\n" 0 0
+dialog --backtitle "$VERSION" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
 m_or_g=$(cat ${ANSWER})
 done
 
@@ -464,7 +463,7 @@ check_for_error
 
 else # Swap Partition
 if [[ $(lsblk -o FSTYPE  ${PARTITION} | grep -i "swap") != "swap" ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --yesno "\nmkswap ${PARTITION}\n\n" 0 0
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --yesno "\nmkswap ${PARTITION}\n\n" 0 0
 [[ $? -eq 0 ]] && mkswap ${PARTITION} >/dev/null 2>/tmp/.errlog || mount_partitions
 fi
 swapon  ${PARTITION} >/dev/null 2>>/tmp/.errlog
@@ -486,7 +485,7 @@ LVM=0
 BTRFS=0
 
 # Warn users that they CAN mount partitions without formatting them!
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --msgbox "_WarnMount1 '_FSSkip' _WarnMount2" 0 0
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --msgbox "_WarnMount1 '_FSSkip' _WarnMount2" 0 0
 
 # LVM Detection. If detected, activate.
 lvm_detect
@@ -497,7 +496,7 @@ umount_partitions
 find_partitions
 
 # Identify and mount root
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --menu "_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 ROOT_PART=${PARTITION}
 
@@ -513,20 +512,20 @@ make_swap
 # Extra Step for VFAT UEFI Partition. This cannot be in an LVM container.
 if [[ $SYSTEM == "UEFI" ]]; then
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --menu "_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 UEFI_PART=${PARTITION}
 
 # If it is already a fat/vfat partition...
 if [[ $(fsck -N $PARTITION | grep fat) ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --yesno "_FormUefiBody $PARTITION _FormUefiBody2" 0 0 && mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --yesno "_FormUefiBody $PARTITION _FormUefiBody2" 0 0 && mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
 else 
 mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
 fi
 check_for_error
 
 # Inform users of the mountpoint options and consequences       
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_MntUefiBody"  0 0 2 \
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --menu "_MntUefiBody"  0 0 2 \
 "/boot" "systemd-boot"\
 "/boot/efi" "-" 2>${ANSWER}
 
@@ -540,7 +539,7 @@ fi
 
 # All other partitions
 while [[ $NUMBER_PARTITIONS > 0 ]]; do 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER}
+dialog --backtitle "$VERSION" --title " _PrepMntPart " --menu "_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER}
 PARTITION=$(cat ${ANSWER})
 
 if [[ $PARTITION == Fertig ]]; then
@@ -551,15 +550,15 @@ select_filesystem
 
 # Ask user for mountpoint. Don't give /boot as an example for UEFI systems!
 [[ $SYSTEM == "UEFI" ]] && MNT_EXAMPLES="/home\n/var" || MNT_EXAMPLES="/boot\n/home\n/var"
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
+dialog --backtitle "$VERSION" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
 MOUNT=$(cat ${ANSWER})
 
 # loop while the mountpoint specified is incorrect (is only '/', is blank, or has spaces). 
 while [[ ${MOUNT:0:1} != "/" ]] || [[ ${#MOUNT} -le 1 ]] || [[ $MOUNT =~ \ |\' ]]; do
 # Warn user about naming convention
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "_ExtErrBody" 0 0
+dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "_ExtErrBody" 0 0
 # Ask user for mountpoint again
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
+dialog --backtitle "$VERSION" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER}
 MOUNT=$(cat ${ANSWER})                     
 done
 
@@ -593,7 +592,7 @@ install_bootloader() {
 	check_for_error
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
+			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
 			pacstrap ${MOUNTPOINT} grub dosfstools 2>/tmp/.errlog
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -604,7 +603,7 @@ install_bootloader() {
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
+			dialog --backtitle "$VERSION" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
 			pacstrap ${MOUNTPOINT} grub efibootmgr dosfstools 2>/tmp/.errlog
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -663,7 +662,7 @@ sed -i 's/MODULES=""/MODULES="i915"/' ${MOUNTPOINT}/etc/mkinitcpio.conf
 # Intel microcode (Grub, Syslinux and systemd-boot).
 # Done as seperate if statements in case of multiple bootloaders.
 if [[ -e ${MOUNTPOINT}/boot/grub/grub.cfg ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " grub-mkconfig " --infobox "...Bitte warten..." 0 0
+dialog --backtitle "$VERSION" --title " grub-mkconfig " --infobox "...Bitte warten..." 0 0
 sleep 1
 arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg" 2>>/tmp/.errlog
 fi
@@ -715,7 +714,7 @@ elif [[ $(echo $GRAPHIC_CARD | grep -i 'vmware') != "" ]]; then HIGHLIGHT_SUB_GC
 else HIGHLIGHT_SUB_GC=10
 fi
 
-dialog --default-item ${HIGHLIGHT_SUB_GC} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _GCtitle " \
+dialog --default-item ${HIGHLIGHT_SUB_GC} --backtitle "$VERSION" --title " _GCtitle " \
 --menu "$GRAPHIC_CARD\n" 0 0 10 \
 "1" $"xf86-video-ati" \
 "2" $"xf86-video-intel" \
@@ -788,7 +787,6 @@ pacstrap ${MOUNTPOINT} xf86-video-openchrome 2>/tmp/.errlog
 [[ -e ${MOUNTPOINT}/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 [[ -e ${MOUNTPOINT}/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "_VBoxInstTitle" --msgbox "_VBoxInstBody" 0 0
 clear
 
 pacstrap ${MOUNTPOINT} virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD 2>/tmp/.errlog
@@ -826,7 +824,7 @@ fi
 
 # Where NVIDIA has been installed allow user to check and amend the file
 if [[ $NVIDIA_INST == 1 ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _NvidiaConfTitle " --msgbox "_NvidiaConfBody" 0 0
+dialog --backtitle "$VERSION" --title " _NvidiaConfTitle " --msgbox "_NvidiaConfBody" 0 0
 nano ${MOUNTPOINT}/etc/X11/xorg.conf.d/20-nvidia.conf
 fi
 }
@@ -849,7 +847,6 @@ security_menu(){
 	sed -i "s/SystemMaxUse.*/#&/g" ${MOUNTPOINT}/etc/systemd/journald.conf
 	sed -i "s/#Storage.*\|Storage.*/Storage=none/g" ${MOUNTPOINT}/etc/systemd/coredump.conf
 	echo "kernel.dmesg_restrict = 1" > ${MOUNTPOINT}/etc/sysctl.d/50-dmesg-restrict.conf
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Protokollierung |-" --infobox "\nFertig!\n\n" 0 0 && sleep 2
 }
 
 ######################################################################
@@ -865,7 +862,7 @@ select_device
 create_partitions
 mount_partitions
  
-#configure_mirrorlist
+configure_mirrorlist
 clear
 pacman-key --init
 pacman-key --populate archlinux
@@ -892,10 +889,6 @@ install_network_menu
 
 security_menu
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --yesno "-| Installer beenden |-" 0 0
-
-if [[ $? -eq 0 ]]; then
 umount_partitions
 clear
 exit 0
-fi
