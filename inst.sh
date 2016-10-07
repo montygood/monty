@@ -905,19 +905,19 @@ fi
 
 dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMenuTitle " --menu "_PrepMenuBody" 0 0 7 \
 "1" "_VCKeymapTitle" \
-"3" "_PrepPartDisk" \
-"6" "_PrepMntPart" \
-"7" "_Back" 2>${ANSWER}
+"2" "_PrepPartDisk" \
+"3" "_PrepMntPart" \
+"4" "_Back" 2>${ANSWER}
 
 HIGHLIGHT_SUB=$(cat ${ANSWER})
 case $(cat ${ANSWER}) in
 "1") set_keymap 
 ;;
-"3") umount_partitions
+"2") umount_partitions
 select_device
 create_partitions
 ;;
-"6") mount_partitions
+"3") mount_partitions
 ;;        
 *) main_menu_online
 ;;
@@ -1057,6 +1057,16 @@ install_graphics_menu
 }
 
 main_menu_online() {
+umount_partitions
+clear
+prep_menu 
+install_base_menu
+config_base_menu
+install_graphics_menu
+install_network_menu
+security_menu
+}
+main_menu_onlineO() {
 
 if [[ $HIGHLIGHT != 9 ]]; then
 HIGHLIGHT=$(( HIGHLIGHT + 1 ))
@@ -1070,9 +1080,7 @@ dialog --default-item ${HIGHLIGHT} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --t
 "4" "_InstGrMenuTitle" \
 "5" "_InstNMMenuTitle" \
 "6" "_InstMultMenuTitle" \
-"7" "_SecMenuTitle" \
-"8" "_SeeConfOptTitle" \
-"9" "Fertig" 2>${ANSWER}
+"7" "Fertig" 2>${ANSWER}
 
 HIGHLIGHT=$(cat ${ANSWER})
 
