@@ -834,7 +834,7 @@ pacstrap ${MOUNTPOINT} xf86-video-vmware xf86-input-vmmouse 2>/tmp/.errlog
 pacstrap ${MOUNTPOINT} xf86-video-fbdev 2>/tmp/.errlog
 ;;
 #*) install_graphics_menu
-;;
+#;;
 esac
 check_for_error
 
