@@ -589,7 +589,7 @@ ins_network
 set_security
 ins_jdownloader
 set_mediaelch
-
+ins_apps
 ins_finish
 
 umount_partitions
