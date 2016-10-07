@@ -83,15 +83,18 @@ check_base() {
 	fi
 }
 configure_mirrorlist() {
-	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
-	curl -so /etc/pacman.d/mirrorlist.new https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on
-	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-	sed -i 's/#//' /etc/pacman.d/mirrorlist.new
-	chmod +r /etc/pacman.d/mirrorlist.new
-	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
-	rankmirrors -n 10 /etc/pacman.d/mirrorlist.new > /etc/pacman.d/mirrorlist 2>/tmp/.errlog
-	check_for_error
-	dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
+	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
+		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
+		MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
+		curl -so ${MIRROR_TEMP} ${URL} 2>>/tmp/.errlog
+		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP} 2>>/tmp/.errlog
+		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig 2>>/tmp/.errlog
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
+		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
+		chmod +r /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
+	fi
 }
 set_keymap() { 
 	loadkeys $KEYMAP 2>/tmp/.errlog
@@ -483,9 +486,6 @@ LUKS_UUID=""
 LUKS=0
 LVM=0
 BTRFS=0
-
-# Warn users that they CAN mount partitions without formatting them!
-dialog --backtitle "$VERSION" --title " _PrepMntPart " --msgbox "_WarnMount1 '_FSSkip' _WarnMount2" 0 0
 
 # LVM Detection. If detected, activate.
 lvm_detect
