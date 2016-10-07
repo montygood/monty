@@ -34,6 +34,21 @@ UEFI_MOUNT=""         				# UEFI mountpoint (/boot or /boot/efi)
 HIGHLIGHT=0           				# Highlight items for Main Menu
 HIGHLIGHT_SUB=0	    				# Highlight items for submenus
 SUB_MENU=""           				# Submenu to be highlighted
+# Logical Volume Management
+LVM=0                   			# Logical Volume Management Detected?
+LVM_SEP_BOOT=0          			# 1 = Seperate /boot, 2 = seperate /boot & LVM
+LVM_VG=""               			# Name of volume group to create or use
+LVM_VG_MB=0             			# MB remaining of VG
+LVM_LV_NAME=""          			# Name of LV to create or use
+LV_SIZE_INVALID=0       			# Is LVM LV size entered valid?
+VG_SIZE_TYPE=""         			# Is VG in Gigabytes or Megabytes?
+
+# LUKS
+LUKS=0                  			# Luks Used?
+LUKS_DEV=""							# If encrypted, partition
+LUKS_NAME=""						# Name given to encrypted partition
+LUKS_UUID=""						# UUID used for comparison purposes
+LUKS_OPT=""							# Default or user-defined?
 
 ARCHI=$(uname -m)
 SYSTEM="Unknown"
@@ -45,7 +60,7 @@ ZONE="Europe"
 SUBZONE="Zurich"
 LOCALE="de_CH.UTF-8"
 code="CH"
-source english.trans
+source monty-master/english.trans
 ######################################################################
 ##                        Core Functions							##
 ######################################################################
