@@ -292,7 +292,7 @@ configure_mirrorlist() {
 mirror_by_country() {
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
 	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-	curl -so /etc/pacman.d/mirrorlist $ https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on 2>/tmp/.errlog
+	curl -so /etc/pacman.d/mirrorlist https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on 2>/tmp/.errlog
 	check_for_error
 	sed -i 's/^#Server/Server/g' /etc/pacman.d/mirrorlist
 	chmod +r /etc/pacman.d/mirrorlist
