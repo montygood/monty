@@ -3,39 +3,14 @@
 ######################################################################
 ##                   Installer Variables							##
 ######################################################################
-
 ANSWER="/tmp/.aif"
 PACKAGES="/tmp/.pkgs"
 MOUNT_OPTS="/tmp/.mnt_opts"
 VERSION="Architect Installation Framework 2.3.1"
 
-DM_INST=""							# Which DMs have been installed?
-DM_ENABLED=0						# Has a display manager been enabled?
-NM_INST=""							# Which NMs have been installed?
-NM_ENABLED=0						# Has a network connection manager been enabled?
-KERNEL="n"                			# Kernel(s) installed (base install); kernels for mkinitcpio
-GRAPHIC_CARD=""						# graphics card
-INTEGRATED_GC=""					# Integrated graphics card for NVIDIA
-NVIDIA_INST=0         				# Indicates if NVIDIA proprietary driver has been installed
-NVIDIA=""							# NVIDIA driver(s) to install depending on kernel(s)
-VB_MOD=""							# headers packages to install depending on kernel(s)
-SHOW_ONCE=0           				# Show de_wm information only once
-COPY_PACCONF=0						# Copy over installer /etc/pacman.conf to installed system?
-MOUNT=""							# Installation: All other mounts branching from Root
-FS_OPTS=""							# File system special mount options available
-CHK_NUM=16							# Used for FS mount options checklist length
-INCLUDE_PART='part\|lvm\|crypt'		# Partition types to include for display and selection.
-ROOT_PART=""          				# ROOT partition
-UEFI_PART=""						# UEFI partition
-UEFI_MOUNT=""         				# UEFI mountpoint (/boot or /boot/efi)
-ARCHI=$(uname -m)     				# Display whether 32 or 64 bit system
-SYSTEM="Unknown"     				# Display whether system is BIOS or UEFI. Default is "unknown"
-HIGHLIGHT=0           				# Highlight items for Main Menu
-HIGHLIGHT_SUB=0	    				# Highlight items for submenus
-SUB_MENU=""           				# Submenu to be highlighted
-
 #Variablen
-op_title=" -| Arch Installation - ($(uname -m)) |- "
+ARCHI=$(uname -m)
+op_title=" -| Arch Installation - $ARCHI |- "
 LOCALE="de_CH.UTF-8"
 FONT=""
 KEYMAP="de_CH-latin1"
@@ -96,19 +71,16 @@ check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
 	echo "" > /tmp/.errlog
-#	main_menu_online
 fi
 }
 check_mount() {
 	if [[ $(lsblk -o MOUNTPOINT | grep ${MOUNTPOINT}) == "" ]]; then
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst die Partition Mounten" 0 0
-#	main_menu_online
 fi
 }
 check_base() {
 	if [[ ! -e ${MOUNTPOINT}/etc ]]; then
 		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst BASE installieren" 0 0
-#		main_menu_online
 	fi
 }
 configure_mirrorlist() {
@@ -878,68 +850,6 @@ security_menu(){
 	sed -i "s/#Storage.*\|Storage.*/Storage=none/g" ${MOUNTPOINT}/etc/systemd/coredump.conf
 	echo "kernel.dmesg_restrict = 1" > ${MOUNTPOINT}/etc/sysctl.d/50-dmesg-restrict.conf
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "-| Protokollierung |-" --infobox "\nFertig!\n\n" 0 0 && sleep 2
-}
-
-######################################################################
-##                 Main Interfaces       							##
-######################################################################
-
-main_menu_onlineO() {
-
-if [[ $HIGHLIGHT != 9 ]]; then
-HIGHLIGHT=$(( HIGHLIGHT + 1 ))
-fi
-
-dialog --default-item ${HIGHLIGHT} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _MMTitle " \
---menu "_MMBody" 0 0 9 \
-"1" "_PrepMenuTitle" \
-"2" "_InstBsMenuTitle" \
-"3" "_ConfBseMenuTitle" \
-"4" "_InstGrMenuTitle" \
-"5" "_InstNMMenuTitle" \
-"6" "_InstMultMenuTitle" \
-"7" "Fertig" 2>${ANSWER}
-
-HIGHLIGHT=$(cat ${ANSWER})
-
-# Depending on the answer, first check whether partition(s) are mounted and whether base has been installed
-if [[ $(cat ${ANSWER}) -eq 2 ]]; then
-check_mount
-fi
-
-if [[ $(cat ${ANSWER}) -ge 3 ]] && [[ $(cat ${ANSWER}) -le 8 ]]; then
-check_mount
-check_base
-fi
-
-case $(cat ${ANSWER}) in
-"1") prep_menu 
-;;
-"2") install_base_menu
-;;
-"3") config_base_menu
-;;          
-"4") install_graphics_menu
-;;
-"5") install_network_menu
-;;
-"6") security_menu
-;;
-*) dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --yesno "-| Installer beenden |-" 0 0
-
-if [[ $? -eq 0 ]]; then
-umount_partitions
-clear
-exit 0
-else
-main_menu_online
-fi
-
-;;
-esac
-
-main_menu_online 
-
 }
 
 ######################################################################
