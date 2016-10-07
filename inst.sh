@@ -282,7 +282,7 @@ check_mount() {
 fi
 }
 check_base() {
-	if [[ ! -e $ {MOUNTPOINT}/etc ]]; then
+	if [[ ! -e ${MOUNTPOINT}/etc ]]; then
 		dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "\nzuerst BASE installieren" 0 0
 		main_menu_online
 	fi
