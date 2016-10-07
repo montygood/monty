@@ -625,7 +625,7 @@ uefi_bootloader() {
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
-			pacstrap ${MOUNTPOINT} "grub dosfstools" 2>/tmp/.errlog
+			pacstrap ${MOUNTPOINT} grub dosfstools 2>/tmp/.errlog
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>>/tmp/.errlog
@@ -636,7 +636,7 @@ uefi_bootloader() {
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Grub-install |- " --infobox "...Bitte warten..." 0 0
-			pacstrap ${MOUNTPOINT} "grub efibootmgr dosfstools" 2>/tmp/.errlog
+			pacstrap ${MOUNTPOINT} grub efibootmgr dosfstools 2>/tmp/.errlog
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>>/tmp/.errlog
@@ -651,31 +651,31 @@ install_network_menu() {
 	WIRELESS_DEV=`ip link | grep wlp | awk '{print $2}'| sed 's/://' | sed '1!d'`
 	if [[ -n $WIRELESS_DEV ]]; then 
 		clear
-		pacstrap ${MOUNTPOINT} "iw wireless_tools wpa_actiond dialog rp-pppoe" 2>/tmp/.errlog
+		pacstrap ${MOUNTPOINT} iw wireless_tools wpa_actiond dialog rp-pppoe 2>/tmp/.errlog
 		check_for_error
 	fi
 #	WIRED_DEV=`ip link | grep "ens\|eno\|enp" | awk '{print $2}'| sed 's/://' | sed '1!d'`
 #	if [[ -n $WIRED_DEV ]]; then arch_chroot "systemctl enable dhcpcd@${WIRED_DEV}.service" ; fi	
 
 	clear
-	pacstrap ${MOUNTPOINT} "networkmanager network-manager-applet" 2>/tmp/.errlog
+	pacstrap ${MOUNTPOINT} networkmanager network-manager-applet 2>/tmp/.errlog
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service" >/tmp/.symlink 2>/tmp/.errlog
 
 	clear
-	pacstrap ${MOUNTPOINT} "cups system-config-printer ghostscript gsfonts" 2>/tmp/.errlog
+	pacstrap ${MOUNTPOINT} cups system-config-printer ghostscript gsfonts 2>/tmp/.errlog
 	arch_chroot "systemctl enable org.cups.cupsd.service" 2>/tmp/.errlog
 	check_for_error
 
 	if (dmesg | grep -i "blue" &> /dev/null); then 
 		clear
-		pacstrap ${MOUNTPOINT} "bluez bluez-utils blueman" 2>/tmp/.errlog
+		pacstrap ${MOUNTPOINT} bluez bluez-utils blueman 2>/tmp/.errlog
 		arch_chroot "systemctl enable bluetooth.service" 2>/tmp/.errlog
 		check_for_error
 	fi
 }
 install_xorg_input() {
 	clear
-	pacstrap ${MOUNTPOINT} "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics" 2>/tmp/.errlog
+	pacstrap ${MOUNTPOINT} xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics 2>/tmp/.errlog
 	check_for_error
 	# now copy across .xinitrc for all user accounts
 	user_list=$(ls ${MOUNTPOINT}/home/ | sed "s/lost+found//")
@@ -867,15 +867,15 @@ install_graphics_menu
 }
 install_de_wm() {
 	clear
-	pacstrap ${MOUNTPOINT} "cinnamon" 2>/tmp/.errlog
+	pacstrap ${MOUNTPOINT} cinnamon 2>/tmp/.errlog
 	check_for_error
 	clear
-	pacstrap ${MOUNTPOINT} "bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm" 2>/tmp/.errlog
+	pacstrap ${MOUNTPOINT} bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm 2>/tmp/.errlog
 	check_for_error
 }
 install_dm() {
 clear
-pacstrap ${MOUNTPOINT} "lightdm lightdm-gtk-greeter" 2>/tmp/.errlog
+pacstrap ${MOUNTPOINT} lightdm lightdm-gtk-greeter 2>/tmp/.errlog
 arch_chroot "systemctl enable lightdm" 2>/tmp/.errlog
 check_for_error
 }
