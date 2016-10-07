@@ -108,7 +108,7 @@ select_language() {
 	"9" $"Magyar             (hu_HU)" 2>${ANSWER}
 
 	case $(cat ${ANSWER}) in
-        "1") source /aif-master/english.trans
+        "1") source /monty-master/english.trans
              CURR_LOCALE="en_US.UTF-8"
              ;;
         "2") source /aif-master/spanish.trans
