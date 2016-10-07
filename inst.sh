@@ -291,7 +291,7 @@ auto_partition(){
 	"Sicher" "Wipen sauber aber langsam" \
 	"Automatisch" "BIOS & UEFI" 2>${ANSWER}
 	clear
-	if ([[ $(cat ${ANSWER}) != "$_PartOptWipe" ]] &&  [[ $(cat ${ANSWER}) != "$_PartOptAuto" ]]); then
+	if ([[ $(cat ${ANSWER}) != "_PartOptWipe" ]] &&  [[ $(cat ${ANSWER}) != "_PartOptAuto" ]]); then
 	$(cat ${ANSWER}) ${DEVICE}
 	else
 	[[ $(cat ${ANSWER}) == "Sicher" ]] && secure_wipe && create_partitions
@@ -305,8 +305,8 @@ select_filesystem(){
 fs_opts=""
 CHK_NUM=0
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_FSTitle " --menu "$_FSBody" 0 0 12 \
-"$_FSSkip" "-" \
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _FSTitle " --menu "_FSBody" 0 0 12 \
+"_FSSkip" "-" \
 "btrfs" "mkfs.btrfs -f" \
 "ext2" "mkfs.ext2 -q" \
 "ext3" "mkfs.ext3 -q" \
@@ -320,7 +320,7 @@ dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_FSTitle " --menu "$
 "xfs" "mkfs.xfs -f" 2>${ANSWER}	
 
 case $(cat ${ANSWER}) in
-"$_FSSkip")	FILESYSTEM="$_FSSkip" ;;
+"_FSSkip")	FILESYSTEM="_FSSkip" ;;
 "btrfs") 	FILESYSTEM="mkfs.btrfs -f"	
 CHK_NUM=16
 fs_opts="autodefrag compress=zlib compress=lzo compress=no compress-force=zlib compress-force=lzo discard noacl noatime nodatasum nospace_cache recovery skip_balance space_cache ssd ssd_spread"
@@ -359,7 +359,7 @@ fs_opts="discard filestreams ikeep largeio noalign nobarrier norecovery noquota 
 esac
 
 # Warn about formatting!
-if [[ $FILESYSTEM != $_FSSkip ]]; then
+if [[ $FILESYSTEM != _FSSkip ]]; then
 dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " FS-System " --yesno "\n$FILESYSTEM $PARTITION\n\n" 0 0
 if [[ $? -eq 0 ]]; then
 ${FILESYSTEM} ${PARTITION} >/dev/null 2>/tmp/.errlog
@@ -471,19 +471,19 @@ fi
 make_swap(){
 
 # Ask user to select partition or create swapfile
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --menu "$_SelSwpBody" 0 0 7 "$_SelSwpNone" $"-" "$_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu  
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelSwpBody" 0 0 7 "_SelSwpNone" $"-" "_SelSwpFile" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu  
 
-if [[ $(cat ${ANSWER}) != "$_SelSwpNone" ]]; then    
+if [[ $(cat ${ANSWER}) != "_SelSwpNone" ]]; then    
 PARTITION=$(cat ${ANSWER})
 
-if [[ $PARTITION == "$_SelSwpFile" ]]; then
+if [[ $PARTITION == "_SelSwpFile" ]]; then
 total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
 m_or_g=$(cat ${ANSWER})
 
 while [[ $(echo ${m_or_g: -1} | grep "M\|G") == "" ]]; do
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_SelSwpFile " --msgbox "\n$_SelSwpFile  -| Fehler |- : M = MB, G = GB\n\n" 0 0
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --msgbox "\n_SelSwpFile  -| Fehler |- : M = MB, G = GB\n\n" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _SelSwpFile " --inputbox "\nM = MB, G = GB\n" 9 30 "${total_memory}M" 2>${ANSWER} || make_swap
 m_or_g=$(cat ${ANSWER})
 done
 
@@ -495,7 +495,7 @@ check_for_error
 
 else # Swap Partition
 if [[ $(lsblk -o FSTYPE  ${PARTITION} | grep -i "swap") != "swap" ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --yesno "\nmkswap ${PARTITION}\n\n" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --yesno "\nmkswap ${PARTITION}\n\n" 0 0
 [[ $? -eq 0 ]] && mkswap ${PARTITION} >/dev/null 2>/tmp/.errlog || mount_partitions
 fi
 swapon  ${PARTITION} >/dev/null 2>>/tmp/.errlog
@@ -517,7 +517,7 @@ LVM=0
 BTRFS=0
 
 # Warn users that they CAN mount partitions without formatting them!
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --msgbox "$_WarnMount1 '$_FSSkip' $_WarnMount2" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --msgbox "_WarnMount1 '_FSSkip' _WarnMount2" 0 0
 
 # LVM Detection. If detected, activate.
 lvm_detect
@@ -528,7 +528,7 @@ umount_partitions
 find_partitions
 
 # Identify and mount root
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --menu "$_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelRootBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu
 PARTITION=$(cat ${ANSWER})
 ROOT_PART=${PARTITION}
 
@@ -544,20 +544,20 @@ make_swap
 # Extra Step for VFAT UEFI Partition. This cannot be in an LVM container.
 if [[ $SYSTEM == "UEFI" ]]; then
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --menu "$_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu  
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_SelUefiBody" 0 0 7 ${PARTITIONS} 2>${ANSWER} || prep_menu  
 PARTITION=$(cat ${ANSWER})
 UEFI_PART=${PARTITION}
 
 # If it is already a fat/vfat partition...
 if [[ $(fsck -N $PARTITION | grep fat) ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --yesno "$_FormUefiBody $PARTITION $_FormUefiBody2" 0 0 && mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --yesno "_FormUefiBody $PARTITION _FormUefiBody2" 0 0 && mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
 else 
 mkfs.vfat -F32 ${PARTITION} >/dev/null 2>/tmp/.errlog
 fi
 check_for_error
 
 # Inform users of the mountpoint options and consequences       
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --menu "$_MntUefiBody"  0 0 2 \
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_MntUefiBody"  0 0 2 \
 "/boot" "systemd-boot"\
 "/boot/efi" "-" 2>${ANSWER}
 
@@ -571,7 +571,7 @@ fi
 
 # All other partitions
 while [[ $NUMBER_PARTITIONS > 0 ]]; do 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart " --menu "$_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu 
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart " --menu "_ExtPartBody" 0 0 7 "Fertig" $"-" ${PARTITIONS} 2>${ANSWER} || prep_menu 
 PARTITION=$(cat ${ANSWER})
 
 if [[ $PARTITION == Fertig ]]; then
@@ -582,15 +582,15 @@ select_filesystem
 
 # Ask user for mountpoint. Don't give /boot as an example for UEFI systems!
 [[ $SYSTEM == "UEFI" ]] && MNT_EXAMPLES="/home\n/var" || MNT_EXAMPLES="/boot\n/home\n/var"
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart $PARTITON " --inputbox "$_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
 MOUNT=$(cat ${ANSWER})
 
 # loop while the mountpoint specified is incorrect (is only '/', is blank, or has spaces). 
 while [[ ${MOUNT:0:1} != "/" ]] || [[ ${#MOUNT} -le 1 ]] || [[ $MOUNT =~ \ |\' ]]; do
 # Warn user about naming convention
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "$_ExtErrBody" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Fehler |- " --msgbox "_ExtErrBody" 0 0
 # Ask user for mountpoint again
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_PrepMntPart $PARTITON " --inputbox "$_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _PrepMntPart $PARTITON " --inputbox "_ExtPartBody1$MNT_EXAMPLES\n" 0 0 "/" 2>${ANSWER} || prep_menu
 MOUNT=$(cat ${ANSWER})                     
 done
 
@@ -619,6 +619,7 @@ install_base() {
 	check_for_error
 }
 uefi_bootloader() {
+	select_device
 	check_mount
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl" 2>/tmp/.errlog
 	check_for_error
@@ -747,7 +748,7 @@ elif [[ $(echo $GRAPHIC_CARD | grep -i 'vmware') != "" ]]; then HIGHLIGHT_SUB_GC
 else HIGHLIGHT_SUB_GC=10
 fi
 
-dialog --default-item ${HIGHLIGHT_SUB_GC} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_GCtitle " \
+dialog --default-item ${HIGHLIGHT_SUB_GC} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _GCtitle " \
 --menu "$GRAPHIC_CARD\n" 0 0 10 \
 "1" $"xf86-video-ati" \
 "2" $"xf86-video-intel" \
@@ -758,7 +759,7 @@ dialog --default-item ${HIGHLIGHT_SUB_GC} --backtitle "$VERSION - $SYSTEM ($ARCH
 "7" $"xf86-video-openchrome" \
 "8" $"virtualbox-guest-dkms" \
 "9" $"xf86-video-vmware" \
-"10" "$_GCUnknOpt / xf86-video-fbdev" 2>${ANSWER}
+"10" "_GCUnknOpt / xf86-video-fbdev" 2>${ANSWER}
 
 case $(cat ${ANSWER}) in
 "1") # ATI/AMD
@@ -820,7 +821,7 @@ pacstrap ${MOUNTPOINT} xf86-video-openchrome 2>/tmp/.errlog
 [[ -e ${MOUNTPOINT}/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 [[ -e ${MOUNTPOINT}/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
 
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "$_VBoxInstTitle" --msgbox "$_VBoxInstBody" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title "_VBoxInstTitle" --msgbox "_VBoxInstBody" 0 0
 clear
 
 pacstrap ${MOUNTPOINT} virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD 2>/tmp/.errlog
@@ -858,7 +859,7 @@ fi
 
 # Where NVIDIA has been installed allow user to check and amend the file
 if [[ $NVIDIA_INST == 1 ]]; then
-dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_NvidiaConfTitle " --msgbox "$_NvidiaConfBody" 0 0
+dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _NvidiaConfTitle " --msgbox "_NvidiaConfBody" 0 0
 nano ${MOUNTPOINT}/etc/X11/xorg.conf.d/20-nvidia.conf
 fi
 
@@ -1028,13 +1029,13 @@ HIGHLIGHT_SUB=$(( HIGHLIGHT_SUB + 1 ))
 fi
 fi
 
-dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " $_InstGrMenuTitle " --menu "$_InstGrMenuBody" 0 0 6 \
-"1" "$_InstGrMenuDS" \
-"2" "$_InstGrMenuDD" \
-"3" "$_InstGrMenuGE" \
-"4" "$_InstGrMenuDM" \
-"5"	"$_PrepKBLayout" \
-"6" "$_Back" 2>${ANSWER}
+dialog --default-item ${HIGHLIGHT_SUB} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _InstGrMenuTitle " --menu "_InstGrMenuBody" 0 0 6 \
+"1" "_InstGrMenuDS" \
+"2" "_InstGrMenuDD" \
+"3" "_InstGrMenuGE" \
+"4" "_InstGrMenuDM" \
+"5"	"_PrepKBLayout" \
+"6" "_Back" 2>${ANSWER}
 
 HIGHLIGHT_SUB=$(cat ${ANSWER})
 case $(cat ${ANSWER}) in
@@ -1063,7 +1064,7 @@ HIGHLIGHT=$(( HIGHLIGHT + 1 ))
 fi
 
 dialog --default-item ${HIGHLIGHT} --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " _MMTitle " \
---menu "$_MMBody" 0 0 9 \
+--menu "_MMBody" 0 0 9 \
 "1" "_PrepMenuTitle" \
 "2" "_InstBsMenuTitle" \
 "3" "_ConfBseMenuTitle" \
