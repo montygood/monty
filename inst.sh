@@ -288,34 +288,15 @@ check_base() {
 	fi
 }
 configure_mirrorlist() {
-# Generate a mirrorlist based on the country chosen.	
-mirror_by_country() {
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "...Bitte warten..." 0 0
+	curl -so /etc/pacman.d/mirrorlist.new https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on
 	mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-	curl -so /etc/pacman.d/mirrorlist https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on 2>/tmp/.errlog
+	sed -i 's/^#Server/Server/g' /etc/pacman.d/mirrorlist.new
+	chmod +r /etc/pacman.d/mirrorlist.new
+	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
+	rankmirrors -n 10 /etc/pacman.d/mirrorlist.new > /etc/pacman.d/mirrorlist 2>/tmp/.errlog
 	check_for_error
-	sed -i 's/^#Server/Server/g' /etc/pacman.d/mirrorlist
-	chmod +r /etc/pacman.d/mirrorlist
 	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
-}
-	dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " \
-	--menu "$_MirrorlistBody" 0 0 6 \
-	"1" "Nach Land Herunterladen" \
-	"2" "Sortieren" \
-	"3" "$_Back" 2>${ANSWER}	
-	case $(cat ${ANSWER}) in
-	"1") mirror_by_country
-	;;
-	"2") dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nsortiere die Spiegelserver\n...Bitte warten..." 0 0
-		 cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-		 rankmirrors -n 10 /etc/pacman.d/mirrorlist.backup > /etc/pacman.d/mirrorlist 2>/tmp/.errlog
-		 check_for_error
-		 dialog --backtitle "$VERSION - $SYSTEM ($ARCHI)" --title " -| Spiegelserver |- " --infobox "\nFertig!\n\n" 0 0 && sleep 2
-	;;
-	*)   install_base_menu
-	;;
-	esac  	
-	configure_mirrorlist
 }
 set_keymap() { 
 	loadkeys $KEYMAP 2>/tmp/.errlog
