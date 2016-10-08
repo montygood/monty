@@ -495,13 +495,8 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo
-	cp mp3gain /mnt/usr/bin/mp3gain
-	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm
 	cp *.pkg.tar.xz /mnt/
-	arch_chroot "pacman -U /tmp/pamac.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/mintstick.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
 }
 
 ###########
@@ -528,7 +523,7 @@ ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
-
+ins_finish
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
 reboot
