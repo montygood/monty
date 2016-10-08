@@ -176,7 +176,7 @@ set_mirrorlist() {
 		curl -so ${MIRROR_TEMP} ${URL} 2>>/tmp/.errlog
 		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP} 2>>/tmp/.errlog
 		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig 2>>/tmp/.errlog
-		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\nSortiere\n    Bitte warten    \n\n" 0 0
+		dialog --backtitle "$VERSION" --title " -| Spiegelserver |- " --infobox "\n    Bitte warten    \n\n" 0 0
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		chmod +r /etc/pacman.d/mirrorlist 2>>/tmp/.errlog
 		clear
@@ -537,18 +537,29 @@ ins_apps() {
 	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pulseaudio-alsa pulseaudio pavucontrol gvfs"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
 	arch_chroot "pacman -Syy && pacman -Syu"
-	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam"
+	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam wqy-microhei ttf-droid"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
+	cp mp3gain /mnt/usr/bin/mp3gain 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
 	check_for_error
-	yaourt -S pamac-aur --noconfirm --needed --export /mnt/tmp
-	mv /mnt/tmp/pamac*.pkg.tar.xz /mnt/tmp/pamac.pkg.tar.xz
-	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
+	mv *.pkg.tar.xz /mnt/tmp/
+	arch_chroot "pacman -U /tmp/aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/pamac.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/mint-x-icons.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/wakeonlan.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/skype.pkg.tar.xz --noconfirm --needed"
+	[[ $(uname -m) == x86_64 ]] && arch_chroot "pacman -U /tmp/codecs64.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/mediaelch.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/mintstick-git.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
+#	arch_chroot "pacman -U /tmp/teamviewer.pkg.tar.xz --noconfirm --needed"
+#	arch_chroot "systemctl enable teamviewerd"
 }
 
 ###########
@@ -578,8 +589,12 @@ ins_dm
 set_xkbmap
 ins_network
 set_security
+ins_jdownloader
+set_mediaelch
+ins_apps
+ins_finish
 
-#umount_partitions
+umount_partitions
 dialog --backtitle "$VERSION" --title " -| Installation Fertig |- " --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
-#reboot
+reboot
 exit 0
