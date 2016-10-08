@@ -20,16 +20,21 @@ SPRA="de"
 arch_chroot() {
 	clear
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
+	dialog --backtitle "$VERSION" --title "-| Loganzeige |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	check_for_error
 }  
 pac_strap() {
 	clear
 	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
+	dialog --backtitle "$VERSION" --title "-| Loganzeige |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	check_for_error
 }
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
+	fi
+	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "Warnung") != "" ]]; then
+		dialog --backtitle "$VERSION" --title "-| Warnung |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
 	echo "" > /tmp/.errlog
 }
@@ -90,7 +95,7 @@ sel_device() {
 	for i in ${devices_list[@]}; do
 		DEVICE="${DEVICE} ${i}"
 	done
-	DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "Welche HDD wird verwendet" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+	DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 	IDEV=`echo $DEVICE | cut -c6-`
 	HD_SD="HDD"
 	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
@@ -99,14 +104,15 @@ sel_device() {
 	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 }
 sel_hostname() {
-	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "Identifizierung im Netzwerk" 0 0 "")
+	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
 	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
 		sel_hostname
 	fi
 }
 sel_user() {
-	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Namen des Benutzers" 0 0 "")
+	FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "login" 0 0 "")
 	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
 		sel_user
@@ -201,7 +207,7 @@ set_root_password() {
 }
 set_new_user() {
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0
-	arch_chroot "useradd ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	arch_chroot "cp /etc/skel/.bashrc /home/${USERNAME}"
@@ -343,12 +349,6 @@ ins_bootloader() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
-	# now copy across .xinitrc for all user accounts
-	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
 }
 ins_graphics_card() {
 	install_intel(){
@@ -514,8 +514,9 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	mv *.pkg.tar.xz /mnt/tmp/
+	cp *.pkg.tar.xz /mnt/tmp/
 	arch_chroot "pacman -U /tmp/pamac.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U /tmp/mintstick.pkg.tar.xz --noconfirm --needed"
 }
 
 ###########
