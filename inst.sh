@@ -483,6 +483,8 @@ ins_apps() {
 	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
 	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
+	pacman -Syy & pacman -Syu
+	arch_chroot "pacman -Syy & pacman -Syu"
 	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
@@ -539,6 +541,7 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
+ins_apps
 ins_finish
 
 umount_partitions
