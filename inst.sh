@@ -210,8 +210,6 @@ set_new_user() {
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
-	arch_chroot "cp /etc/skel/.bashrc /home/${USERNAME}"
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 }
 run_mkinitcpio() {
@@ -462,11 +460,11 @@ ins_de_wm() {
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
-	arch_chroot "systemctl enable lightdm.service"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "groupadd -r autologin"
 	arch_chroot "gpasswd -a ${USERNAME} autologin"
+	arch_chroot "systemctl enable lightdm.service"
 }
 ins_network() {
 	WIRELESS_DEV=`ip link | grep wlp | awk '{print $2}'| sed 's/://' | sed '1!d'`
