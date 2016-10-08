@@ -20,21 +20,16 @@ SPRA="de"
 arch_chroot() {
 	clear
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
-	dialog --backtitle "$VERSION" --title "-| Loganzeige |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	check_for_error
 }  
 pac_strap() {
 	clear
 	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
-	dialog --backtitle "$VERSION" --title "-| Loganzeige |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	check_for_error
 }
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
-	fi
-	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "Warnung") != "" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Warnung |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
 	echo "" > /tmp/.errlog
 }
@@ -318,7 +313,7 @@ ins_base() {
 	fi
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
 	pacman -Syy
-	arch_chroot "pacman -Syy"
+	arch-chroot "pacman -Syy"
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
@@ -456,7 +451,7 @@ ins_graphics_card() {
 }
 ins_de_wm() {
 	pac_strap "cinnamon nemo-fileroller nemo-preview"
-	pac_strap "gnome-terminal bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm"
+	pac_strap "gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
@@ -472,10 +467,7 @@ ins_network() {
 		pac_strap "iw wireless_tools wpa_actiond dialog rp-pppoe"
 	fi
 
-	pac_strap "networkmanager network-manager-applet"
-	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
-
-	pac_strap "cups system-config-printer hplip ghostscript gsfonts"
+	pac_strap "cups system-config-printer hplip"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	if (dmesg | grep -i "blue" &> /dev/null); then 
@@ -502,17 +494,21 @@ ins_jdownloader() {
 ins_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator libdvdread libdvdnav"
-	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid cantarell-fonts"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pulseaudio-alsa pulseaudio pavucontrol gvfs"
+	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator"
+	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
 	arch_chroot "pacman -Syy && pacman -Syu"
-	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam wqy-microhei ttf-droid"
+	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	cp *.pkg.tar.xz /mnt/tmp/
+	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
+	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo
+	cp mp3gain /mnt/usr/bin/mp3gain
+	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm
+	cp *.pkg.tar.xz /mnt/
 	arch_chroot "pacman -U /tmp/pamac.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U /tmp/mintstick.pkg.tar.xz --noconfirm --needed"
 }
