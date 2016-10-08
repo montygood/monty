@@ -173,6 +173,7 @@ set_mirrorlist() {
 		clear
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
+		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 		pacman-key --init
 		pacman-key --populate archlinux
 		pacman-key --refresh-keys
@@ -212,12 +213,6 @@ run_mkinitcpio() {
 }
 set_xkbmap() {
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-}
-set_security(){
-	sed -i "s/#Storage.*\|Storage.*/Storage=none/g" /mnt/etc/systemd/journald.conf
-	sed -i "s/SystemMaxUse.*/#&/g" /mnt/etc/systemd/journald.conf
-	sed -i "s/#Storage.*\|Storage.*/Storage=none/g" /mnt/etc/systemd/coredump.conf
-	echo "kernel.dmesg_restrict = 1" > /mnt/etc/sysctl.d/50-dmesg-restrict.conf
 }
 set_mediaelch() {		
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
@@ -442,7 +437,7 @@ ins_graphics_card() {
 }
 ins_de_wm() {
 	pac_strap "cinnamon nemo-fileroller nemo-preview"
-	pac_strap "gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+	pac_strap "mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils gnome-terminal"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
@@ -467,7 +462,6 @@ ins_network() {
 	fi
 }
 ins_jdownloader() {
-	pac_strap "jre7-openjdk"
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
 	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
@@ -485,18 +479,36 @@ ins_jdownloader() {
 ins_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator"
+	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator jre7-openjdk"
 	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
-	arch_chroot "pacman -Syy && pacman -Syu"
-	pac_strap "yaourt playonlinux winetricks wine wine_gecko wine-mono steam"
+	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	cp *.pkg.tar.xz /mnt/
+	mv mp3gain /mnt/usr/bin/
+	mv mp3diags_de_DE.qm /mnt/usr/bin/
+	7z x teamviewer.pkg.7z.001
+	mv *.pkg.tar.xz /mnt/
+	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "gpasswd -a ${USERNAME} plugdev"
+	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "mv *.pkg.tar.xz /root/"
 }
 
 ###########
@@ -508,6 +520,7 @@ sel_hostname
 sel_user
 sel_password
 set_partitions
+set_mirrorlist
 ins_base
 ins_bootloader
 gen_fstab 
@@ -523,7 +536,12 @@ ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
+ins_network
+ins_jdownloader
+set_mediaelch
+ins_apps
 ins_finish
+
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
 reboot
