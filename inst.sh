@@ -174,6 +174,7 @@ set_mirrorlist() {
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
+		pacman -Syy & pacman -Syu
 		pacman-key --init
 		pacman-key --populate archlinux
 		pacman-key --refresh-keys
