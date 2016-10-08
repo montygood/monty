@@ -27,9 +27,6 @@ pac_strap() {
 	check_for_error
 	clear
 }
-yao_urt() {
-	arch-chroot /mnt /usr/bin/su - ${USER}	-c "yaourt -S ${1} --needed --noconfirm"
-}
 check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title " -| Fehler |- " --msgbox "$(cat /tmp/.errlog)" 0 0
@@ -549,15 +546,9 @@ ins_finish() {
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo 2>>/tmp/.errlog
 	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm 2>>/tmp/.errlog
 	check_for_error
-	rm -rf /mnt/etc/bashcolor
-	rm -rf /mnt/etc/bashcolor-root
-	rm -rf /mnt/etc/bashcolor-user
-	cp bashcolor /mnt/etc/
-	cp bashcolor-root /mnt/etc/
-	cp bashcolor-user /mnt/etc/
-	sed -i 's/PS1=/# PS1=/g' /mnt/etc/bash.bashrc
-	sed -i '/PS1=/a . /etc/bashcolor' /mnt/etc/bash.bashrc
-	yao_urt "pamac-aur"
+	yaourt -S pamac-aur --noconfirm --needed --export /mnt/tmp
+	mv /mnt/tmp/pamac*.pkg.tar.xz /mnt/tmp/pamac.pkg.tar.xz
+	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
 }
 
 ###########
@@ -589,7 +580,6 @@ ins_network
 set_security
 ins_jdownloader
 set_mediaelch
-ins_apps
 ins_finish
 
 umount_partitions
