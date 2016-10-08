@@ -514,23 +514,8 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/mintstick.mo
-	cp mp3gain /mnt/usr/bin/mp3gain
-	cp mp3diags_de_DE.qm /mnt/usr/bin/mp3diags_de_DE.qm
 	mv *.pkg.tar.xz /mnt/tmp/
-	arch_chroot "pacman -U /tmp/aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U /tmp/pamac.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/wd719x-firmware.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/mint-x-icons.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/wakeonlan.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/skype.pkg.tar.xz --noconfirm --needed"
-	[[ $(uname -m) == x86_64 ]] && arch_chroot "pacman -U /tmp/codecs64.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/mediaelch.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/mintstick-git.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U /tmp/mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
-#	arch_chroot "pacman -U /tmp/teamviewer.pkg.tar.xz --noconfirm --needed"
-#	arch_chroot "systemctl enable teamviewerd"
 }
 
 ###########
