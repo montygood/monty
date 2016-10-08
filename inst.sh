@@ -538,11 +538,9 @@ ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
-ins_network
 set_security
 ins_jdownloader
 set_mediaelch
-ins_apps
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
