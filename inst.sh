@@ -174,10 +174,10 @@ set_mirrorlist() {
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-		pacman -Syy & pacman -Syu
 		pacman-key --init
 		pacman-key --populate archlinux
 		pacman-key --refresh-keys
+		pacman -Syy
 	fi
 }
 gen_fstab() {
@@ -299,8 +299,9 @@ ins_base() {
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
+		/Include/s/#//g}' /etc/pacman.conf
 	fi
+	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
