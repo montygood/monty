@@ -208,10 +208,7 @@ set_new_user() {
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 }
 run_mkinitcpio() {
-	KERNEL=$(ls /mnt/boot/*.img | grep -v "fallback" | sed "s~/mnt/boot/initramfs-~~g" | sed s/\.img//g | uniq)
-	for i in ${KERNEL}; do
-		arch_chroot "mkinitcpio -p ${i}"
-	done
+	arch_chroot "mkinitcpio -p linux"
 }
 set_xkbmap() {
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
@@ -306,14 +303,8 @@ ins_base() {
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /etc/pacman.conf
+		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then
-		echo -e "\n[archlinuxfr]\nServer = http://repo.archlinux.fr/$(uname -m)\nSigLevel = Never" >> /etc/pacman.conf
-	fi
-	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
-	pacman -Syy
-	arch-chroot "pacman -Syy"
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
@@ -522,7 +513,6 @@ sel_hostname
 sel_user
 sel_password
 set_partitions
-set_mirrorlist
 ins_base
 ins_bootloader
 gen_fstab 
@@ -538,9 +528,6 @@ ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
-set_security
-ins_jdownloader
-set_mediaelch
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
