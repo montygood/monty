@@ -437,7 +437,7 @@ ins_graphics_card() {
 }
 ins_de_wm() {
 	pac_strap "cinnamon nemo-fileroller nemo-preview"
-	pac_strap "mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils gnome-terminal"
+	pac_strap "mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils xterm"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
@@ -479,7 +479,7 @@ ins_jdownloader() {
 ins_apps() {
 	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
 	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats gnome-calculator jre7-openjdk"
+	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats galculator jre7-openjdk"
 	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
 	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
@@ -539,7 +539,6 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
-ins_apps
 ins_finish
 
 umount_partitions
