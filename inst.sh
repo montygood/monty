@@ -578,11 +578,8 @@ ins_dm
 set_xkbmap
 ins_network
 set_security
-ins_jdownloader
-set_mediaelch
-ins_finish
 
-umount_partitions
+#umount_partitions
 dialog --backtitle "$VERSION" --title " -| Installation Fertig |- " --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
-reboot
+#reboot
 exit 0
