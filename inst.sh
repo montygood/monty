@@ -205,7 +205,8 @@ set_info() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "groupadd -r autologin"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -446,8 +447,6 @@ ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-	arch_chroot "groupadd -r autologin"
-	arch_chroot "gpasswd -a ${USERNAME} autologin"
 	arch_chroot "systemctl enable lightdm.service"
 }
 ins_network() {
