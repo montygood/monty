@@ -205,9 +205,7 @@ set_info() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "groupadd -r autologin"
-	arch_chroot "groupadd -r plugdev"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -300,7 +298,7 @@ set_mediaelch() {
 #############
 ins_base() {
 	pac_strap "base base-devel btrfs-progs f2fs-tools sudo"
-	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /tmp/vconsole.conf
+	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
@@ -542,10 +540,6 @@ ins_de_wm
 ins_dm
 set_xkbmap
 ins_network
-ins_jdownloader
-set_mediaelch
-ins_apps
-ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
