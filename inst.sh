@@ -176,8 +176,6 @@ set_mirrorlist() {
 		chmod +r /etc/pacman.d/mirrorlist
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 		pacman-key --init
-		pacman-key --populate archlinux
-		pacman-key --refresh-keys
 		pacman -Syy
 	fi
 }
@@ -530,6 +528,7 @@ sel_hostname
 sel_user
 sel_password
 set_partitions
+set_mirrorlist
 ins_base
 ins_bootloader
 gen_fstab 
@@ -542,9 +541,10 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
+ins_apps
 ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
-shutdown
+shutdown now
 exit 0
