@@ -300,7 +300,7 @@ set_mediaelch() {
 ## Install ##
 #############
 ins_base() {
-	pac_strap "base base-devel"
+	pac_strap "base base-devel btrfs-progs f2fs-tools"
 	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
@@ -334,7 +334,7 @@ ins_bootloader() {
 	fi
 }
 ins_xorg() {
-	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
+	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput xorg-twm xorg-xclock"
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
@@ -448,7 +448,7 @@ ins_de_wm() {
 	pac_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 }
 ins_dm() {
-	pac_strap "lightdm lightdm-gtk-greeter"
+	pac_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
