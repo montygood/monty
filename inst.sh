@@ -18,12 +18,12 @@ SPRA="de"
 ## Funktionen ##
 ################
 arch_chroot() {
-	clear
+	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\nBitte warten ...\n" 0 0
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
 	check_error
 }  
 pac_strap() {
-	dialog --backtitle "$VERSION" --title "-| Installiere |-" --infobox "\n${1}\n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Installiere |-" --infobox "\n${1}" 0 0 && sleep 2
 	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
 	check_error
 }
@@ -109,7 +109,7 @@ sel_hostname() {
 }
 sel_user() {
 	FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
-	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "login" 0 0 "")
+	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
 	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
 		sel_user
@@ -438,7 +438,7 @@ ins_graphics_card() {
 	fi
 }
 ins_de_wm() {
-	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils xterm"
+	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
@@ -547,6 +547,6 @@ ins_apps
 ins_finish
 
 umount_partitions
-dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
-reboot
+dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
+shutdown
 exit 0
