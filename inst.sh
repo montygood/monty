@@ -63,9 +63,6 @@ id_sys() {
 	fi
 	echo "" > /tmp/.errlog
 	pacman -Syy
-	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	pacman -S p7zip --nocomment --needed
-	7z x teamviewer.pkg.7z.001
 	# Apple System
 	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true  # if MAC
@@ -509,6 +506,9 @@ ins_finish() {
 	mv mp3gain /mnt/usr/bin/
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
 	mv *.pkg.tar.xz /mnt/
+	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	pacman -S p7zip --noconfirm --needed
+	7z x teamviewer.pkg.7z.001
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
