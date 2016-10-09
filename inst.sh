@@ -530,7 +530,6 @@ sel_hostname
 sel_user
 sel_password
 set_partitions
-set_mirrorlist
 ins_base
 ins_bootloader
 gen_fstab 
@@ -543,7 +542,6 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
-ins_apps
 ins_finish
 
 umount_partitions
