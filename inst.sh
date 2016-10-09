@@ -31,6 +31,7 @@ check_for_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
+	sleep 2
 	echo "" > /tmp/.errlog
 }
 umount_partitions(){
@@ -84,7 +85,7 @@ id_sys() {
 ##############
 ## Eingaben ##
 ##############
-sel_device() {
+sel_info() {
 	DEVICE=""
 	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
 	for i in ${devices_list[@]}; do
@@ -97,23 +98,20 @@ sel_device() {
 	VERSION="-| Arch Installation ($ARCHI) |- $SYSTEM auf $HD_SD |-"
 	dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
 	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
-}
-sel_hostname() {
+	
 	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
 	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
 		sel_hostname
 	fi
-}
-sel_user() {
+
 	FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "login" 0 0 "")
 	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
 		sel_user
 	fi
-}
-sel_password() {
+
 	RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
 	RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
 	if [[ $RPASSWD == $RPASSWD2 ]]; then 
@@ -122,12 +120,7 @@ sel_password() {
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
 		sel_password
 	fi
-}
 
-############
-## Setzen ##
-############
-set_partitions() {
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm --needed wipe
@@ -187,29 +180,23 @@ gen_fstab() {
 set_hostname() {
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-}
-set_locale() {
+
 	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen" >/dev/null
-}
-set_timezone() {
+
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
-}
-set_hw_clock() {
+
 	arch_chroot "hwclock --systohc --utc"
-}
-set_root_password() {
+
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
-}
-set_new_user() {
+
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-}
-run_mkinitcpio() {
+
 	arch_chroot "mkinitcpio -p linux"
 }
 set_xkbmap() {
@@ -302,8 +289,7 @@ ins_base() {
 		/Include/s/#//g}' /etc/pacman.conf
 	fi
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
-}
-ins_bootloader() {
+
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
@@ -330,8 +316,7 @@ ins_bootloader() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
-}
-ins_graphics_card() {
+
 	install_intel(){
 		pac_strap "xf86-video-intel libva-intel-driver intel-ucode"
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
@@ -435,13 +420,9 @@ ins_graphics_card() {
 		echo "        # ..." >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
-	install_de_wm
-}
-ins_de_wm() {
-	pac_strap "cinnamon nemo-fileroller nemo-preview"
-	pac_strap "mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils xterm"
-}
-ins_dm() {
+
+	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+
 	pac_strap "lightdm lightdm-gtk-greeter"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
@@ -457,6 +438,7 @@ ins_network() {
 
 	pac_strap "cups system-config-printer hplip"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
+	arch_chroot "systemctl enable NetworkManager.service"
 
 	if (dmesg | grep -i "blue" &> /dev/null); then 
 		pac_strap "bluez bluez-utils blueman"
@@ -478,73 +460,19 @@ ins_jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
-ins_apps() {
-	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
-	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats galculator jre7-openjdk"
-	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
-	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
-	pacman -Syy && pacman -Syu
-	arch_chroot "pacman -Syy && pacman -Syu"
-	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
-	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
-	arch_chroot "upx --best /usr/lib/firefox/firefox"
-}
-ins_finish() {
-	mv mp3gain /mnt/usr/bin/
-	mv mp3diags_de_DE.qm /mnt/usr/bin/
-	7z x teamviewer.pkg.7z.001
-	mv *.pkg.tar.xz /mnt/
-	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "gpasswd -a ${USERNAME} plugdev"
-	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "systemctl enable teamviewerd"
-	arch_chroot "mv *.pkg.tar.xz /root/"
-}
 
 ###########
 ## Start ##
 ###########
 id_sys
-sel_device
-sel_hostname
-sel_user
-sel_password
-set_partitions
+sel_info
 set_mirrorlist
 ins_base
-ins_bootloader
 gen_fstab 
 set_hostname
-set_locale
-set_timezone
-set_hw_clock
-set_root_password 
-set_new_user
-run_mkinitcpio
 ins_xorg
-ins_graphics_card
-ins_de_wm
-ins_dm
 set_xkbmap
 ins_network
-ins_jdownloader
-set_mediaelch
-ins_apps
-ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
