@@ -502,13 +502,13 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
+	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0
+	pacman -S p7zip --noconfirm --needed
+	7z x teamviewer.pkg.7z.001
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mv mp3gain /mnt/usr/bin/
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
 	mv *.pkg.tar.xz /mnt/
-	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	pacman -S p7zip --noconfirm --needed
-	7z x teamviewer.pkg.7z.001
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
@@ -524,7 +524,7 @@ ins_finish() {
 	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
-	arch_chroot "mv *.pkg.tar.xz /root/"
+	arch_chroot "mv *.pkg.tar.xz /tmp/"
 }
 
 ###########
