@@ -8,7 +8,7 @@ VERSION=" -| Arch Installation ($ARCHI) |- "
 LOCALE="de_CH.UTF-8"
 FONT=""
 KEYMAP="de_CH-latin1"
-CODE="DE"
+CODE="CH"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
@@ -147,7 +147,7 @@ set_partitions() {
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
-		echo j | mkfs.vfat -F32 -L boot ${DEVICE}1 >/dev/null
+		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
@@ -158,7 +158,7 @@ set_partitions() {
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile
 		chmod 600 /mnt/swapfile
-		mkswap /mnt/swapfile -L swap >/dev/null
+		mkswap /mnt/swapfile >/dev/null
 		swapon /mnt/swapfile >/dev/null
 	fi
 }
@@ -545,6 +545,7 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
+ins_apps
 ins_finish
 
 umount_partitions
