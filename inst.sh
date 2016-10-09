@@ -186,7 +186,12 @@ set_mirrorlist() {
 }
 gen_fstab() {
 	dialog --backtitle "$VERSION" --title "-| genfstab |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	genfstab -U -p /mnt > /mnt/etc/fstab
+	if [[ $SYSTEM == "BIOS" ]]; then
+		genfstab -U -p /mnt > /mnt/etc/fstab
+	fi
+	if [[ $SYSTEM == "UEFI" ]]; then
+		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+	fi
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 }
 set_info() {
@@ -205,7 +210,9 @@ set_info() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "groupadd -r plugdev -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -291,7 +298,6 @@ set_mediaelch() {
 	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	arch_chroot "chown -R ${USER}:users /home/${USER}"
 }
 
 #############
@@ -333,11 +339,8 @@ ins_bootloader() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput xorg-twm xorg-xclock"
-	user_list=$(ls ${MOUNTPOINT}/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f ${MOUNTPOINT}/etc/X11/xinit/xinitrc ${MOUNTPOINT}/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
@@ -542,6 +545,7 @@ ins_base
 ins_bootloader
 gen_fstab 
 set_info
+set_mediaelch
 ins_xorg
 ins_graphics_card
 ins_de_wm
@@ -549,7 +553,6 @@ ins_dm
 set_xkbmap
 ins_network
 ins_jdownloader
-set_mediaelch
 ins_apps
 ins_finish
 
