@@ -205,7 +205,9 @@ set_info() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "groupadd -r plugdev -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -500,6 +502,7 @@ ins_finish() {
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mv mp3gain /mnt/usr/bin/
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
+	pacman -S p7zip --nocomment --needed
 	7z x teamviewer.pkg.7z.001
 	mv *.pkg.tar.xz /mnt/
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
@@ -540,6 +543,10 @@ ins_de_wm
 ins_dm
 set_xkbmap
 ins_network
+ins_jdownloader
+set_mediaelch
+ins_apps
+ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
