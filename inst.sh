@@ -511,6 +511,7 @@ ins_finish() {
 	7z x teamviewer.pkg.7z.001
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mv mp3gain /mnt/usr/bin/
+	chmod +x /mnt/usr/bin/mp3gain
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
 	mv *.pkg.tar.xz /mnt/
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
@@ -524,6 +525,7 @@ ins_finish() {
 	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U package-query.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
