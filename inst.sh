@@ -51,7 +51,6 @@ id_sys() {
 	[[ $FONT != "" ]] && setfont $FONT
 	# Keymap
 	loadkeys $KEYMAP
-	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /tmp/vconsole.conf
 	# Test
 	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
@@ -175,8 +174,14 @@ set_mirrorlist() {
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
+		if [ $(uname -m) == x86_64 ]; then
+			sed -i '/\[multilib]$/ {
+			N
+			/Include/s/#//g}' /etc/pacman.conf
+		fi
 		pacman-key --init
-		pacman -Syy
+		pacman-key --populate archlinux
+		pacman -Sy
 	fi
 }
 gen_fstab() {
@@ -293,13 +298,12 @@ set_mediaelch() {
 #############
 ins_base() {
 	pac_strap "base base-devel btrfs-progs f2fs-tools sudo"
-	[[ -e /tmp/vconsole.conf ]] && cp -f /tmp/vconsole.conf /mnt/etc/vconsole.conf
+	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /tmp/vconsole.conf
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /etc/pacman.conf
+		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
@@ -541,7 +545,6 @@ set_xkbmap
 ins_network
 ins_jdownloader
 set_mediaelch
-ins_apps
 ins_finish
 
 umount_partitions
