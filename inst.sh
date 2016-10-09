@@ -333,8 +333,11 @@ ins_bootloader() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput xorg-twm xorg-xclock"
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+	user_list=$(ls ${MOUNTPOINT}/home/ | sed "s/lost+found//")
+	for i in ${user_list}; do
+		cp -f ${MOUNTPOINT}/etc/X11/xinit/xinitrc ${MOUNTPOINT}/home/$i/.xinitrc
+		arch_chroot "chown -R ${i}:users /home/${i}"
+	done
 }
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
