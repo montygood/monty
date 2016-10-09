@@ -206,7 +206,8 @@ set_info() {
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
 	arch_chroot "groupadd -r autologin"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "groupadd -r plugdev"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -516,7 +517,6 @@ ins_finish() {
 	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "gpasswd -a ${USERNAME} plugdev"
 	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
 	arch_chroot "mv *.pkg.tar.xz /root/"
