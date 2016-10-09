@@ -20,21 +20,21 @@ SPRA="de"
 arch_chroot() {
 	clear
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
-	check_for_error
+	check_error
 }  
 pac_strap() {
-	clear
+	dialog --backtitle "$VERSION" --title "-| Installiere |-" --infobox "\n${1}\n" 0 0 && sleep 2
 	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
-	check_for_error
+	check_error
 }
-check_for_error() {
+check_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
-	sleep 2
 	echo "" > /tmp/.errlog
 }
 umount_partitions(){
+	dialog --backtitle "$VERSION" --title "-| Unmaunte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	MOUNTED=""
 	MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
 	swapoff -a
@@ -43,6 +43,7 @@ umount_partitions(){
 	done
 }
 id_sys() {
+	dialog --backtitle "$VERSION" --title "-| Sprache |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	# Sprache
 	sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen
 	locale-gen >/dev/null 2>&1
@@ -52,7 +53,7 @@ id_sys() {
 	loadkeys $KEYMAP
 	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /tmp/vconsole.conf
 	# Test
-		dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
@@ -85,7 +86,7 @@ id_sys() {
 ##############
 ## Eingaben ##
 ##############
-sel_info() {
+sel_device() {
 	DEVICE=""
 	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
 	for i in ${devices_list[@]}; do
@@ -98,20 +99,23 @@ sel_info() {
 	VERSION="-| Arch Installation ($ARCHI) |- $SYSTEM auf $HD_SD |-"
 	dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
 	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
-	
+}
+sel_hostname() {
 	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
 	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
 		sel_hostname
 	fi
-
+}
+sel_user() {
 	FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "login" 0 0 "")
 	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
 		sel_user
 	fi
-
+}
+sel_password() {
 	RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
 	RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
 	if [[ $RPASSWD == $RPASSWD2 ]]; then 
@@ -120,7 +124,12 @@ sel_info() {
 		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
 		sel_password
 	fi
+}
 
+############
+## Setzen ##
+############
+set_partitions() {
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm --needed wipe
@@ -146,7 +155,7 @@ sel_info() {
 		mount ${DEVICE}1 /mnt/boot
 	fi		
 	if [[ $HD_SD == "HDD" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0
+		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0 && sleep 2
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile
 		chmod 600 /mnt/swapfile
@@ -156,14 +165,13 @@ sel_info() {
 }
 set_mirrorlist() {
 	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0
+		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
 		MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
 		curl -so ${MIRROR_TEMP} ${URL}
 		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
 		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0
-		clear
+		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nsortieren\nBitte warten\n\n" 0 0 && sleep 2
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
@@ -174,10 +182,12 @@ set_mirrorlist() {
 	fi
 }
 gen_fstab() {
+	dialog --backtitle "$VERSION" --title "-| genfstab |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	genfstab -U -p /mnt > /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 }
-set_hostname() {
+set_info() {
+	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 
@@ -191,18 +201,21 @@ set_hostname() {
 
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
-	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0
+	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 
+	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "mkinitcpio -p linux"
 }
 set_xkbmap() {
+	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 }
 set_mediaelch() {		
+	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wakeonlan 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
@@ -289,11 +302,12 @@ ins_base() {
 		/Include/s/#//g}' /etc/pacman.conf
 	fi
 	cp -f /etc/pacman.conf /mnt/etc/pacman.conf
-
+}
+ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0
+			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 			pac_strap "grub dosfstools"
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
@@ -303,7 +317,7 @@ ins_base() {
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
-			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0
+			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 			pac_strap "grub efibootmgr dosfstools"
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
@@ -316,8 +330,10 @@ ins_base() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
-
-	install_intel(){
+}
+ins_graphics_card() {
+	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	ins_intel(){
 		pac_strap "xf86-video-intel libva-intel-driver intel-ucode"
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
@@ -331,7 +347,7 @@ ins_xorg() {
 			done
 		fi			 
 	}
-	install_ati(){
+	ins_ati(){
 		pac_strap "xf86-video-ati"
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
@@ -355,18 +371,18 @@ ins_xorg() {
 	else HIGHLIGHT_SUB_GC=10
 	fi	
 	if [[ $HIGHLIGHT_SUB_GC == 1 ]] ; then
-		install_ati
+		ins_ati
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 2 ]] ; then
-		install_intel
+		ins_intel
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] &&  install_ati || install_intel
+		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
 		pac_strap "xf86-video-nouveau"
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] &&  install_ati || install_intel
+		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
@@ -374,7 +390,7 @@ ins_xorg() {
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] &&  install_ati || install_intel
+		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
@@ -382,7 +398,7 @@ ins_xorg() {
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] &&  install_ati || install_intel
+		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
@@ -420,9 +436,11 @@ ins_xorg() {
 		echo "        # ..." >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
-
-	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
-
+}
+ins_de_wm() {
+	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils xterm"
+}
+ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
@@ -438,6 +456,7 @@ ins_network() {
 
 	pac_strap "cups system-config-printer hplip"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
+
 	arch_chroot "systemctl enable NetworkManager.service"
 
 	if (dmesg | grep -i "blue" &> /dev/null); then 
@@ -446,6 +465,7 @@ ins_network() {
 	fi
 }
 ins_jdownloader() {
+	dialog --backtitle "$VERSION" --title "-| JDownloader|-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
 	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
@@ -460,19 +480,71 @@ ins_jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
+ins_apps() {
+	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
+	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
+	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats galculator jre7-openjdk"
+	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
+	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
+	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
+	dialog --backtitle "$VERSION" --title "-| Update |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	pacman -Syy --noconfirm
+	pacman -Syu --noconfirm
+	arch_chroot "pacman -Syy --noconfirm"
+	arch_chroot "pacman -Syu --noconfirm"
+	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
+	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
+	arch_chroot "upx --best /usr/lib/firefox/firefox"
+}
+ins_finish() {
+	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	mv mp3gain /mnt/usr/bin/
+	mv mp3diags_de_DE.qm /mnt/usr/bin/
+	7z x teamviewer.pkg.7z.001
+	mv *.pkg.tar.xz /mnt/
+	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "gpasswd -a ${USERNAME} plugdev"
+	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "mv *.pkg.tar.xz /root/"
+}
 
 ###########
 ## Start ##
 ###########
 id_sys
-sel_info
+sel_device
+sel_hostname
+sel_user
+sel_password
+set_partitions
 set_mirrorlist
 ins_base
+ins_bootloader
 gen_fstab 
-set_hostname
+set_info
 ins_xorg
+ins_graphics_card
+ins_de_wm
+ins_dm
 set_xkbmap
 ins_network
+ins_jdownloader
+set_mediaelch
+ins_apps
+ins_finish
 
 umount_partitions
 dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Neustart entfernen\n\n" 0 0 && sleep 2
