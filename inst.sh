@@ -63,6 +63,9 @@ id_sys() {
 	fi
 	echo "" > /tmp/.errlog
 	pacman -Syy
+	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	pacman -S p7zip --nocomment --needed
+	7z x teamviewer.pkg.7z.001
 	# Apple System
 	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true  # if MAC
@@ -502,9 +505,6 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
-	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	pacman -S p7zip --nocomment --needed
-	7z x teamviewer.pkg.7z.001
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mv mp3gain /mnt/usr/bin/
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
