@@ -205,7 +205,9 @@ set_info() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel -s /bin/bash"
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "groupadd -r plugdev -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
@@ -242,6 +244,7 @@ set_mediaelch() {
 	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
+	chmod +x /mnt/usr/bin/elch
 	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
 	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
@@ -290,14 +293,14 @@ set_mediaelch() {
 	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	chmod +x /mnt/usr/bin/elch
+	arch_chroot "chown -R ${USER}:users /home/${USER}"
 }
 
 #############
 ## Install ##
 #############
 ins_base() {
-	pac_strap "base base-devel btrfs-progs f2fs-tools sudo"
+	pac_strap "base base-devel"
 	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
@@ -332,6 +335,8 @@ ins_bootloader() {
 }
 ins_xorg() {
 	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput"
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
@@ -440,7 +445,7 @@ ins_graphics_card() {
 	fi
 }
 ins_de_wm() {
-	pac_strap "cinnamon nemo-fileroller nemo-preview mate-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+	pac_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter"
@@ -497,11 +502,12 @@ ins_apps() {
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 }
 ins_finish() {
+	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	pacman -S p7zip --nocomment --needed
+	7z x teamviewer.pkg.7z.001
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mv mp3gain /mnt/usr/bin/
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
-	pacman -S p7zip --nocomment --needed
-	7z x teamviewer.pkg.7z.001
 	mv *.pkg.tar.xz /mnt/
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
@@ -542,6 +548,8 @@ ins_dm
 set_xkbmap
 ins_network
 ins_jdownloader
+set_mediaelch
+ins_apps
 ins_finish
 
 umount_partitions
