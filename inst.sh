@@ -449,7 +449,8 @@ ins_graphics_card() {
 	fi
 }
 ins_de_wm() {
-	pac_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+	#pac_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+	pac_strap "mate-gtk3 mate-extra-gtk3 bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
 }
 ins_dm() {
 	pac_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
@@ -547,15 +548,12 @@ ins_base
 ins_bootloader
 gen_fstab 
 set_info
-set_mediaelch
 ins_xorg
 ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
 ins_network
-ins_jdownloader
-ins_apps
 ins_finish
 
 umount_partitions
