@@ -30,6 +30,9 @@ check_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
+	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "Überspringe") != "" ]]; then
+		dialog --backtitle "$VERSION" --title "-| schon Installiert |-" --infobox "$(cat /tmp/.errlog)" 0 0 && sleep 2
+	fi
 	echo "" > /tmp/.errlog
 }
 umount_partitions(){
@@ -234,7 +237,7 @@ set_xkbmap() {
 set_mediaelch() {		
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
-	echo "wakeonlan 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
+	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Filme1" >> /mnt/usr/bin/elch
@@ -512,15 +515,15 @@ ins_jdownloader() {
 }
 ins_apps() {
 	#Runtimes
-	pac_strap "bash-completion xdg-user-dirs jre7-openjdk"
+	pac_strap "bash-completion xdg-user-dirs jre7-openjdk wol"
 	#Office
 	pac_strap "libreoffice-fresh-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
 	#Grafik
 	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany cairo-dock cairo-dock-plug-ins gtk-recordmydesktop openshot"
 	#audio
-	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins sound-juicer puddletag picard libaacs libblura pitivi frei0r-plugins simplescreenrecorder unrar unzip zip p7zip lzop cpio"
+	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins sound-juicer puddletag picard libaacs pitivi frei0r-plugins simplescreenrecorder unrar p7zip lzop cpio"
 	#Firmware
-	pac_strap "ffmpegthumbs ffmpegthumbnailer x264 x265 libquicktime libdvdcss llibdvdnav libdvdread cdrdao ntfs-3g fuse-exfat autofs exfat-utils"
+	pac_strap "ffmpegthumbs ffmpegthumbnailer x264 libquicktime libdvdcss cdrdao ntfs-3g fuse-exfat autofs"
 	#gst
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 	#wine
@@ -533,7 +536,7 @@ ins_apps() {
 	#lib32
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins"
 	#Firefox
-	pac_strap "firefox firefox-i18n-${SPRA} flashplugin upx"nfs
+	pac_strap "firefox firefox-i18n-${SPRA} flashplugin upx"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	#NFS
 	pac_strap "nfs-utils"
@@ -556,9 +559,6 @@ ins_finish() {
 	#mintstick
 	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
-	#themes icons
-	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
 	#mp3diags
 	mv mp3gain /mnt/usr/bin/
 	chmod +x /mnt/usr/bin/mp3gain
@@ -568,8 +568,6 @@ ins_finish() {
 	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
 	#Skype
 	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
-	#wakeonlan
-	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
 	#yaourt
 	arch_chroot "pacman -U package-query.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
