@@ -150,7 +150,7 @@ set_partitions() {
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
-	fi
+	fi		
 	if [[ $HD_SD == "HDD" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0 && sleep 2
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
@@ -201,8 +201,7 @@ set_info() {
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen" >/dev/null
 
-#	echo -e "KEYMAP=${KEYMAP}\nFONT=" > /mnt/etc/vconsole.conf
-	arch_chroot "localectl --no-convert set-keymap ${KEYMAP}"
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
 
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
@@ -230,8 +229,7 @@ set_info() {
 }
 set_xkbmap() {
 	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-#	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-	arch_chroot "localectl --no-convert set-x11-keymap ${XKBMAP} pc105 nodeadkeys"
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 }
 set_mediaelch() {		
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
@@ -312,6 +310,7 @@ set_mediaelch() {
 #############
 ## Install ##
 #############
+
 ins_base() {
 	pac_strap "base base-devel"
 }
@@ -512,22 +511,18 @@ ins_jdownloader() {
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
 ins_apps() {
-	#Firmware
-	pac_strap "bash-completion gksu python2-xdg xdg-user-dirs xdg-utils"
+	#Runtimes
+	pac_strap "bash-completion xdg-user-dirs jre7-openjdk"
 	#Office
-	pac_strap "libreoffice-fresh libreoffice-fresh-${SPRA} thunderbird thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
+	pac_strap "libreoffice-fresh-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
+	#Grafik
+	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany cairo-dock cairo-dock-plug-ins gtk-recordmydesktop openshot"
+	#audio
+	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins sound-juicer puddletag picard libaacs libblura pitivi frei0r-plugins simplescreenrecorder unrar unzip zip p7zip lzop cpio"
 	#Firmware
-	pac_strap "gimp gimp-help-${SPRA} gthumb shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar ZIP UNZIP p7zip lzop cpio"
-	#Firmware
-	pac_strap "flashplugin geany pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats jre7-openjdk"
-	#Firmware
-	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei"
-	#Firmware
-	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins fuse-exfat autofs mtpfs icoutils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
-	#Firmware
-	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
-	#Firmware
-	pac_strap "ntfs-3g exfat-utils f2fs-tools gvfs gvfs-afc gvfs-mtp gvfs-google gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav ffmpeg llibdvdnav"
+	pac_strap "ffmpegthumbs ffmpegthumbnailer x264 x265 libquicktime libdvdcss llibdvdnav libdvdread cdrdao ntfs-3g fuse-exfat autofs exfat-utils"
+	#gst
+	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 	#wine
 	dialog --backtitle "$VERSION" --title "-| Wine |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	pacman -Syy --noconfirm
@@ -536,9 +531,9 @@ ins_apps() {
 	arch_chroot "pacman -Syu --noconfirm"
 	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
 	#lib32
-	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
+	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins"
 	#Firefox
-	pac_strap "firefox firefox-i18n-${SPRA}"
+	pac_strap "firefox firefox-i18n-${SPRA} flashplugin upx"nfs
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	#NFS
 	pac_strap "nfs-utils"
@@ -612,6 +607,7 @@ ins_dm
 set_xkbmap
 ins_hw
 ins_jdownloader
+ins_apps
 ins_finish
 
 umount_partitions
