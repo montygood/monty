@@ -479,7 +479,7 @@ ins_hw() {
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#WiFi
 	if (dmesg | grep -i Wireless &> /dev/null); then 
-		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe --needed 2>>/tmp/.errlog
+		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe iw --needed 2>>/tmp/.errlog
 		check_error
 	fi
 	#Drucker
