@@ -20,15 +20,11 @@ arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
 	check_error
 }  
-pac_strap() {
-	dialog --backtitle "$VERSION" --title "-| Installiere |-" --infobox "\n${1}" 0 0 && sleep 2
-	pacstrap /mnt ${1} --needed 2>>/tmp/.errlog
-	check_error
-}
 check_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	fi
+	dialog --backtitle "$VERSION" --title "-| Installationlog> |-" --msgbox "$(cat /tmp/.errlog)" 0 0
 	echo "" > /tmp/.errlog
 }
 umount_partitions(){
@@ -311,14 +307,16 @@ set_mediaelch() {
 #############
 
 ins_base() {
-	pac_strap "base base-devel"
+	pacstrap /mnt base base-devel --needed 2>>/tmp/.errlog
+	check_error
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-			pac_strap "grub dosfstools"
+			pacstrap /mnt grub dosfstools --needed 2>>/tmp/.errlog
+			check_error
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 			sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -328,7 +326,8 @@ ins_bootloader() {
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-			pac_strap "grub efibootmgr dosfstools"
+			pacstrap /mnt grub efibootmgr dosfstools --needed 2>>/tmp/.errlog
+			check_error
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 			sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -339,15 +338,16 @@ ins_bootloader() {
 	fi
 }
 ins_xorg() {
-	pac_strap "xorg-server xorg-server-utils xorg-twm xorg-xclock xorg-xinit"
-	pac_strap "xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick"
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed 2>>/tmp/.errlog
+	check_error
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	ins_intel(){
-		pac_strap "xf86-video-intel libva-intel-driver intel-ucode"
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed 2>>/tmp/.errlog
+		check_error
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -361,7 +361,8 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pac_strap "xf86-video-ati"
+		pacstrap /mnt xf86-video-ati --needed 2>>/tmp/.errlog
+		check_error
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -391,7 +392,8 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
-		pac_strap "xf86-video-nouveau"
+		pacstrap /mnt xf86-video-nouveau --needed 2>>/tmp/.errlog
+		check_error
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -399,7 +401,8 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pac_strap "${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings"
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed 2>>/tmp/.errlog
+		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -407,7 +410,8 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pac_strap "${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings"
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed 2>>/tmp/.errlog
+		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -415,28 +419,33 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pac_strap "${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings"
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed 2>>/tmp/.errlog
+		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pac_strap "xf86-video-openchrome"
+		pacstrap /mnt xf86-video-openchrome --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pac_strap "virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD"
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed 2>>/tmp/.errlog
+		check_error
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"  
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pac_strap "xf86-video-vmware xf86-input-vmmouse"
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pac_strap "xf86-video-fbdev"
+		pacstrap /mnt xf86-video-fbdev --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -451,10 +460,13 @@ ins_graphics_card() {
 	fi
 }
 ins_de_wm() {
-	pac_strap "mate-gtk3 mate-extra-gtk3"
+#	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal --needed 2>>/tmp/.errlog
+	pacstrap /mnt mate mate-extra --needed 2>>/tmp/.errlog
+	check_error
 }
 ins_dm() {
-	pac_strap "lightdm lightdm-gtk-greeter accountsservice"
+	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed 2>>/tmp/.errlog
+	check_error
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
@@ -462,14 +474,17 @@ ins_dm() {
 }
 ins_hw() {
 	#Netzwerkkarte
-	pac_strap "networkmanager network-manager-applet"
+	pacstrap /mnt networkmanager network-manager-applet --needed 2>>/tmp/.errlog
+	check_error
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#WiFi
 	if (dmesg | grep -i Wireless &> /dev/null); then 
-		pac_strap "wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe"
+		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	#Drucker
-	pac_strap "cups system-config-printer hplip"
+	pacstrap /mnt cups system-config-printer hplip --needed 2>>/tmp/.errlog
+	check_error
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#SSD
 	if [[ $HD_SD == "SSD" ]]; then
@@ -478,19 +493,23 @@ ins_hw() {
 	fi
 	#Bluetoo
 	if (dmesg | grep -i Bluetooth &> /dev/null); then 
-		pac_strap "bluez bluez-utils blueman"
+		pacstrap /mnt bluez bluez-utils --needed 2>>/tmp/.errlog
+		check_error
 		arch_chroot "systemctl enable bluetooth.service"
 	fi
 	#Touchpad
 	if (dmesg | grep -i Touchpad &> /dev/null); then
-		pac_strap "xf86-input-synaptics"
+		pacstrap /mnt xf86-input-synaptics --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	#Wacom
 	if (dmesg | grep -i Tablet &> /dev/null); then
-		pac_strap "xf86-input-wacom"
+		pacstrap /mnt xf86-input-wacom --needed 2>>/tmp/.errlog
+		check_error
 	fi
 	if (dmesg | grep -i Wacom &> /dev/null); then
-		pac_strap "xf86-input-wacom"
+		pacstrap /mnt xf86-input-wacom --needed 2>>/tmp/.errlog
+		check_error
 	fi
 }
 ins_jdownloader() {
@@ -510,31 +529,62 @@ ins_jdownloader() {
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
 ins_apps() {
-	#Runtimes
-	pac_strap "bash-completion xdg-user-dirs jre7-openjdk wol"
-	#Office
-	pac_strap "libreoffice-fresh-de thunderbird-i18n-de hunspell-de aspell-de ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
-	#Grafik
-	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany gtk-recordmydesktop openshot"
-	#audio
-	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins sound-juicer puddletag picard libaacs pitivi frei0r-plugins simplescreenrecorder unrar p7zip lzop cpio"
-	#Firmware
-	pac_strap "ffmpegthumbs ffmpegthumbnailer x264 libquicktime libdvdcss cdrdao ntfs-3g fuse-exfat autofs"
-	#gst
-	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
-	#wine
-	dialog --backtitle "$VERSION" --title "-| Wine |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Update |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	pacman -Syy --noconfirm
 	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -Syu --noconfirm"
-	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
-	#lib32
-	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins"
+	#Runtimes
+	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin --needed 2>>/tmp/.errlog
+	check_error
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed 2>>/tmp/.errlog
+	check_error
 	#Firefox
-	pac_strap "firefox firefox-i18n-de flashplugin upx"
-	arch_chroot "upx --best /usr/lib/firefox/firefox"
+	pacstrap /mnt firefox firefox-i18n-de --needed 2>>/tmp/.errlog
+	check_error
+	#mail
+	pacstrap /mnt thunderbird thunderbird-i18n-de --needed 2>>/tmp/.errlog
+	check_error
+	#Schriften
+	pacstrap /mnt ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera --needed 2>>/tmp/.errlog
+	check_error
+	#Grafik
+	pacstrap /mnt gimp shotwell xsane xsane-gimp simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany gtk-recordmydesktop openshot --needed 2>>/tmp/.errlog
+	check_error
+	#audio
+	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins simplescreenrecorder --needed 2>>/tmp/.errlog
+	check_error
+	#pulseaudio
+	pacstrap /mnt pulseaudio pulseaudio-alsa --needed 2>>/tmp/.errlog
+	check_error
+	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse --needed 2>>/tmp/.errlog
+	#alsa
+	pacstrap /mnt alsa-utils alsa-plugins --needed 2>>/tmp/.errlog
+  	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins --needed 2>>/tmp/.errlog
+	check_error
+  	#packer
+	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed 2>>/tmp/.errlog
+	check_error
+	#Firmware
+	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 --needed 2>>/tmp/.errlog
+	check_error
+	#FS
+	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs ntfs-3g fuse-exfat autofs --needed 2>>/tmp/.errlog
+	check_error
+	#libs
+	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs --needed 2>>/tmp/.errlog
+	check_error
+	#gst
+#	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed 2>>/tmp/.errlog
+	check_error
+	#gst
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed 2>>/tmp/.errlog
+	check_error
+	#wine
+	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed 2>>/tmp/.errlog
+	check_error
 	#NFS
-	pac_strap "nfs-utils"
+	pacstrap /mnt nfs-utils --needed 2>>/tmp/.errlog
+	check_error
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
@@ -548,7 +598,7 @@ ins_finish() {
 	#Firmware
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U dbus-x11.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U dbus-x11.pkg.tar.xz --noconfirm"
 	#Mediaelch
 	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
 	#mintstick
@@ -576,6 +626,13 @@ ins_finish() {
 	#clean
 	arch_chroot "mv *.pkg.tar.xz /tmp/"
 	arch_chroot "pacman -Rsc --noconfirm $(pacman -Qqdt)"
+	arch_chroot "gsettings set org.mate.caja.desktop trash-icon-visible false"
+#************************************************************************
+#gsettings set org.mate.power-manager sleep-display-ac 0
+#gsettings set org.mate.caja.desktop trash-icon-visible false
+#gsettings set org.mate.screensaver idle-activation-enabled false
+#************************************************************************
+	
 }
 
 ###########
