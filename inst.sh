@@ -562,6 +562,7 @@ ins_finish() {
 	#Firmware
 	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U dbus-x11.pkg.tar.xz --noconfirm --needed"
 	#Mediaelch
 	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
 	#mintstick
