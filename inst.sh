@@ -140,17 +140,15 @@ set_partitions() {
 		parted -s ${DEVICE} mklabel gpt
 		parted -s ${DEVICE} mkpart primary ext4 1MiB 100%
 		parted -s ${DEVICE} set 1 boot on
-#		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
-		mount ${DEVICE}2 /mnt
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}1 >/dev/null
+		mount ${DEVICE}1 /mnt
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then
 		parted -s ${DEVICE} mklabel gpt
 		parted -s ${DEVICE} mkpart ESP fat32 1MiB 513MiB
 		parted -s ${DEVICE} mkpart primary ext4 513MiB 100%
 		parted -s ${DEVICE} set 1 boot on
-#		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
