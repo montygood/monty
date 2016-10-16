@@ -6,19 +6,18 @@
 ARCHI=$(uname -m)
 VERSION=" -| Arch Installation ($ARCHI) |- "
 LOCALE="de_CH.UTF-8"
-FONT=""
 KEYMAP="de_CH-latin1"
 CODE="CH"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
-SPRA="de"
+SPRA="echo $LOCALE | cut -d\_ -f1"
 
 ################
 ## Funktionen ##
 ################
 arch_chroot() {
-	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\nBitte warten ...\n" 0 0
+	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\n${1}" 0 0
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
 	check_error
 }  
@@ -48,7 +47,6 @@ id_sys() {
 	sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen
 	locale-gen >/dev/null 2>&1
 	export LANG=${LOCALE}
-	[[ $FONT != "" ]] && setfont $FONT
 	# Keymap
 	loadkeys $KEYMAP
 	# Test
@@ -139,16 +137,23 @@ set_partitions() {
 		sgdisk --zap-all ${DEVICE}
 	fi
 	if [[ $SYSTEM == "BIOS" ]]; then
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		parted -s ${DEVICE} mklabel gpt
+		parted -s ${DEVICE} mkpart primary ext4 1MiB 100%
+		parted -s ${DEVICE} set 1 boot on
+#		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
-		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE}
+		parted -s ${DEVICE} mklabel gpt
+		parted -s ${DEVICE} mkpart ESP fat32 1MiB 513MiB
+		parted -s ${DEVICE} mkpart primary ext4 513MiB 100%
+		parted -s ${DEVICE} set 1 boot on
+#		echo -e "n\n\n\n512M\nef00\nn\n\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
-		echo j | mkfs.ext4 -L arch ${DEVICE}2 >/dev/null
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
@@ -181,7 +186,7 @@ set_mirrorlist() {
 		fi
 		pacman-key --init
 		pacman-key --populate archlinux
-		pacman -Sy
+		pacman -Syy
 	fi
 }
 gen_fstab() {
@@ -203,6 +208,15 @@ set_info() {
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen" >/dev/null
 
+#	echo -e "KEYMAP=${KEYMAP}\nFONT=" > /mnt/etc/vconsole.conf
+	arch_chroot "localectl --no-convert set-keymap ${KEYMAP}"
+
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 
 	arch_chroot "hwclock --systohc --utc"
@@ -215,14 +229,16 @@ set_info() {
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	rm /tmp/.passwd
-	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+#	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 
 	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "mkinitcpio -p linux"
 }
 set_xkbmap() {
 	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+#	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+	arch_chroot "localectl --no-convert set-x11-keymap ${XKBMAP} pc105 nodeadkeys"
 }
 set_mediaelch() {		
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
@@ -304,13 +320,7 @@ set_mediaelch() {
 ## Install ##
 #############
 ins_base() {
-	pac_strap "base base-devel btrfs-progs f2fs-tools"
-	echo -e "KEYMAP=${KEYMAP}\nFONT=${FONT}" > /mnt/etc/vconsole.conf
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
+	pac_strap "base base-devel"
 }
 ins_bootloader() {
 	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
@@ -333,12 +343,13 @@ ins_bootloader() {
 			sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 			arch_chroot "mkdir -p /boot/EFI/boot"
-			arch_chroot "cp -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+			arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
 		fi
 	fi
 }
 ins_xorg() {
-	pac_strap "xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics xf86-input-libinput xorg-twm xorg-xclock"
+	pac_strap "xorg-server xorg-server-utils xorg-twm xorg-xclock xorg-xinit"
+	pac_strap "xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick"
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
@@ -370,7 +381,7 @@ ins_graphics_card() {
 	if [[ $(echo $GRAPHIC_CARD | grep -i "nvidia") != "" ]]; then
 		[[ $(lscpu | grep -i "intel\|lenovo") != "" ]] && INTEGRATED_GC="Intel" || INTEGRATED_GC="ATI"
 		if [[ $(dmesg | grep -i 'chipset' | grep -i 'nvc\|nvd\|nve') != "" ]]; then HIGHLIGHT_SUB_GC=4
-		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'﻿) != "" ]]; then HIGHLIGHT_SUB_GC=5
+		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'?) != "" ]]; then HIGHLIGHT_SUB_GC=5
 		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nv4\|nv6') != "" ]]; then HIGHLIGHT_SUB_GC=6
 		else HIGHLIGHT_SUB_GC=3
 		fi	
@@ -449,29 +460,46 @@ ins_graphics_card() {
 	fi
 }
 ins_de_wm() {
-	#pac_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
-	pac_strap "mate-gtk3 mate-extra-gtk3 bash-completion gamin gksu python2-xdg ntfs-3g xdg-user-dirs xdg-utils"
+	pac_strap "mate-gtk3 mate-extra-gtk3"
 }
 ins_dm() {
-	pac_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
+	pac_strap "lightdm lightdm-gtk-greeter accountsservice"
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
+	arch_chroot "systemctl enable accounts-daemon"
 }
-ins_network() {
-	WIRELESS_DEV=`ip link | grep wlp | awk '{print $2}'| sed 's/://' | sed '1!d'`
-	if [[ -n $WIRELESS_DEV ]]; then 
-		pac_strap "iw wireless_tools wpa_actiond dialog rp-pppoe"
+ins_hw() {
+	#Netzwerkkarte
+	pac_strap "networkmanager network-manager-applet"
+	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+	#WiFi
+	if (dmesg | grep -i Wireless &> /dev/null); then 
+		pac_strap "wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe"
 	fi
-
+	#Drucker
 	pac_strap "cups system-config-printer hplip"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
-
-	arch_chroot "systemctl enable NetworkManager.service"
-
-	if (dmesg | grep -i "blue" &> /dev/null); then 
+	#SSD
+	if [[ $HD_SD == "SSD" ]]; then
+		arch_chroot "systemctl enable fstrim.service"
+		arch_chroot "systemctl enable fstrim.timer"
+	fi
+	#Bluetoo
+	if (dmesg | grep -i Bluetooth &> /dev/null); then 
 		pac_strap "bluez bluez-utils blueman"
 		arch_chroot "systemctl enable bluetooth.service"
+	fi
+	#Touchpad
+	if (dmesg | grep -i Touchpad &> /dev/null); then
+		pac_strap "xf86-input-synaptics"
+	fi
+	#Wacom
+	if (dmesg | grep -i Tablet &> /dev/null); then
+		pac_strap "xf86-input-wacom"
+	fi
+	if (dmesg | grep -i Wacom &> /dev/null); then
+		pac_strap "xf86-input-wacom"
 	fi
 }
 ins_jdownloader() {
@@ -491,47 +519,81 @@ ins_jdownloader() {
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
 ins_apps() {
-	pac_strap "libreoffice-fresh-${SPRA} firefox-i18n-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-liberation tumbler"
-	pac_strap "gimp gimp-help-${SPRA} gthumb simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar p7zip lzop cpio"
-	pac_strap "flashplugin geany pluma pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats galculator jre7-openjdk"
-	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei ttf-droid"
-	pac_strap "alsa-utils fuse-exfat autofs mtpfs icoutils nfs-utils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
+	#Firmware
+	pac_strap "bash-completion gksu python2-xdg xdg-user-dirs xdg-utils"
+	#Office
+	pac_strap "libreoffice-fresh libreoffice-fresh-${SPRA} thunderbird thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
+	#Firmware
+	pac_strap "gimp gimp-help-${SPRA} gthumb shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui picard meld unrar ZIP UNZIP p7zip lzop cpio"
+	#Firmware
+	pac_strap "flashplugin geany pitivi frei0r-plugins xfburn simplescreenrecorder qbittorrent mlocate pkgstats jre7-openjdk"
+	#Firmware
+	pac_strap "libaacs tlp tlp-rdw ffmpegthumbs ffmpegthumbnailer x264 upx nss-mdns libquicktime libdvdcss cdrdao wqy-microhei"
+	#Firmware
+	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins fuse-exfat autofs mtpfs icoutils gparted gst-plugins-ugly gst-libav pavucontrol cairo-dock cairo-dock-plug-ins"
+	#Firmware
 	pac_strap "gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg"
-	dialog --backtitle "$VERSION" --title "-| Update |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	#Firmware
+	pac_strap "ntfs-3g exfat-utils f2fs-tools gvfs gvfs-afc gvfs-mtp gvfs-google gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav ffmpeg llibdvdnav"
+	#wine
+	dialog --backtitle "$VERSION" --title "-| Wine |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	pacman -Syy --noconfirm
 	pacman -Syu --noconfirm
 	arch_chroot "pacman -Syy --noconfirm"
 	arch_chroot "pacman -Syu --noconfirm"
 	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
+	#lib32
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins lib32-libpulse"
+	#Firefox
+	pac_strap "firefox firefox-i18n-${SPRA}"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
+	#NFS
+	pac_strap "nfs-utils"
+	arch_chroot "systemctl enable rpcbind"
+	arch_chroot "systemctl enable nfs-client.target"
+	arch_chroot "systemctl enable remote-fs.target"
 }
 ins_finish() {
 	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0
 	pacman -S p7zip --noconfirm --needed
 	7z x teamviewer.pkg.7z.001
 	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	mv *.pkg.tar.xz /mnt/
+	#Firmware
+	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	#Mediaelch
+	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
+	#mintstick
+	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
+	#themes icons
+	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
+	#mp3diags
 	mv mp3gain /mnt/usr/bin/
 	chmod +x /mnt/usr/bin/mp3gain
 	mv mp3diags_de_DE.qm /mnt/usr/bin/
-	mv *.pkg.tar.xz /mnt/
-	arch_chroot "pacman -U aic94xx-firmware.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mint-themes.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mint-x-icons.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
+	#pamac
 	arch_chroot "pacman -U pamac.pkg.tar.xz --noconfirm --needed"
+	#Skype
 	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
+	#wakeonlan
 	arch_chroot "pacman -U wakeonlan.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U wd719x-firmware.pkg.tar.xz --noconfirm --needed"
+	#yaourt
 	arch_chroot "pacman -U package-query.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
+	#Fingerprint
+	if (lsusb | grep Fingerprint &> /dev/null); then
+		arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
+	fi
+	#Teamviewer
 	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
+	#clean
 	arch_chroot "mv *.pkg.tar.xz /tmp/"
+	arch_chroot "pacman -Rsc --noconfirm $(pacman -Qqdt)"
 }
 
 ###########
@@ -548,12 +610,14 @@ ins_base
 ins_bootloader
 gen_fstab 
 set_info
+set_mediaelch
 ins_xorg
 ins_graphics_card
 ins_de_wm
 ins_dm
 set_xkbmap
-ins_network
+ins_hw
+ins_jdownloader
 ins_finish
 
 umount_partitions
