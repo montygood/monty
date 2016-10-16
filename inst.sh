@@ -519,7 +519,7 @@ ins_apps() {
 	#Office
 	pac_strap "libreoffice-fresh-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
 	#Grafik
-	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany cairo-dock cairo-dock-plug-ins gtk-recordmydesktop openshot"
+	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany gtk-recordmydesktop openshot"
 	#audio
 	pac_strap "pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins sound-juicer puddletag picard libaacs pitivi frei0r-plugins simplescreenrecorder unrar p7zip lzop cpio"
 	#Firmware
