@@ -11,7 +11,6 @@ CODE="CH"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
-SPRA="echo $LOCALE | cut -d\_ -f1"
 
 ################
 ## Funktionen ##
@@ -29,9 +28,6 @@ pac_strap() {
 check_error() {
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
-	fi
-	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "Überspringe") != "" ]]; then
-		dialog --backtitle "$VERSION" --title "-| schon Installiert |-" --infobox "$(cat /tmp/.errlog)" 0 0 && sleep 2
 	fi
 	echo "" > /tmp/.errlog
 }
@@ -517,7 +513,7 @@ ins_apps() {
 	#Runtimes
 	pac_strap "bash-completion xdg-user-dirs jre7-openjdk wol"
 	#Office
-	pac_strap "libreoffice-fresh-${SPRA} thunderbird-i18n-${SPRA} hunspell-${SPRA} aspell-${SPRA} ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
+	pac_strap "libreoffice-fresh-de thunderbird-i18n-de hunspell-de aspell-de ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera"
 	#Grafik
 	pac_strap "gimp shotwell xsane xsane-gimp vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany gtk-recordmydesktop openshot"
 	#audio
@@ -529,14 +525,13 @@ ins_apps() {
 	#wine
 	dialog --backtitle "$VERSION" --title "-| Wine |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	pacman -Syy --noconfirm
-	pacman -Syu --noconfirm
 	arch_chroot "pacman -Syy --noconfirm"
 	arch_chroot "pacman -Syu --noconfirm"
 	pac_strap "playonlinux winetricks wine wine_gecko wine-mono steam"
 	#lib32
 	[[ $(uname -m) == x86_64 ]] && pac_strap "lib32-alsa-plugins"
 	#Firefox
-	pac_strap "firefox firefox-i18n-${SPRA} flashplugin upx"
+	pac_strap "firefox firefox-i18n-de flashplugin upx"
 	arch_chroot "upx --best /usr/lib/firefox/firefox"
 	#NFS
 	pac_strap "nfs-utils"
