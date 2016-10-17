@@ -123,7 +123,7 @@ set_info() {
 	#Wipe or zap
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
-			pacman -Sy --noconfirm --needed wipe
+			pacman -Sy --noconfirm wipe
 		fi	
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
 		wipe -Ifre ${DEVICE}
@@ -178,12 +178,12 @@ set_info() {
 	fi
 }
 ins_base() {
-	pacstrap /mnt base base-devel --needed
+	pacstrap /mnt base base-devel
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-			pacstrap /mnt grub dosfstools --needed
+			pacstrap /mnt grub dosfstools
 			arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 			sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -193,7 +193,7 @@ ins_base() {
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-			pacstrap /mnt grub efibootmgr dosfstools --needed
+			pacstrap /mnt grub efibootmgr dosfstools
 			arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 			sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 			sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -237,7 +237,8 @@ set_sel() {
 
 	#Yourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	arch_chroot "pacman -Sy yaourt --noconfirm --needed"
+	arch_chroot "pacman -Syy --noconfirm"
+	arch_chroot "pacman -Sy yaourt --noconfirm"
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -269,7 +270,7 @@ ins_xorg() {
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -283,7 +284,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati --needed
+		pacstrap /mnt xf86-video-ati
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -313,7 +314,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau --needed
+		pacstrap /mnt xf86-video-nouveau
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -321,7 +322,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -329,7 +330,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -337,28 +338,28 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome --needed
+		pacstrap /mnt xf86-video-openchrome
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"  
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev --needed
+		pacstrap /mnt xf86-video-fbdev
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -373,15 +374,15 @@ ins_graphics_card() {
 	fi
 }
 	#xorg
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal --needed
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal
 
 	#Anmeldescreen
-	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed
+	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
@@ -391,16 +392,16 @@ ins_graphics_card() {
 	ins_graphics_card
 
 	#Netzwerkkarte
-	pacstrap /mnt networkmanager network-manager-applet --needed
+	pacstrap /mnt networkmanager network-manager-applet
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 
 	#WiFi
 	if (dmesg | grep -i Wireless &> /dev/null); then 
-		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe iw --needed
+		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe iw
 	fi
 
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip --needed
+	pacstrap /mnt cups system-config-printer hplip
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#SSD
@@ -411,13 +412,13 @@ ins_graphics_card() {
 
 	#Bluetoo
 	if (dmesg | grep -i Bluetooth &> /dev/null); then 
-		pacstrap /mnt blueman bluez-utils --needed
+		pacstrap /mnt blueman bluez-utils
 		arch_chroot "systemctl enable bluetooth.service"
 	fi
 
 	#Touchpad
 	if (dmesg | grep -i Touchpad &> /dev/null); then
-		pacstrap /mnt xf86-input-synaptics --needed
+		pacstrap /mnt xf86-input-synaptics
 	fi
 }
 ins_apps() {
@@ -441,57 +442,57 @@ _jdownloader() {
 	arch_chroot "pacman -Syy --noconfirm"
 
 	#Runtimes
-	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin --needed
+	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin
 
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 
 	#Firefox
-	pacstrap /mnt firefox firefox-i18n-de --needed
+	pacstrap /mnt firefox firefox-i18n-de
 
 	#mail
-	pacstrap /mnt thunderbird thunderbird-i18n-de --needed
+	pacstrap /mnt thunderbird thunderbird-i18n-de
 
 	#Schriften
-	pacstrap /mnt ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera --needed
+	pacstrap /mnt ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera
 
 	#Grafik
-	pacstrap /mnt gimp shotwell eog simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop openshot --needed
+	pacstrap /mnt gimp shotwell eog simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop openshot
 
 	#audio
-	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins --needed
+	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins
 
 	#pulseaudio
-	pacstrap /mnt pulseaudio pulseaudio-alsa --needed
-	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse --needed
+	pacstrap /mnt pulseaudio pulseaudio-alsa
+	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse
 
 	#alsa
-	pacstrap /mnt alsa-utils alsa-plugins --needed
-  	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins --needed
+	pacstrap /mnt alsa-utils alsa-plugins
+  	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins
 
   	#packer
-	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed
+	pacstrap /mnt zip unzip unrar p7zip lzop cpio
 
 	#Firmware
-	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 --needed
+	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264
 
 	#FS
-	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs ntfs-3g fuse-exfat autofs --needed
+	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs ntfs-3g fuse-exfat autofs
 
 	#libs
-	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs --needed
+	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs
 
 	#gst
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg
 
 	#gst
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 
 	#wine
-	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
+	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam
 
 	#NFS
-	pacstrap /mnt nfs-utils --needed
+	pacstrap /mnt nfs-utils
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
@@ -578,31 +579,31 @@ set_mediaelch() {
 	dialog --backtitle "$VERSION" --title "-| Yaourt Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 
 	#Firmware
-	arch_chroot "yaourt -Sy aic94xx-firmware --noconfirm --needed"
-	arch_chroot "yaourt -Sy wd719x-firmware --noconfirm --needed"
+	arch_chroot "yaourt -Sy aic94xx-firmware --noconfirm"
+	arch_chroot "yaourt -Sy wd719x-firmware --noconfirm"
 
 	#Mediaelch
-	arch_chroot "yaourt -Sy mediaelch --noconfirm --needed"
+	arch_chroot "yaourt -Sy mediaelch --noconfirm"
 	set_mediaelch
 
 	#mintstick
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	arch_chroot "yaourt -Sy mintstick-git --noconfirm --needed"
+	arch_chroot "yaourt -Sy mintstick-git --noconfirm"
 
 	#pamac
-	arch_chroot "yaourt -Sy pamac-aur --noconfirm --needed"
+	arch_chroot "yaourt -Sy pamac-aur --noconfirm"
 
 	#Skype
-	arch_chroot "yaourt -Sy skype --noconfirm --needed"
+	arch_chroot "yaourt -Sy skype --noconfirm"
 
 	#Fingerprint
 	if (lsusb | grep Fingerprint &> /dev/null); then
-		arch_chroot "yaourt -Sy fingerprint-gui --noconfirm --needed"
+		arch_chroot "yaourt -Sy fingerprint-gui --noconfirm"
 	fi
 
 	#Teamviewer
-	arch_chroot "yaourt -Sy teamviewer --noconfirm --needed"
+	arch_chroot "yaourt -Sy teamviewer --noconfirm"
 	arch_chroot "systemctl enable teamviewerd"
 }
 
