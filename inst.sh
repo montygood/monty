@@ -237,8 +237,6 @@ set_sel() {
 
 	#Yourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -Sy yaourt --noconfirm"
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -261,10 +259,6 @@ set_sel() {
 	#mkinitcpio
 	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "mkinitcpio -p linux"
-
-	#x11 Tastatur
-	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 }
 ins_xorg() {
 ins_graphics_card() {
@@ -388,6 +382,11 @@ ins_graphics_card() {
 	arch_chroot "systemctl enable lightdm.service"
 	arch_chroot "systemctl enable accounts-daemon"
 
+
+	#x11 Tastatur
+	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+
 	#Grafikkarte
 	ins_graphics_card
 
@@ -440,6 +439,8 @@ _jdownloader() {
 }
 	dialog --backtitle "$VERSION" --title "-| Applikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "pacman -Syy --noconfirm"
+	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "pacman -S yaourt --noconfirm"
 
 	#Runtimes
 	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin
