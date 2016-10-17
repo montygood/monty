@@ -1,20 +1,12 @@
 # !/bin/bash
 
-###############
-## Variablen ##
-###############
-ARCHI=$(uname -m)
-VERSION=" -| Arch Installation ($ARCHI) |- "
+VERSION=" -| Arch Installation ($(uname -m)) |- "
 LOCALE="de_CH.UTF-8"
 KEYMAP="de_CH-latin1"
 CODE="CH"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
-
-################
-## Funktionen ##
-################
 arch_chroot() {
 	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\n${1}" 0 0
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
@@ -23,14 +15,18 @@ arch_chroot() {
 	fi
 	echo "" > /tmp/.errlog
 }
+
 id_sys() {
 	dialog --backtitle "$VERSION" --title "-| Sprache |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+
 	# Sprache
 	sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen
 	locale-gen >/dev/null 2>&1
 	export LANG=${LOCALE}
+
 	# Keymap
 	loadkeys $KEYMAP
+
 	# Test
 	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
@@ -43,15 +39,16 @@ id_sys() {
 	fi
 	echo "" > /tmp/.errlog
 	pacman -Syy
+
 	# Apple System
 	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true  # if MAC
 	else
 		modprobe -q efivarfs            # all others
 	fi
+
 	# BIOS or UEFI
 	if [[ -d "/sys/firmware/efi/" ]]; then
-		# Mount efivarfs if it is not already mounted
 		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
 			mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 		fi
@@ -59,6 +56,8 @@ id_sys() {
 	else
 		SYSTEM="BIOS"
 	fi
+
+	#umount
 	MOUNTED=""
 	MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
 	swapoff -a
@@ -66,54 +65,62 @@ id_sys() {
 		umount $i >/dev/null
 	done
 }   
+sel_info() {
+	
+	#Benutzer
+	sel_user() {
+		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+		USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
+		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
+			sel_user
+		fi
+	}
 
-##############
-## Eingaben ##
-##############
-sel_device() {
-	DEVICE=""
-	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
-	for i in ${devices_list[@]}; do
-		DEVICE="${DEVICE} ${i}"
-	done
-	DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
-	IDEV=`echo $DEVICE | cut -c6-`
-	HD_SD="HDD"
-	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
-	VERSION="-| Arch Installation ($ARCHI) |- $SYSTEM auf $HD_SD |-"
-	dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
-	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
-}
-sel_hostname() {
-	HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
-	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
-		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
-		sel_hostname
-	fi
-}
-sel_user() {
-	FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
-	USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
-	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
-		sel_user
-	fi
-}
-sel_password() {
-	RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-	RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
-	if [[ $RPASSWD == $RPASSWD2 ]]; then 
-		echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
-	else
-		dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
-		sel_password
-	fi
-}
+	#PW
+	sel_password() {
+		RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+		RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
+		if [[ $RPASSWD == $RPASSWD2 ]]; then 
+			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
+		else
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
+			sel_password
+		fi
+	}
 
-############
-## Setzen ##
-############
-set_partitions() {
+	#Host
+	sel_hostname() {
+		HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
+		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
+			sel_hostname
+		fi
+	}
+
+	#HDD
+	sel_hdd() {
+		DEVICE=""
+		devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
+		for i in ${devices_list[@]}; do
+			DEVICE="${DEVICE} ${i}"
+		done
+		DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+		IDEV=`echo $DEVICE | cut -c6-`
+		HD_SD="HDD"
+		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
+		VERSION="-| Arch Installation ($(uname -m)) |- $SYSTEM auf $HD_SD |-"
+		dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
+		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
+	}
+
+	sel_user
+	sel_password
+	sel_hostname
+	sel_hdd
+}
+set_info() {
+	#Wipe or zap
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm --needed wipe
@@ -123,12 +130,16 @@ set_partitions() {
 	else
 		sgdisk --zap-all ${DEVICE}
 	fi
+	
+	#BIOS Part
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
 	fi
+	
+	#UEFI Part
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
@@ -138,6 +149,8 @@ set_partitions() {
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
 	fi		
+
+	#Swap
 	if [[ $HD_SD == "HDD" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0 && sleep 2
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
@@ -146,8 +159,8 @@ set_partitions() {
 		mkswap /mnt/swapfile >/dev/null
 		swapon /mnt/swapfile >/dev/null
 	fi
-}
-set_mirrorlist() {
+
+	#Mirror
 	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
@@ -158,157 +171,15 @@ set_mirrorlist() {
 		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nsortieren\nBitte warten\n\n" 0 0 && sleep 2
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
-		if [ $(uname -m) == x86_64 ]; then
-			sed -i '/\[multilib]$/ {
-			N
-			/Include/s/#//g}' /etc/pacman.conf
-		fi
-
-#		if ! (</etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /etc/pacman.conf ; fi		
-#		pacman -Sy yaourt --noconfirm --needed
-		
+		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2		
 		pacman-key --init
 		pacman-key --populate archlinux
 		pacman -Syy
 	fi
 }
-gen_fstab() {
-	dialog --backtitle "$VERSION" --title "-| genfstab |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	if [[ $SYSTEM == "BIOS" ]]; then
-		genfstab -U -p /mnt > /mnt/etc/fstab
-	fi
-	if [[ $SYSTEM == "UEFI" ]]; then
-		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
-	fi
-	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-}
-set_info() {
-	dialog --backtitle "$VERSION" --title "-| Vorgaben einstellen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	echo "${HOSTNAME}" > /mnt/etc/hostname
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-
-	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
-	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
-	arch_chroot "locale-gen" >/dev/null
-
-	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
-
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
-
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	arch_chroot "pacman -Sy yaourt --noconfirm --needed"
-
-	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
-
-	arch_chroot "hwclock --systohc --utc"
-
-	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
-
-	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
-	arch_chroot "groupadd -r autologin -f"
-	arch_chroot "groupadd -r plugdev -f"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
-	rm /tmp/.passwd
-	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-
-	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	arch_chroot "mkinitcpio -p linux"
-}
-set_xkbmap() {
-	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-}
-set_mediaelch() {		
-	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	echo "#!/bin/sh" > /mnt/usr/bin/elch
-	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
-	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
-	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
-	echo "sudo mkdir /mnt/Filme1" >> /mnt/usr/bin/elch
-	echo "sudo mkdir /mnt/Filme2" >> /mnt/usr/bin/elch
-	echo "sudo mkdir /mnt/Musik" >> /mnt/usr/bin/elch
-	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien1 /mnt/Serien1" >> /mnt/usr/bin/elch
-	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien2 /mnt/Serien2" >> /mnt/usr/bin/elch
-	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme1 /mnt/Filme1" >> /mnt/usr/bin/elch
-	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme2 /mnt/Filme2" >> /mnt/usr/bin/elch
-	echo "sudo mount -t nfs4 192.168.2.250:/export/Musik /mnt/Musik" >> /mnt/usr/bin/elch
-	echo "MediaElch" >> /mnt/usr/bin/elch
-	echo "sudo umount /mnt/Serien1" >> /mnt/usr/bin/elch
-	echo "sudo umount /mnt/Serien2" >> /mnt/usr/bin/elch
-	echo "sudo umount /mnt/Filme1" >> /mnt/usr/bin/elch
-	echo "sudo umount /mnt/Filme2" >> /mnt/usr/bin/elch
-	echo "sudo umount /mnt/Musik" >> /mnt/usr/bin/elch
-	echo "sudo rmdir /mnt/Serien1" >> /mnt/usr/bin/elch
-	echo "sudo rmdir /mnt/Serien2" >> /mnt/usr/bin/elch
-	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
-	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
-	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
-	chmod +x /mnt/usr/bin/elch
-	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
-	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Downloads\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Downloads\1\path=/home/monty/Downloads" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Downloads\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Downloads\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\1\path=/mnt/Filme1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\1\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\2\path=/mnt/Filme2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\2\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Movies\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Music\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Music\1\path=/mnt/Musik" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Music\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Music\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TvShows\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TvShows\1\path=/mnt/Serien1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TvShows\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TvShows\2\path=/mnt/Serien2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TvShows\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "[Downloads]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "DeleteArchives=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "KeepSource=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "Unrar=/bin/unrar" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "[Scrapers]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "AEBN\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "FanartTv\DiscType=BluRay" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "FanartTv\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "FanartTv\PersonalApiKey=" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "ShowAdult=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TMDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TMDbConcerts\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "TheTvDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "UniversalMusicScraper\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "UniversalMusicScraper\Prefer=theaudiodb" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "[TvShows]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "DvdOrder=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "ShowMissingEpisodesHint=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "[Warnings]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "DontShowDeleteImageConfirm=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "[XBMC]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "RemoteHost=192.168.2.251" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-}
-
-#############
-## Install ##
-#############
-
 ins_base() {
 	pacstrap /mnt base base-devel --needed
-}
-ins_bootloader() {
-	arch_chroot "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
+
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		if [[ $DEVICE != "" ]]; then
 			dialog --backtitle "$VERSION" --title "-| Grub-install |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
@@ -331,12 +202,70 @@ ins_bootloader() {
 			arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
 		fi
 	fi
+
+	dialog --backtitle "$VERSION" --title "-| genfstab |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	if [[ $SYSTEM == "BIOS" ]]; then
+		genfstab -U -p /mnt > /mnt/etc/fstab
+	fi
+	if [[ $SYSTEM == "UEFI" ]]; then
+		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+	fi
+	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
+
+}
+set_sel() {
+	dialog --backtitle "$VERSION" --title "-| Vorgaben einstellen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+
+	#Hostname
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
+
+	#Locale
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
+	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
+	arch_chroot "locale-gen" >/dev/null
+
+	#Console
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
+
+	#Multi Mirror
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+
+	#Yourt Mirror
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	arch_chroot "pacman -Sy yaourt --noconfirm --needed"
+
+	#Zone
+	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
+
+	#Zeit
+	arch_chroot "hwclock --systohc --utc"
+
+	#PW
+	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
+
+	#Benutzer
+	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "groupadd -r plugdev -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
+	rm /tmp/.passwd
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+
+	#mkinitcpio
+	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	arch_chroot "mkinitcpio -p linux"
+
+	#x11 Tastatur
+	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 }
 ins_xorg() {
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-}
 ins_graphics_card() {
 	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	ins_intel(){
@@ -443,48 +372,56 @@ ins_graphics_card() {
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
 }
-ins_de_wm() {
+	#xorg
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+
+	#Oberfaeche
 	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal --needed
-#	pacstrap /mnt mate mate-extra --needed
-}
-ins_dm() {
+
+	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
 	arch_chroot "systemctl enable accounts-daemon"
-}
-ins_hw() {
+
+	#Grafikkarte
+	ins_graphics_card
+
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+
 	#WiFi
 	if (dmesg | grep -i Wireless &> /dev/null); then 
 		pacstrap /mnt wireless_tools wpa_actiond wpa_supplicant dialog rp-pppoe iw --needed
 	fi
+
 	#Drucker
 	pacstrap /mnt cups system-config-printer hplip --needed
 	arch_chroot "systemctl enable org.cups.cupsd.service"
+
 	#SSD
 	if [[ $HD_SD == "SSD" ]]; then
 		arch_chroot "systemctl enable fstrim.service"
 		arch_chroot "systemctl enable fstrim.timer"
 	fi
+
 	#Bluetoo
 	if (dmesg | grep -i Bluetooth &> /dev/null); then 
 		pacstrap /mnt blueman bluez-utils --needed
 		arch_chroot "systemctl enable bluetooth.service"
 	fi
+
 	#Touchpad
 	if (dmesg | grep -i Touchpad &> /dev/null); then
 		pacstrap /mnt xf86-input-synaptics --needed
 	fi
-	#Wacom
-	if (dmesg | grep -i Tablet &> /dev/null); then
-		pacstrap /mnt xf86-input-wacom --needed
-	fi
 }
-ins_jdownloader() {
+ins_apps() {
+_jdownloader() {
 	dialog --backtitle "$VERSION" --title "-| JDownloader|-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -500,113 +437,183 @@ ins_jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
-ins_apps() {
-	dialog --backtitle "$VERSION" --title "-| Update |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	pacman -Syy --noconfirm
+	dialog --backtitle "$VERSION" --title "-| Applikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "pacman -Syy --noconfirm"
+
 	#Runtimes
 	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin --needed
+
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed
+
 	#Firefox
 	pacstrap /mnt firefox firefox-i18n-de --needed
+
 	#mail
 	pacstrap /mnt thunderbird thunderbird-i18n-de --needed
+
 	#Schriften
 	pacstrap /mnt ttf-droid ttf-dejavu ttf-liberation ttf-bitstream-vera --needed
+
 	#Grafik
-	pacstrap /mnt gimp shotwell xsane xsane-gimp simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld xfburn deluge geany gtk-recordmydesktop openshot --needed
+	pacstrap /mnt gimp shotwell eog simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop openshot --needed
+
 	#audio
-	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins simplescreenrecorder --needed
+	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins --needed
+
 	#pulseaudio
 	pacstrap /mnt pulseaudio pulseaudio-alsa --needed
 	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse --needed
+
 	#alsa
 	pacstrap /mnt alsa-utils alsa-plugins --needed
   	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins --needed
+
   	#packer
 	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed
+
 	#Firmware
 	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 --needed
+
 	#FS
 	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs ntfs-3g fuse-exfat autofs --needed
+
 	#libs
 	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs --needed
+
 	#gst
 	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
+
 	#gst
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+
 	#wine
 	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
+
 	#NFS
 	pacstrap /mnt nfs-utils --needed
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
+
+	#jdownloader
+	_jdownloader
 }
-ins_finish() {
-	dialog --backtitle "$VERSION" --title "-| entpacke |-" --infobox "\n Bitte warten \n" 0 0
-	pacman -S p7zip --noconfirm --needed
-	7z x teamviewer.pkg.7z.001
-	dialog --backtitle "$VERSION" --title "-| Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	mv *.pkg.tar.xz /mnt/
+ins_your() {
+set_mediaelch() {		
+	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	echo "#!/bin/sh" > /mnt/usr/bin/elch
+	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien1 /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien2 /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme1 /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme2 /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Musik /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "MediaElch" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
+	chmod +x /mnt/usr/bin/elch
+	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
+	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\path=/home/monty/Downloads" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\path=/mnt/Filme1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\path=/mnt/Filme2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\path=/mnt/Musik" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\1\path=/mnt/Serien1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\2\path=/mnt/Serien2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Downloads]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DeleteArchives=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "KeepSource=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Unrar=/bin/unrar" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Scrapers]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "AEBN\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\DiscType=BluRay" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\PersonalApiKey=" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "ShowAdult=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TMDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TMDbConcerts\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TheTvDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "UniversalMusicScraper\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "UniversalMusicScraper\Prefer=theaudiodb" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[TvShows]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DvdOrder=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "ShowMissingEpisodesHint=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Warnings]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DontShowDeleteImageConfirm=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[XBMC]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemoteHost=192.168.2.251" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+}
+	dialog --backtitle "$VERSION" --title "-| Yaourt Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+
 	#Firmware
 	arch_chroot "yaourt -Sy aic94xx-firmware --noconfirm --needed"
 	arch_chroot "yaourt -Sy wd719x-firmware --noconfirm --needed"
-#	arch_chroot "echo j | pacman -U dbus-x11.pkg.tar.xz --noconfirm"
+
 	#Mediaelch
-	arch_chroot "pacman -U mediaelch.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "yaourt -Sy mediaelch --noconfirm --needed"
+	set_mediaelch
+
 	#mintstick
-	arch_chroot "pacman -U python2-pyparted.pkg.tar.xz --noconfirm --needed"
-	arch_chroot "pacman -U mintstick.pkg.tar.xz --noconfirm --needed"
-	#mp3diags
-	mv mp3gain /mnt/usr/bin/
-	chmod +x /mnt/usr/bin/mp3gain
-	mv mp3diags_de_DE.qm /mnt/usr/bin/
-	arch_chroot "pacman -U mp3diags-unstable.pkg.tar.xz --noconfirm --needed"
+	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
+	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
+	arch_chroot "yaourt -Sy mintstick-git --noconfirm --needed"
+
 	#pamac
 	arch_chroot "yaourt -Sy pamac-aur --noconfirm --needed"
+
 	#Skype
-	arch_chroot "pacman -U skype.pkg.tar.xz --noconfirm --needed"
-	#yaourt
-#	arch_chroot "pacman -U package-query.pkg.tar.xz --noconfirm --needed"
-#	arch_chroot "pacman -U yaourt.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "yaourt -Sy skype --noconfirm --needed"
+
 	#Fingerprint
 	if (lsusb | grep Fingerprint &> /dev/null); then
-		arch_chroot "pacman -U fingerprint-gui.pkg.tar.xz --noconfirm --needed"
+		arch_chroot "yaourt -Sy fingerprint-gui --noconfirm --needed"
 	fi
+
 	#Teamviewer
-	arch_chroot "pacman -U teamviewer.pkg.tar.xz --noconfirm --needed"
+	arch_chroot "yaourt -Sy teamviewer --noconfirm --needed"
 	arch_chroot "systemctl enable teamviewerd"
-	#clean
-	arch_chroot "mv *.pkg.tar.xz /tmp/"
-	arch_chroot "pacman -Rsc --noconfirm"
 }
 
-###########
-## Start ##
-###########
 id_sys
-sel_device
-sel_hostname
-sel_user
-sel_password
-set_partitions
-set_mirrorlist
-ins_base
-ins_bootloader
-gen_fstab 
+sel_info
 set_info
-set_mediaelch
+ins_base
+set_sel
 ins_xorg
-ins_graphics_card
-ins_de_wm
-ins_dm
-set_xkbmap
-ins_hw
-ins_jdownloader
 ins_apps
-ins_finish
+ins_your
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
@@ -615,6 +622,6 @@ for i in ${MOUNTED[@]}; do
 	umount $i >/dev/null
 done
 
-dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
+dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --msgbox "\nInstall Medium nach dem Heruntrfahren entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
 shutdown now
 exit 0
