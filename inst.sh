@@ -222,11 +222,15 @@ set_sel() {
 
 	#Locale
 	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
+	
 	arch_chroot "locale-gen" >/dev/null
 
 	#Console
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 
 	#Multi Mirror
 	if [ $(uname -m) == x86_64 ]; then
@@ -235,8 +239,9 @@ set_sel() {
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
 
-	#Yourt Mirror
+	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	pacman -Sy
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -368,7 +373,7 @@ ins_graphics_card() {
 	fi
 }
 	#xorg
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
@@ -443,7 +448,10 @@ _jdownloader() {
 	arch_chroot "pacman -S yaourt --noconfirm"
 
 	#Runtimes
-	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin
+	pacstrap /mnt yaourt
+
+	#Runtimes
+	pacstrap /mnt bash-completion xdg-user-dirs jre7-openjdk wol flashplugin icedtea-web
 
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
@@ -614,6 +622,7 @@ set_info
 ins_base
 set_sel
 ins_xorg
+ins_apps
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
