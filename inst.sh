@@ -1,12 +1,7 @@
 # !/bin/bash
 
 VERSION=" -| Arch Installation ($(uname -m)) |- "
-LOCALE="de_CH.UTF-8"
-KEYMAP="de_CH-latin1"
-CODE="CH"
-ZONE="Europe"
-SUBZONE="Zurich"
-XKBMAP="ch"
+
 arch_chroot() {
 	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\n${1}" 0 0
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
@@ -17,16 +12,6 @@ arch_chroot() {
 }
 
 id_sys() {
-	dialog --backtitle "$VERSION" --title "-| Sprache |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-
-	# Sprache
-	sed -i "s/#${LOCALE}/${LOCALE}/" /etc/locale.gen
-	locale-gen >/dev/null 2>&1
-	export LANG=${LOCALE}
-
-	# Keymap
-	loadkeys $KEYMAP
-
 	# Test
 	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
@@ -38,13 +23,14 @@ id_sys() {
 		exit 1
 	fi
 	echo "" > /tmp/.errlog
+	clear
 	pacman -Syy
 
 	# Apple System
 	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
-		modprobe -r -q efivars || true  # if MAC
+		modprobe -r -q efivars || true
 	else
-		modprobe -q efivarfs            # all others
+		modprobe -q efivarfs
 	fi
 
 	# BIOS or UEFI
@@ -56,17 +42,20 @@ id_sys() {
 	else
 		SYSTEM="BIOS"
 	fi
-
-	#umount
-	MOUNTED=""
-	MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
-	swapoff -a
-	for i in ${MOUNTED[@]}; do
-		umount $i >/dev/null
-	done
-}   
+}
 sel_info() {
-	
+
+	LOCALE="de_CH.UTF-8"
+	KEYMAP="de_CH-latin1"
+	CODE="CH"
+	ZONE="Europe"
+	SUBZONE="Zurich"
+	XKBMAP="ch"
+
+	# Keymap
+	dialog --backtitle "$VERSION" --title "-| Sprache |-" --infobox "\n Bitte warten \n" 0 0
+	loadkeys $KEYMAP
+
 	#Benutzer
 	sel_user() {
 		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
@@ -76,7 +65,6 @@ sel_info() {
 			sel_user
 		fi
 	}
-
 	#PW
 	sel_password() {
 		RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
@@ -88,7 +76,6 @@ sel_info() {
 			sel_password
 		fi
 	}
-
 	#Host
 	sel_hostname() {
 		HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
@@ -97,7 +84,6 @@ sel_info() {
 			sel_hostname
 		fi
 	}
-
 	#HDD
 	sel_hdd() {
 		DEVICE=""
@@ -377,9 +363,6 @@ ins_graphics_card() {
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/${USERNAME}/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
-	#Oberfaeche
-	pacstrap /mnt gnome-shell
-
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
@@ -387,9 +370,7 @@ ins_graphics_card() {
 	arch_chroot "systemctl enable lightdm.service"
 	arch_chroot "systemctl enable accounts-daemon"
 
-
 	#x11 Tastatur
-	dialog --backtitle "$VERSION" --title "-| Tastatur |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
 	#Grafikkarte
@@ -424,6 +405,9 @@ ins_graphics_card() {
 	if (dmesg | grep -i Touchpad &> /dev/null); then
 		pacstrap /mnt xf86-input-synaptics
 	fi
+
+	#Oberfaeche
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal
 }
 ins_apps() {
 _jdownloader() {
@@ -585,7 +569,7 @@ set_mediaelch() {
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
-	dialog --backtitle "$VERSION" --title "-| Yaourt Appikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Yaourt Appikationen |-" --infobox "\n Bitte warten \n" 0 0
 
 	#Firmware
 	arch_chroot "yaourt -Sy aic94xx-firmware --noconfirm"
@@ -630,6 +614,6 @@ for i in ${MOUNTED[@]}; do
 	umount $i >/dev/null
 done
 
-dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --msgbox "\nInstall Medium nach dem Heruntrfahren entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
+dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium nach dem Heruntrfahren entfernen\nBei der ersten Anmeldung muss dass Passwort noch eingegeben werden\n" 0 0 && sleep 4
 shutdown now
 exit 0
