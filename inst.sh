@@ -5,8 +5,7 @@
 	echo "Monty@23" > /tmp/.passwd
 
 arch_chroot() {
-	clear
-	archchroot /mnt /bin/bash -c "${1}"
+	arch-chroot /mnt /bin/bash -c "${1}"
 }
 
     if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
@@ -23,7 +22,6 @@ arch_chroot() {
       SYSTEM="BIOS"
     fi
 
-	clear
 	pacman -Syy
 
 	loadkeys $KEYMAP
@@ -43,17 +41,12 @@ arch_chroot() {
 	mkswap /mnt/swapfile >/dev/null
 	swapon /mnt/swapfile >/dev/null
 
-	pause
-	clear
 	pacman-key --init
 	pacman-key --populate archlinux
 	pacman-key --refresh-keys
 
 	pacstrap /mnt base base-devel
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
-
-	pause
-	clear
 
 	pacstrap /mnt grub
 	arch_chroot "grub-install --target=i386-pc --recheck /dev/sda"
@@ -73,8 +66,6 @@ arch_chroot() {
 	arch_chroot "hwclock --systohc --utc"
 	
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
-	pause
-	clear
 
 	arch_chroot "useradd ${USER} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USER}" < /tmp/.passwd >/dev/null
@@ -82,13 +73,8 @@ arch_chroot() {
 	arch_chroot "chown -R ${USER}:users /home/${USER}"
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 
-	pause
-	clear
-
 	arch_chroot "mkinitcpio -p linux"
 
-	pause
-	clear
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
@@ -103,12 +89,8 @@ arch_chroot() {
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	fi
 
-	pause
-	clear
 	pacstrap /mnt cinnamon bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
 
-	pause
-	clear
 	pacstrap /mnt lightdm lightdm-gtk-greeter
 	arch_chroot "systemctl enable lightdm"
 
@@ -119,8 +101,6 @@ arch_chroot() {
 	pacstrap /mnt cups ghostscript gsfonts
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
-	pause
-	clear
 	pacstrap /mnt networkmanager network-manager-applet
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 
