@@ -378,7 +378,7 @@ ins_graphics_card() {
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal
+	pacstrap /mnt gnome-shell
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice
