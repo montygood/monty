@@ -614,8 +614,6 @@ set_info
 ins_base
 set_sel
 ins_xorg
-ins_apps
-ins_your
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
