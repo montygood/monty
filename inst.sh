@@ -28,6 +28,11 @@ arch_chroot() {
 
 	loadkeys $KEYMAP
 
+	parted -s /dev/sda print | awk '/^ / {print $1}' > /tmp/.del_parts	
+	for del_part in $(tac /tmp/.del_parts); do
+		parted -s /dev/sda rm ${del_part}
+	done
+
 	echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk /dev/sda
 	echo j | mkfs.ext4 -q -L arch /dev/sda2 >/dev/null
 	mount /dev/sda2 /mnt
@@ -47,8 +52,8 @@ arch_chroot() {
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
 
 	pacstrap /mnt grub
-	archchroot "grub-install --target=i386-pc --recheck /dev/sda"
-	archchroot "grub-mkconfig -o /boot/grub/grub.cfg"
+	arch_chroot "grub-install --target=i386-pc --recheck /dev/sda"
+	arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 
 	genfstab -U -p /mnt > /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
@@ -57,51 +62,51 @@ arch_chroot() {
 
 	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
-	archchroot "locale-gen" >/dev/null
+	arch_chroot "locale-gen" >/dev/null
 
-	archchroot "ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
+	arch_chroot "ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 
-	archchroot "hwclock --systohc --utc"
+	arch_chroot "hwclock --systohc --utc"
 	
-	archchroot "passwd root" < /tmp/.passwd >/dev/null
+	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
-	archchroot "useradd ${USER} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
-	archchroot "passwd ${USER}" < /tmp/.passwd >/dev/null
-	archchroot "cp /etc/skel/.bashrc /home/${USER}"
-	archchroot "chown -R ${USER}:users /home/${USER}"
+	arch_chroot "useradd ${USER} -m -g users -G wheel,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "passwd ${USER}" < /tmp/.passwd >/dev/null
+	arch_chroot "cp /etc/skel/.bashrc /home/${USER}"
+	arch_chroot "chown -R ${USER}:users /home/${USER}"
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 
 	clear
-	archchroot "mkinitcpio -p linux"
+	arch_chroot "mkinitcpio -p linux"
 
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xf86-input-keyboard xf86-input-mouse xf86-input-synaptics
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
 		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		archchroot "chown -R ${i}:users /home/${i}"
+		arch_chroot "chown -R ${i}:users /home/${i}"
 	done
 
 	pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
     sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 
     if [[ -e /mnt/boot/grub/grub.cfg ]]; then
-		archchroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	fi
 
 	pacstrap /mnt cinnamon bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
 
 	pacstrap /mnt lightdm lightdm-gtk-greeter
-	archchroot "systemctl enable lightdm"
+	arch_chroot "systemctl enable lightdm"
 
     echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
 	[[ $(lspci | grep -i "Network Controller") == "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond
 
 	pacstrap /mnt cups ghostscript gsfonts
-	archchroot "systemctl enable org.cups.cupsd.service"
+	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	pacstrap /mnt networkmanager network-manager-applet
-	archchroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 
 	pacstrap /mnt alsa-utils alsa-plugins
 
@@ -111,3 +116,4 @@ arch_chroot() {
 	for i in ${MOUNTED[@]}; do
 	  umount $i >/dev/null
 	done
+	reboot
