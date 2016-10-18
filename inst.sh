@@ -4,6 +4,11 @@
 	USER="monty"
 	echo "Monty@23" > /tmp/.passwd
 
+arch_chroot() {
+	clear
+	archchroot /mnt /bin/bash -c "${1}"
+}
+
     if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
       modprobe -r -q efivars || true
     else
@@ -42,7 +47,7 @@
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
 
 	pacstrap /mnt grub
-	archchroot "grub-install --target=i386-pc --recheck $DEVICE"
+	archchroot "grub-install --target=i386-pc --recheck /dev/sda"
 	archchroot "grub-mkconfig -o /boot/grub/grub.cfg"
 
 	genfstab -U -p /mnt > /mnt/etc/fstab
