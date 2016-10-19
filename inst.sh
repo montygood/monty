@@ -1,9 +1,6 @@
 # !/bin/bash
 
-VERSION=" -| Arch Installation ($(uname -m)) |- "
-
 arch_chroot() {
-	dialog --backtitle "$VERSION" --title "-| Einstellungen |-" --infobox "\n${1}" 0 0
 	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
 	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
@@ -12,6 +9,8 @@ arch_chroot() {
 }
 
 id_sys() {
+	VERSION=" -| Arch Installation ($(uname -m)) |- "
+
 	# Test
 	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
@@ -44,8 +43,6 @@ id_sys() {
 	fi
 }
 sel_info() {
-	dialog --backtitle "$VERSION" --title "-| Lade Einstellungen der Schweiz |-" --infobox "\n Bitte warten \n" 0 0
-
 	LOCALE="de_CH.UTF-8"
 	KEYMAP="de_CH-latin1"
 	CODE="CH"
@@ -105,6 +102,9 @@ sel_info() {
 	sel_hostname
 	sel_hdd
 
+	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
+	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
+
 	#Wipe or zap
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
@@ -137,7 +137,6 @@ sel_info() {
 
 	#Swap
 	if [[ $HD_SD == "HDD" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Swap-File |-" --infobox "\nwird angelegt\n\n" 0 0 && sleep 2
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile
 		chmod 600 /mnt/swapfile
@@ -147,16 +146,13 @@ sel_info() {
 
 	#Mirror
 	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2
 		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
 		MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
 		curl -so ${MIRROR_TEMP} ${URL}
 		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
 		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nsortieren\nBitte warten\n\n" 0 0 && sleep 2
 		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
 		chmod +r /etc/pacman.d/mirrorlist
-		dialog --backtitle "$VERSION" --title "-| Spiegelserver |-" --infobox "\nBitte warten\n\n" 0 0 && sleep 2		
 		pacman-key --init
 		pacman-key --populate archlinux
 		pacman -Syy
@@ -164,7 +160,6 @@ sel_info() {
 }
 ins_base() {
 ins_graphics_card() {
-	dialog --backtitle "$VERSION" --title "-| Grafikkarte |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	ins_intel(){
 		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
@@ -288,7 +283,6 @@ ins_graphics_card() {
 		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
 	fi
 
-	dialog --backtitle "$VERSION" --title "-| genfstab |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	if [[ $SYSTEM == "BIOS" ]]; then
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
@@ -318,11 +312,16 @@ ins_graphics_card() {
 		sed -i '/\[multilib]$/ {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /etc/pacman.conf
 	fi
 
 	#Yaourt Mirror
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e  "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	pacman -Sy
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	if ! (</etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /etc/pacman.conf ; fi
+	pacman -Sy --noconfirm
+	pacman -S yaourt --noconfirm
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -334,16 +333,13 @@ ins_graphics_card() {
 	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
 
 	#Benutzer
-	dialog --backtitle "$VERSION" --title "-| Benutzer |-" --infobox "\nwird erstellt\n\n" 0 0 sleep 2
 	arch_chroot "groupadd -r autologin -f"
-	arch_chroot "groupadd -r plugdev -f"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,plugdev,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	rm /tmp/.passwd
 
 	#mkinitcpio
-	dialog --backtitle "$VERSION" --title "-| mkinitcpio |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
@@ -358,8 +354,8 @@ ins_graphics_card() {
 	ins_graphics_card
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview
-	pacstrap /mnt bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm gnome-terminal
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal
+	pacstrap /mnt bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter
@@ -394,7 +390,6 @@ ins_graphics_card() {
 }
 ins_apps() {
 _jdownloader() {
-	dialog --backtitle "$VERSION" --title "-| JDownloader|-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
 	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
@@ -409,37 +404,18 @@ _jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
-	dialog --backtitle "$VERSION" --title "-| Applikationen |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
-	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -Syu --noconfirm"
+
+	arch_chroot "pacman -Sy --noconfirm"
 	arch_chroot "pacman -S yaourt --noconfirm"
 
-	#Runtimes
-	pacstrap /mnt yaourt
-
-	#Runtimes
-	pacstrap /mnt jre7-openjdk wol flashplugin icedtea-web
-
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
-
-	#Firefox
-	pacstrap /mnt firefox firefox-i18n-de
-
-	#mail
-	pacstrap /mnt thunderbird thunderbird-i18n-de
-
-	#Schriften
-	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 
 	#Grafik
-	pacstrap /mnt gimp shotwell eog simple-scan vlc avidemux-gtk handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop openshot
-
-	#audio
-	pacstrap /mnt pavucontrol sound-juicer puddletag picard libaacs pitivi frei0r-plugins
+	pacstrap /mnt gimp shotwell eog simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard
 
 	#pulseaudio
-	pacstrap /mnt pulseaudio pulseaudio-alsa
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol
 	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse
 
 	#alsa
@@ -451,6 +427,9 @@ _jdownloader() {
 
 	#Firmware
 	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264
+
+	#Schriften
+	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera
 
 	#FS
 	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs fuse-exfat autofs
@@ -468,7 +447,7 @@ _jdownloader() {
 	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam
 
 	#NFS
-	pacstrap /mnt nfs-utils
+	pacstrap /mnt nfs-utils jre7-openjdk wol
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
@@ -478,7 +457,6 @@ _jdownloader() {
 }
 ins_your() {
 set_mediaelch() {		
-	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --infobox "\n Bitte warten \n" 0 0 && sleep 2
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
@@ -552,40 +530,52 @@ set_mediaelch() {
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
-	dialog --backtitle "$VERSION" --title "-| Yaourt Appikationen |-" --infobox "\n Bitte warten \n" 0 0
 
-	#Firmware
-	arch_chroot "yaourt -Sy aic94xx-firmware --noconfirm"
-	arch_chroot "yaourt -Sy wd719x-firmware --noconfirm"
-
-	#Mediaelch
-	arch_chroot "yaourt -Sy mediaelch --noconfirm"
-	set_mediaelch
-
-	#mintstick
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	arch_chroot "yaourt -Sy mintstick-git --noconfirm"
 
-	#pamac
-	arch_chroot "yaourt -Sy pamac-aur --noconfirm"
+	yaourt -S aic94xx-firmware --noconfirm --export
+	yaourt -S wd719x-firmware --noconfirm --export
+	yaourt -S pamac-aur --noconfirm --export
+	yaourt -S skype --noconfirm --export
+	yaourt -S python2-pyparted --noconfirm --export
+	yaourt -S mintstick-git --noconfirm --export
+	yaourt -S teamviewer --noconfirm --export
 
-	#Skype
-	arch_chroot "yaourt -Sy skype --noconfirm"
+	mv *.pkg.tar.xz /mnt
+
+	arch_chroot "pacman -U aic94xx-firmware-*-any.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U wd719x-firmware-*-any.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mintstick-git-*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
+	arch_chroot "systemctl enable teamviewerd"
 
 	#Fingerprint
-	if (lsusb | grep Fingerprint &> /dev/null); then
-		arch_chroot "yaourt -Sy fingerprint-gui --noconfirm"
+	if (lsusb | grep Fingerprint); then
+		yaourt -S fingerprint-gui --noconfirm --export
+		mv *.pkg.tar.xz /mnt
+		arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm"
+		arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 	fi
 
-	#Teamviewer
-	arch_chroot "yaourt -Sy teamviewer --noconfirm"
-	arch_chroot "systemctl enable teamviewerd"
+	#Mediaelch
+	if [[ $ELCH == "YES" ]]; then
+		yaourt -S mediaelch --noconfirm --export
+		mv *.pkg.tar.xz /mnt
+		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
+		set_mediaelch
+	fi
+	rm /mnt/*.pkg.tar.xz
 }
 
 id_sys
 sel_info
 ins_base
+ins_apps
+ins_your
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
@@ -594,5 +584,3 @@ for i in ${MOUNTED[@]}; do
 	umount $i >/dev/null
 done
 
-dialog --backtitle "$VERSION" --title "-| Installation Fertig |-" --infobox "\nInstall Medium entfernen\n" 0 0
-reboot
