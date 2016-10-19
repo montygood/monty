@@ -105,6 +105,9 @@ sel_info() {
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
 
+	dialog --backtitle "$VERSION" --title "-| Windows Spiele |-" --yesno "\nWine und Steam installieren\n" 0 0
+	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
+
 	#Wipe or zap
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
@@ -312,16 +315,12 @@ ins_graphics_card() {
 		sed -i '/\[multilib]$/ {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /etc/pacman.conf
 	fi
 
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
 	if ! (</etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /etc/pacman.conf ; fi
 	pacman -Sy --noconfirm
-	pacman -S yaourt --noconfirm
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -354,8 +353,8 @@ ins_graphics_card() {
 	ins_graphics_card
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal
-	pacstrap /mnt bash-completion gamin gksu gnome-icon-theme gnome-keyring gvfs gvfs-afc gvfs-smb polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot nemo-python nemo-qml-plugin-notifications nemo-qt-components nemo-seahorse nemo-share eog gnome-calculator gnome-font-viewer
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter
@@ -412,15 +411,11 @@ _jdownloader() {
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 
 	#Grafik
-	pacstrap /mnt gimp shotwell eog simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gucharmap catfish gthumb
 
 	#pulseaudio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol
-	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse
-
-	#alsa
-	pacstrap /mnt alsa-utils alsa-plugins
-  	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins
+	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse lib32-alsa-plugins
 
   	#packer
 	pacstrap /mnt zip unzip unrar p7zip lzop cpio
@@ -429,22 +424,22 @@ _jdownloader() {
 	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264
 
 	#Schriften
-	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera
+	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei cantarell-fonts
 
 	#FS
 	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs fuse-exfat autofs
 
 	#libs
-	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs
+	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs libdvdread
 
 	#gst
 	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg
-
-	#gst
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
 
 	#wine
-	pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam
+	if [[ $WINE == "YES" ]]; then
+		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam
+	fi
 
 	#NFS
 	pacstrap /mnt nfs-utils jre7-openjdk wol
@@ -534,14 +529,14 @@ set_mediaelch() {
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 
-	yaourt -S aic94xx-firmware --noconfirm --export
-	yaourt -S wd719x-firmware --noconfirm --export
-	yaourt -S pamac-aur --noconfirm --export
-	yaourt -S skype --noconfirm --export
-	yaourt -S python2-pyparted --noconfirm --export
-	yaourt -S mintstick-git --noconfirm --export
-	yaourt -S teamviewer --noconfirm --export
+	mv *.png /mnt/usr/share/backgrounds/mint
 
+	cp cinnamon-utility.tar.gz /mnt/tmp/
+	arch_chroot "tar -zxvf /tmp/cinnamon-utility.tar.gz"
+	arch_chroot "./tmp/cinnamon-utility"
+
+	pacman -S p7zip --noconfirm
+	7za x -o /mnt teamviewer-*.pkg.7z.001
 	mv *.pkg.tar.xz /mnt
 
 	arch_chroot "pacman -U aic94xx-firmware-*-any.pkg.tar.xz --noconfirm"
@@ -552,23 +547,38 @@ set_mediaelch() {
 	arch_chroot "pacman -U mintstick-git-*.pkg.tar.xz --noconfirm"
 	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
 	arch_chroot "systemctl enable teamviewerd"
+	
+	arch_chroot "pacman -U cinnamon-system-adjustments*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U cinnamon-sound-effects*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mint-sounds*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mint-x-theme*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mint-x-icons*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mint-cinnamon-themes*.pkg.tar.xz --noconfirm"
+	
 
 	#Fingerprint
 	if (lsusb | grep Fingerprint); then
-		yaourt -S fingerprint-gui --noconfirm --export
-		mv *.pkg.tar.xz /mnt
 		arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm"
 		arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 	fi
 
 	#Mediaelch
 	if [[ $ELCH == "YES" ]]; then
-		yaourt -S mediaelch --noconfirm --export
-		mv *.pkg.tar.xz /mnt
 		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
 		set_mediaelch
 	fi
 	rm /mnt/*.pkg.tar.xz
+	
+	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/bssh.desktop"
+	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/bvnc.desktop"
+	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/avahi-discover.desktop"
+	arch_chroot "sed -i -e '/allow_active/s/auth_admin_keep/yes/' /usr/share/polkit-1/actions/org.freedesktop.udisks2.policy"
+	arch_chroot "sed -i -e '/allow_active/s/auth_admin/yes/' /usr/share/polkit-1/actions/org.archlinux.pkexec.gparted.policy"
+	arch_chroot "sed -i -e '/allow_active/s/auth_admin_keep/yes/' /usr/share/polkit-1/actions/org.nemo.root.policy"
+	arch_chroot "sed -i -e '/allow_active/s/auth_admin/yes/' /usr/share/polkit-1/actions/org.cinnamon.settings-users.policy"
+	arch_chroot "update-mime-database /usr/share/mime/"
+	arch_chroot "update-desktop-database /usr/share/applications/"
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas"
 }
 
 id_sys
