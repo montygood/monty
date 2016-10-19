@@ -377,7 +377,7 @@ ins_graphics_card() {
 	pacstrap /mnt cups system-config-printer hplip ghostscript gsfonts && arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#SSD
-	[[ $HD_SD == "SSD" ]] arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
+	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
 
 	#Bluetoo
 	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman bluez-utils && arch_chroot "systemctl enable bluetooth.service"
