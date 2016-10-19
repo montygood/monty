@@ -413,15 +413,15 @@ _jdownloader() {
 	#Grafik
 	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gucharmap catfish gthumb
 
-	#pulseaudio
+	#audio
 	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins
 	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse lib32-alsa-plugins
 
   	#packer
 	pacstrap /mnt zip unzip unrar p7zip lzop cpio
 
-	#Firmware
-	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264
+	#zusatz
+	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 cairo-dock cairo-dock-plug-ins
 
 	#Schriften
 	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei cantarell-fonts
@@ -529,14 +529,14 @@ set_mediaelch() {
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 
-	mv *.png /mnt/usr/share/backgrounds/mint
+	mv *.png /mnt/usr/share/backgrounds/
 
 	cp cinnamon-utility.tar.gz /mnt/tmp/
 	arch_chroot "tar -zxvf /tmp/cinnamon-utility.tar.gz"
 	arch_chroot "./tmp/cinnamon-utility"
 
 	pacman -S p7zip --noconfirm
-	7za x -o /mnt teamviewer-*.pkg.7z.001
+	7za x teamviewer-*.pkg.7z.001
 	mv *.pkg.tar.xz /mnt
 
 	arch_chroot "pacman -U aic94xx-firmware-*-any.pkg.tar.xz --noconfirm"
@@ -568,17 +568,6 @@ set_mediaelch() {
 		set_mediaelch
 	fi
 	rm /mnt/*.pkg.tar.xz
-	
-	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/bssh.desktop"
-	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/bvnc.desktop"
-	arch_chroot "sed -i '$a NoDisplay=true' /usr/share/applications/avahi-discover.desktop"
-	arch_chroot "sed -i -e '/allow_active/s/auth_admin_keep/yes/' /usr/share/polkit-1/actions/org.freedesktop.udisks2.policy"
-	arch_chroot "sed -i -e '/allow_active/s/auth_admin/yes/' /usr/share/polkit-1/actions/org.archlinux.pkexec.gparted.policy"
-	arch_chroot "sed -i -e '/allow_active/s/auth_admin_keep/yes/' /usr/share/polkit-1/actions/org.nemo.root.policy"
-	arch_chroot "sed -i -e '/allow_active/s/auth_admin/yes/' /usr/share/polkit-1/actions/org.cinnamon.settings-users.policy"
-	arch_chroot "update-mime-database /usr/share/mime/"
-	arch_chroot "update-desktop-database /usr/share/applications/"
-	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas"
 }
 
 id_sys
@@ -594,3 +583,4 @@ for i in ${MOUNTED[@]}; do
 	umount $i >/dev/null
 done
 
+reboot
