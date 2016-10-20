@@ -9,7 +9,9 @@ arch_chroot() {
 }
 
 cerrror() {
-	dialog --backtitle "$VERSION" --title "-| Installiert |-" --msgbox "$(cat /tmp/.paklog)" 0 0
+	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.paklog | grep -i "Reinstalliere") != "" ]]; then
+		dialog --backtitle "$VERSION" --title "-| Installiert |-" --msgbox "$(cat /tmp/.paklog)" 0 0
+	fi
 	echo "" > /tmp/.paklog
 }
 
