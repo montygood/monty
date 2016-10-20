@@ -11,7 +11,7 @@ arch_chroot() {
 cerrror() {
 #	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.paklog | grep -i "") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Installiert |-" --msgbox "$(cat /tmp/.paklog)" 0 0
-#	fi
+	#fi
 	echo "" > /tmp/.paklog
 }
 
@@ -352,7 +352,7 @@ ins_graphics_card() {
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
 		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"--needed 
+		arch_chroot "chown -R ${i}:users /home/${i}"
 	done
 
 	#Grafikkarte
@@ -375,7 +375,7 @@ ins_graphics_card() {
 	[[ $(lspci | grep -i "Network Controller") == "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed 2>>/tmp/.paklog && cerrror
 
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip  --needed 2>>/tmp/.paklog && cerrror
+	pacstrap /mnt cups system-config-printer hplip ghostscript gsfonts --needed 2>>/tmp/.paklog && cerrror
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#SSD
