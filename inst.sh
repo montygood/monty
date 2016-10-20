@@ -8,6 +8,11 @@ arch_chroot() {
 	echo "" > /tmp/.errlog
 }
 
+cerrror() {
+	dialog --backtitle "$VERSION" --title "-| Installiert |-" --msgbox "$(cat /tmp/.paklog)" 0 0
+	echo "" > /tmp/.paklog
+}
+
 id_sys() {
 	VERSION=" -| Arch Installation ($(uname -m)) |- "
 
@@ -164,7 +169,7 @@ sel_info() {
 ins_base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode 2>>/tmp/.paklog && cerrror
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -178,7 +183,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati
+		pacstrap /mnt xf86-video-ati 2>>/tmp/.paklog && cerrror
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -208,7 +213,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] &&  ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau
+		pacstrap /mnt xf86-video-nouveau 2>>/tmp/.paklog && cerrror
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -216,7 +221,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings 2>>/tmp/.paklog && cerrror
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -224,7 +229,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings 2>>/tmp/.paklog && cerrror
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -232,28 +237,28 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings 2>>/tmp/.paklog && cerrror
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome
+		pacstrap /mnt xf86-video-openchrome 2>>/tmp/.paklog && cerrror
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD 2>>/tmp/.paklog && cerrror
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"  
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse 2>>/tmp/.paklog && cerrror
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev
+		pacstrap /mnt xf86-video-fbdev 2>>/tmp/.paklog && cerrror
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -267,17 +272,17 @@ ins_graphics_card() {
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
 }
-	pacstrap /mnt base base-devel
+	pacstrap /mnt base base-devel 2>>/tmp/.paklog && cerrror
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools
+		pacstrap /mnt grub dosfstools 2>>/tmp/.paklog && cerrror
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr dosfstools
+		pacstrap /mnt grub efibootmgr dosfstools 2>>/tmp/.paklog && cerrror
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -341,7 +346,7 @@ ins_graphics_card() {
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick 2>>/tmp/.paklog && cerrror
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
 		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
@@ -352,11 +357,11 @@ ins_graphics_card() {
 	ins_graphics_card
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot nemo-python nemo-qml-plugin-notifications nemo-qt-components nemo-seahorse nemo-share eog gnome-calculator gnome-font-viewer
-	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils xterm
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot nemo-python nemo-qml-plugin-notifications nemo-qt-components nemo-seahorse nemo-share eog gnome-calculator gnome-font-viewer 2>>/tmp/.paklog && cerrror
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs polkit poppler python2-xdg ntfs-3g ttf-dejavu xdg-user-dirs xdg-utils 2>>/tmp/.paklog && cerrror
 
 	#Anmeldescreen
-	pacstrap /mnt lightdm lightdm-gtk-greeter
+	pacstrap /mnt lightdm lightdm-gtk-greeter 2>>/tmp/.paklog && cerrror
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
@@ -365,26 +370,23 @@ ins_graphics_card() {
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") == "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond #wpa_supplicant
+	[[ $(lspci | grep -i "Network Controller") == "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond 2>>/tmp/.paklog && cerrror
 
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip ghostscript gsfonts && arch_chroot "systemctl enable org.cups.cupsd.service"
+	pacstrap /mnt cups system-config-printer hplip  2>>/tmp/.paklog && cerrror
+	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
 
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman bluez-utils && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman bluez-utils  2>>/tmp/.paklog && cerrror && arch_chroot "systemctl enable bluetooth.service"
 
 	#Touchpad
-	[[ $(dmesg | grep -i Touchpad) == "" ]] && pacstrap /mnt xf86-input-synaptics
+	[[ $(dmesg | grep -i Touchpad) == "" ]] && pacstrap /mnt xf86-input-synaptics 2>>/tmp/.paklog && cerrror
 
 	#Tablet
-	[[ $(dmesg | grep -i Tablet) == "" ]] && pacstrap /mnt xf86-input-wacom
-
-	#Netzwerkkarte
-	pacstrap /mnt networkmanager network-manager-applet
-	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+	[[ $(dmesg | grep -i Tablet) == "" ]] && pacstrap /mnt xf86-input-wacom 2>>/tmp/.paklog && cerrror
 }
 ins_apps() {
 _jdownloader() {
@@ -407,41 +409,41 @@ _jdownloader() {
 	arch_chroot "pacman -S yaourt --noconfirm"
 
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de 2>>/tmp/.paklog && cerrror
 
 	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gucharmap catfish gthumb
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gucharmap catfish gthumb 2>>/tmp/.paklog && cerrror
 
 	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins
-	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse lib32-alsa-plugins
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins 2>>/tmp/.paklog && cerrror
+	[[ $(uname -m) == x86_64 ]] && pacstrap /mnt lib32-libpulse lib32-alsa-plugins 2>>/tmp/.paklog && cerrror
 
   	#packer
-	pacstrap /mnt zip unzip unrar p7zip lzop cpio
+	pacstrap /mnt zip unzip unrar p7zip lzop cpio 2>>/tmp/.paklog && cerrror
 
 	#zusatz
-	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 cairo-dock cairo-dock-plug-ins
+	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 cairo-dock cairo-dock-plug-ins 2>>/tmp/.paklog && cerrror
 
 	#Schriften
-	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei cantarell-fonts
+	pacstrap /mnt ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei cantarell-fonts 2>>/tmp/.paklog && cerrror
 
 	#FS
-	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs fuse-exfat autofs
+	pacstrap /mnt exfat-utils f2fs-tools fuse mtpfs fuse-exfat autofs 2>>/tmp/.paklog && cerrror
 
 	#libs
-	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs libdvdread
+	pacstrap /mnt libquicktime libdvdnav libdvdcss cdrdao libaacs libdvdread 2>>/tmp/.paklog && cerrror
 
 	#gst
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg 2>>/tmp/.paklog && cerrror
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav 2>>/tmp/.paklog && cerrror
 
 	#wine
 	if [[ $WINE == "YES" ]]; then
-		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam
+		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam 2>>/tmp/.paklog && cerrror
 	fi
 
 	#NFS
-	pacstrap /mnt nfs-utils jre7-openjdk wol
+	pacstrap /mnt nfs-utils jre7-openjdk wol 2>>/tmp/.paklog && cerrror
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
@@ -573,6 +575,7 @@ id_sys
 sel_info
 ins_base
 ins_apps
+ins_your
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
