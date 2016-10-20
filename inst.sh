@@ -9,9 +9,9 @@ arch_chroot() {
 }
 
 cerrror() {
-	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.paklog | grep -i "") != "" ]]; then
+#	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.paklog | grep -i "") != "" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Installiert |-" --msgbox "$(cat /tmp/.paklog)" 0 0
-	fi
+#	fi
 	echo "" > /tmp/.paklog
 }
 
