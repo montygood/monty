@@ -341,22 +341,18 @@ ins_graphics_card() {
 
 	#xorg
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed
-	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
 
 	#Grafikkarte
 	ins_graphics_card
 
 	#Oberfaeche
-	#pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-keyring gnome-terminal gnome-screenshot nemo-python nemo-qml-plugin-notifications nemo-qt-components nemo-seahorse nemo-share eog gnome-calculator gnome-font-viewer --needed
+	#pacstrap /mnt cinnamon nemo-fileroller nemo-preview eog gnome-terminal gnome-screenshot gnome-calculator gnome-font-viewer --needed
 
-	mv dbus-x11.pkg.tar.xz /mnt
-	arch_chroot "pacman -U dbus-x11.pkg.tar.xz --noconfirm"
-	pacstrap /mnt mate-gtk3 mate-extra-gtk3 --needed
-	pacstrap /mnt bash-completion gamin gksu gvfs polkit poppler python2-xdg ntfs-3g xdg-user-dirs xdg-utils --needed
+	#pacstrap /mnt mate-gtk3 mate-extra-gtk3 --needed && mv dbus-x11.pkg.tar.xz /mnt && arch_chroot "pacman -U dbus-x11.pkg.tar.xz"
+
+	pacstrap /mnt xfce4 xfce4-goodies --needed
+
+	pacstrap /mnt bash-completion gamin gksu gvfs gvfs-afc polkit poppler python2-xdg xdg-user-dirs xdg-utils --needed
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
@@ -406,53 +402,6 @@ _jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
-
-	arch_chroot "pacman -Sy --noconfirm"
-	arch_chroot "pacman -S yaourt --noconfirm"
-
-	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
-
-	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gucharmap catfish gthumb --needed
-
-	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins --needed
-
-	#packer
-	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed
-
-	#zusatz
-	pacstrap /mnt ffmpegthumbs ffmpegthumbnailer x264 cairo-dock cairo-dock-plug-ins --needed
-
-	#Schriften
-	pacstrap /mnt ttf-dejavu ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei --needed
-
-	#FS
-	pacstrap /mnt f2fs-tools mtpfs fuse-exfat autofs --needed
-
-	#libs
-	pacstrap /mnt libquicktime libdvdcss cdrdao libaacs libdvdnav libdvdread --needed
-
-	#gst
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
-
-	#wine
-	if [[ $WINE == "YES" ]]; then
-		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
-	fi
-
-	#NFS
-	pacstrap /mnt nfs-utils jre7-openjdk wol --needed
-	arch_chroot "systemctl enable rpcbind"
-	arch_chroot "systemctl enable nfs-client.target"
-	arch_chroot "systemctl enable remote-fs.target"
-
-	#jdownloader
-	_jdownloader
-}
-ins_your() {
 set_mediaelch() {		
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
@@ -528,6 +477,48 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 
+	arch_chroot "pacman -Sy --noconfirm"
+	arch_chroot "pacman -S yaourt --noconfirm"
+
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
+
+	#Grafik
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gthumb --needed
+
+	#audio
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins --needed
+
+	#packer
+	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed
+
+	#Schriften
+	pacstrap /mnt ttf-dejavu ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei --needed
+
+	#FS
+	pacstrap /mnt f2fs-tools mtpfs ntfs-3g fuse-exfat autofs exfat-utils fuse --needed
+
+	#NFS
+	pacstrap /mnt nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins --needed
+	arch_chroot "systemctl enable rpcbind"
+	arch_chroot "systemctl enable nfs-client.target"
+	arch_chroot "systemctl enable remote-fs.target"
+
+	#libs
+	pacstrap /mnt libquicktime libdvdcss cdrdao libaacs libdvdnav libdvdread --needed
+
+	#gst
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg xine-lib --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+
+	#wine
+	if [[ $WINE == "YES" ]]; then
+		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
+	fi
+
+	#jdownloader
+	_jdownloader
+
 	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 
@@ -562,13 +553,18 @@ set_mediaelch() {
 		set_mediaelch
 	fi
 	rm /mnt/*.pkg.tar.xz
+	
+	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
+	for i in ${user_list}; do
+		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
+		arch_chroot "chown -R ${i}:users /home/${i}"
+	done
 }
 
 id_sys
 sel_info
 ins_base
 ins_apps
-ins_your
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
