@@ -354,7 +354,7 @@ ins_graphics_card() {
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") == "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
 
 	#Drucker
 	pacstrap /mnt cups system-config-printer hplip ghostscript gsfonts --needed
@@ -364,16 +364,16 @@ ins_graphics_card() {
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
 
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
 
 	#Touchpad
-	[[ $(dmesg | grep -i Touchpad) == "" ]] && pacstrap /mnt xf86-input-synaptics --needed
+	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
 
 	#game
 	[[ $WINE == "YES" ]] && pacstrap /mnt xf86-input-joystick --needed
 
 	#Tablet
-	[[ $(dmesg | grep -i Tablet) == "" ]] && pacstrap /mnt xf86-input-wacom --needed
+	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
 	
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed
@@ -490,8 +490,6 @@ set_mediaelch() {
 
 	#libs
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
-
-	#gst
 	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
 
@@ -501,35 +499,30 @@ set_mediaelch() {
 	#jdownloader
 	_jdownloader
 
-	mv linux*.png /mnt/usr/share/backgrounds/
-
 	pacman -S p7zip --noconfirm
+	
+	mv usr.7z /mnt
+	7za x /mnt/usr.7z
+	
 	7za x teamviewer-*.pkg.7z.001
 
 	mv *.pkg.tar.xz /mnt
-
-	arch_chroot "pacman -U aic94xx-firmware-*-any.pkg.tar.xz --noconfirm"
-	arch_chroot "pacman -U wd719x-firmware-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
-	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
-	arch_chroot "pacman -U mintstick-git-*.pkg.tar.xz --noconfirm"
-
 	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
 	arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	[[ $(lsusb | grep Fingerprint) == "" ]] && arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 
 	#Mediaelch
 	[[ $ELCH == "YES" ]] && arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm" && set_mediaelch
 
 	rm /mnt/*.pkg.tar.xz
+	rm /mnt/usr.7z
 	
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
