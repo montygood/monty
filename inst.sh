@@ -1,11 +1,7 @@
 # !/bin/bash
 
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}" 2>>/tmp/.errlog
-	if [[ $? -eq 1 ]] && [[ $(cat /tmp/.errlog | grep -i "error") != "" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Fehler |-" --msgbox "$(cat /tmp/.errlog)" 0 0
-	fi
-	echo "" > /tmp/.errlog
+	arch-chroot /mnt /bin/bash -c "${1}"
 }
 
 id_sys() {
@@ -21,7 +17,7 @@ id_sys() {
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\nkein Internet Zugang.\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
 	fi
-	echo "" > /tmp/.errlog
+
 	clear
 	pacman -Syy
 
@@ -270,14 +266,14 @@ ins_graphics_card() {
 	pacstrap /mnt base base-devel --needed
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed
+		pacstrap /mnt grub --needed
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr dosfstools --needed
+		pacstrap /mnt grub efibootmgr --needed
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -286,12 +282,9 @@ ins_graphics_card() {
 		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
 	fi
 
-	if [[ $SYSTEM == "BIOS" ]]; then
-		genfstab -U -p /mnt > /mnt/etc/fstab
-	fi
-	if [[ $SYSTEM == "UEFI" ]]; then
-		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
-	fi
+	[[ $SYSTEM == "BIOS" ]] && genfstab -U -p /mnt > /mnt/etc/fstab
+	[[ $SYSTEM == "UEFI" ]] && genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 
 	#Hostname
@@ -340,22 +333,19 @@ ins_graphics_card() {
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput xf86-input-joystick --needed
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
 
 	#Grafikkarte
 	ins_graphics_card
 
 	#Oberfaeche
-	#pacstrap /mnt cinnamon nemo-fileroller nemo-preview eog gnome-terminal gnome-screenshot gnome-calculator gnome-font-viewer --needed
-
-	#pacstrap /mnt mate-gtk3 mate-extra-gtk3 --needed && mv dbus-x11.pkg.tar.xz /mnt && arch_chroot "pacman -U dbus-x11.pkg.tar.xz"
-
-	pacstrap /mnt xfce4 xfce4-goodies --needed
-
-	pacstrap /mnt bash-completion gamin gksu gvfs gvfs-afc polkit poppler python2-xdg xdg-user-dirs xdg-utils --needed
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview eog gnome-terminal gnome-screenshot gnome-calculator --needed
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
+	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#session-wrapper=/etc/lightdm/Xsession/session-wrapper=/etc/lightdm/Xsession/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
@@ -374,10 +364,13 @@ ins_graphics_card() {
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
 
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman bluez-utils --needed && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | grep -i Bluetooth) == "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
 
 	#Touchpad
 	[[ $(dmesg | grep -i Touchpad) == "" ]] && pacstrap /mnt xf86-input-synaptics --needed
+
+	#game
+	[[ $WINE == "YES" ]] && pacstrap /mnt xf86-input-joystick --needed
 
 	#Tablet
 	[[ $(dmesg | grep -i Tablet) == "" ]] && pacstrap /mnt xf86-input-wacom --needed
@@ -480,52 +473,39 @@ set_mediaelch() {
 	arch_chroot "pacman -Sy --noconfirm"
 	arch_chroot "pacman -S yaourt --noconfirm"
 
+	#zusatz
+	pacstrap /mnt bash-completion gksu gvfs xdg-user-dirs zip unzip unrar p7zip lzop cpio ttf-dejavu ttf-liberation ntfs-3g fuse-exfat exfat-utils autofs dosfstools --needed
+
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
 
 	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard leafpad gparted gthumb --needed
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn --needed
 
 	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins --needed
-
-	#packer
-	pacstrap /mnt zip unzip unrar p7zip lzop cpio --needed
-
-	#Schriften
-	pacstrap /mnt ttf-dejavu ttf-droid ttf-liberation ttf-bitstream-vera wqy-microhei --needed
-
-	#FS
-	pacstrap /mnt f2fs-tools mtpfs ntfs-3g fuse-exfat autofs exfat-utils fuse --needed
-
-	#NFS
-	pacstrap /mnt nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins --needed
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins --needed
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
 	arch_chroot "systemctl enable remote-fs.target"
 
 	#libs
-	pacstrap /mnt libquicktime libdvdcss cdrdao libaacs libdvdnav libdvdread --needed
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
 
 	#gst
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg xine-lib --needed
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
 
 	#wine
-	if [[ $WINE == "YES" ]]; then
-		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
-	fi
+	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine steam --needed
 
 	#jdownloader
 	_jdownloader
 
-	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
-
-	mv *.png /mnt/usr/share/backgrounds/
+	mv linux*.png /mnt/usr/share/backgrounds/
 
 	pacman -S p7zip --noconfirm
 	7za x teamviewer-*.pkg.7z.001
+
 	mv *.pkg.tar.xz /mnt
 
 	arch_chroot "pacman -U aic94xx-firmware-*-any.pkg.tar.xz --noconfirm"
@@ -535,6 +515,8 @@ set_mediaelch() {
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
+	mkdir -p /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
+	cp mintstick.mo /mnt/usr/share/linuxmint/locale/de/LC_MESSAGES/
 	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
 	arch_chroot "pacman -U mintstick-git-*.pkg.tar.xz --noconfirm"
 
@@ -542,16 +524,11 @@ set_mediaelch() {
 	arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	if (lsusb | grep Fingerprint); then
-		arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm"
-		arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
-	fi
+	[[ $(lsusb | grep Fingerprint) == "" ]] && arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 
 	#Mediaelch
-	if [[ $ELCH == "YES" ]]; then
-		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
-		set_mediaelch
-	fi
+	[[ $ELCH == "YES" ]] && arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm" && set_mediaelch
+
 	rm /mnt/*.pkg.tar.xz
 	
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
