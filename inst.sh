@@ -354,10 +354,6 @@ ins_graphics_card() {
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
 
-	#Benutzer
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
@@ -531,6 +527,10 @@ set_mediaelch() {
 	#Settings
 	arch_chroot "tar -xf usr.pkg.tar.xz"
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	
+	#Benutzer
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	
 	rm /mnt/*.pkg.tar.xz
 }
