@@ -265,29 +265,28 @@ ins_graphics_card() {
 }
 	pacstrap /mnt base base-devel --needed
 	
-	mv aic94xx-seq.fw /mnt/lib/firmware
-	mv wd719x-risc.bin /mnt/lib/firmware
-	mv wd719x-wcs.bin /mnt/lib/firmware
+	mv aic94xx-seq.fw /mnt/lib/firmware/
+	mv wd719x-risc.bin /mnt/lib/firmware/
+	mv wd719x-wcs.bin /mnt/lib/firmware/
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub --needed
+		pacstrap /mnt grub dosfstools --needed
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr --needed
+		pacstrap /mnt grub efibootmgr dosfstools --needed
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 		arch_chroot "mkdir -p /boot/EFI/boot"
 		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
 	fi
-
-	[[ $SYSTEM == "BIOS" ]] && genfstab -U -p /mnt > /mnt/etc/fstab
-	[[ $SYSTEM == "UEFI" ]] && genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
 
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 
@@ -316,6 +315,7 @@ ins_graphics_card() {
 
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	pacman -Sy --noconfirm
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -338,15 +338,18 @@ ins_graphics_card() {
 
 	#xorg
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
+	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
+	for i in ${user_list}; do
+		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
+		arch_chroot "chown -R ${i}:users /home/${i}"
+	done
 
 	#Grafikkarte
 	ins_graphics_card
 
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview eog gnome-terminal gnome-screenshot gnome-calculator --needed
-
-	#zusatz
-	pacstrap /mnt bash-completion gksu gvfs xdg-user-dirs zip unzip unrar p7zip lzop cpio ttf-dejavu ttf-liberation ntfs-3g fuse-exfat exfat-utils autofs dosfstools --needed
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs polkit poppler python2-xdg ntfs-3g xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
@@ -477,11 +480,10 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 
-	arch_chroot "pacman -Sy --noconfirm"
-	arch_chroot "pacman -S yaourt --noconfirm"
+	arch_chroot "pacman -Sy yaourt --noconfirm"
 
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
 
 	#Grafik
 	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn --needed
@@ -498,19 +500,21 @@ set_mediaelch() {
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
 
 	#wine
-	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine steam --needed
+	if [[ $WINE == "YES" ]]; then
+		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
+	fi
 
 	#jdownloader
 	_jdownloader
 
-	pacman -S p7zip --noconfirm
-	
-	mv usr.7z /mnt
-	arch_chroot "7za x usr.7z"
-	
-	7za x teamviewer-*.pkg.7z.001
+	mv linux*.png /mnt/usr/share/backgrounds/gnome/
 
+	pacman -S p7zip --noconfirm
+	7za x teamviewer-*.pkg.7z.001
 	mv *.pkg.tar.xz /mnt
+
+	arch_chroot "pacman -U python2-pyparted-3.10.7-1-x86_64.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mintstick-1.2.8-1-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
@@ -520,24 +524,24 @@ set_mediaelch() {
 	arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+	if (lsusb | grep Fingerprint); then
+		arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm"
+		arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+	fi
 
 	#Mediaelch
-	[[ $ELCH == "YES" ]] && arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm" && set_mediaelch
-
-	rm /mnt/*.pkg.tar.xz
-	#rm /mnt/usr.7z
+	if [[ $ELCH == "YES" ]]; then
+		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
+		set_mediaelch
+	fi
 	
-	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
+	rm /mnt/*.pkg.tar.xz
 }
 
 id_sys
 sel_info
 ins_base
+ins_apps
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
