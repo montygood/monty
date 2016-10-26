@@ -264,10 +264,6 @@ ins_graphics_card() {
 	fi
 }
 	pacstrap /mnt base base-devel --needed
-	
-	mv aic94xx-seq.fw /mnt/lib/firmware/
-	mv wd719x-risc.bin /mnt/lib/firmware/
-	mv wd719x-wcs.bin /mnt/lib/firmware/
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pacstrap /mnt grub dosfstools --needed
@@ -334,15 +330,13 @@ ins_graphics_card() {
 	rm /tmp/.passwd
 
 	#mkinitcpio
+	mv aic94xx-seq.fw /mnt/lib/firmware/
+	mv wd719x-risc.bin /mnt/lib/firmware/
+	mv wd719x-wcs.bin /mnt/lib/firmware/
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
-	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
 
 	#Grafikkarte
 	ins_graphics_card
@@ -379,15 +373,18 @@ ins_graphics_card() {
 	#Touchpad
 	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
 
-	#game
-	[[ $WINE == "YES" ]] && pacstrap /mnt xf86-input-joystick --needed
-
 	#Tablet
 	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
 	
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+	
+	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
+	for i in ${user_list}; do
+		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
+		arch_chroot "chown -R ${i}:users /home/${i}"
+	done
 }
 ins_apps() {
 _jdownloader() {
@@ -480,7 +477,8 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 
-	arch_chroot "pacman -Sy yaourt --noconfirm"
+	arch_chroot "pacman -Syy --noconfirm"
+	arch_chroot "pacman -S yaourt --noconfirm"
 
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
@@ -500,9 +498,7 @@ set_mediaelch() {
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
 
 	#wine
-	if [[ $WINE == "YES" ]]; then
-		pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam --needed
-	fi
+	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam xf86-input-joystick --needed
 
 	#jdownloader
 	_jdownloader
