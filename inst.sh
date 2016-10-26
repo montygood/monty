@@ -330,9 +330,9 @@ ins_graphics_card() {
 	rm /tmp/.passwd
 
 	#mkinitcpio
-	mv aic94xx-seq.fw /mnt/lib/firmware/
-	mv wd719x-risc.bin /mnt/lib/firmware/
-	mv wd719x-wcs.bin /mnt/lib/firmware/
+	cp aic94xx-seq.fw /mnt/lib/firmware/
+	cp wd719x-risc.bin /mnt/lib/firmware/
+	cp wd719x-wcs.bin /mnt/lib/firmware/
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
@@ -353,6 +353,10 @@ ins_graphics_card() {
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
+
+	#Benutzer
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
@@ -379,12 +383,6 @@ ins_graphics_card() {
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
-	
-	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
-	for i in ${user_list}; do
-		cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$i/.xinitrc
-		arch_chroot "chown -R ${i}:users /home/${i}"
-	done
 }
 ins_apps() {
 _jdownloader() {
@@ -476,9 +474,10 @@ set_mediaelch() {
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
-
+	#Update
 	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -S yaourt --noconfirm"
+	arch_chroot "pacman -Sy yaourt --noconfirm"
+	pacman -Syy --noconfirm
 
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
@@ -503,14 +502,12 @@ set_mediaelch() {
 	#jdownloader
 	_jdownloader
 
-	mv linux*.png /mnt/usr/share/backgrounds/gnome/
+	#Variable
+	copy /b teamviewer.partaa + teamviewer.partab /mnt/teamviewer-11.pkg.tar.xz
+	cp *.pkg.tar.xz /mnt
 
-	pacman -S p7zip --noconfirm
-	7za x teamviewer-*.pkg.7z.001
-	mv *.pkg.tar.xz /mnt
-
-	arch_chroot "pacman -U python2-pyparted-3.10.7-1-x86_64.pkg.tar.xz --noconfirm"
-	arch_chroot "pacman -U mintstick-1.2.8-1-any.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
+	arch_chroot "pacman -U mintstick-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
@@ -530,6 +527,10 @@ set_mediaelch() {
 		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
 		set_mediaelch
 	fi
+
+	#Settings
+	arch_chroot "tar -xf usr.pkg.tar.xz"
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
 	rm /mnt/*.pkg.tar.xz
 }
