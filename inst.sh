@@ -264,6 +264,10 @@ ins_graphics_card() {
 	fi
 }
 	pacstrap /mnt base base-devel --needed
+	
+	mv aic94xx-seq.fw /mnt/lib/firmware
+	mv wd719x-risc.bin /mnt/lib/firmware
+	mv wd719x-wcs.bin /mnt/lib/firmware
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pacstrap /mnt grub --needed
@@ -502,7 +506,7 @@ set_mediaelch() {
 	pacman -S p7zip --noconfirm
 	
 	mv usr.7z /mnt
-	7za x /mnt/usr.7z
+	arch_chroot "7za x usr.7z"
 	
 	7za x teamviewer-*.pkg.7z.001
 
@@ -522,7 +526,7 @@ set_mediaelch() {
 	[[ $ELCH == "YES" ]] && arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm" && set_mediaelch
 
 	rm /mnt/*.pkg.tar.xz
-	rm /mnt/usr.7z
+	#rm /mnt/usr.7z
 	
 	user_list=$(ls /mnt/home/ | sed "s/lost+found//")
 	for i in ${user_list}; do
