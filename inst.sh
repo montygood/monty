@@ -538,7 +538,7 @@ set_mediaelch() {
 id_sys
 sel_info
 ins_base
-ins_apps
+
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
