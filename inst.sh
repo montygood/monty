@@ -345,6 +345,9 @@ ins_graphics_card() {
 	#Oberfaeche
 	pacstrap /mnt cinnamon nemo-fileroller nemo-preview eog gnome-terminal gnome-screenshot gnome-calculator --needed
 
+	#zusatz
+	pacstrap /mnt bash-completion gksu gvfs xdg-user-dirs zip unzip unrar p7zip lzop cpio ttf-dejavu ttf-liberation ntfs-3g fuse-exfat exfat-utils autofs dosfstools --needed
+
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
@@ -361,7 +364,7 @@ ins_graphics_card() {
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
 
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip ghostscript gsfonts --needed
+	pacstrap /mnt cups system-config-printer hplip --needed
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#SSD
@@ -477,9 +480,6 @@ set_mediaelch() {
 	arch_chroot "pacman -Sy --noconfirm"
 	arch_chroot "pacman -S yaourt --noconfirm"
 
-	#zusatz
-	pacstrap /mnt bash-completion gksu gvfs xdg-user-dirs zip unzip unrar p7zip lzop cpio ttf-dejavu ttf-liberation ntfs-3g fuse-exfat exfat-utils autofs dosfstools --needed
-
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
 
@@ -538,7 +538,6 @@ set_mediaelch() {
 id_sys
 sel_info
 ins_base
-
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
