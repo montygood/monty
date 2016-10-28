@@ -263,6 +263,21 @@ ins_graphics_card() {
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
 }
+_jdownloader() {
+	mkdir -p /mnt/opt/JDownloader/
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
+	arch_chroot "chmod -R 0775 /opt/JDownloader/"
+	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
+	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
+}
 	pacstrap /mnt base base-devel --needed
 
 	if [[ $SYSTEM == "BIOS" ]]; then		
@@ -311,7 +326,6 @@ ins_graphics_card() {
 
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	pacman -Sy --noconfirm
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -336,14 +350,49 @@ ins_graphics_card() {
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
 
+	#Benutzer
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+
+	#Drucker
+	pacstrap /mnt cups system-config-printer hplip cups-filters ghostscript gsfonts --needed
+	arch_chroot "systemctl enable org.cups.cupsd.service"
+
+	#WiFi
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
+
+	#Bluetoo
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
+
+	#Touchpad
+	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
+
+	#Tablet
+	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
+	
+	#SSD
+	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
+	
 	#Grafikkarte
 	ins_graphics_card
 
+	#audio
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins avahi nss-mdns --needed
+	arch_chroot "systemctl enable avahi-daemon"
+	arch_chroot "systemctl enable rpcbind"
+	arch_chroot "systemctl enable nfs-client.target"
+	arch_chroot "systemctl enable remote-fs.target"
+
+	#libs
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+
 	#Oberfaeche
 	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
-	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs polkit poppler python2-xdg ntfs-3g xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
@@ -357,45 +406,28 @@ ins_graphics_card() {
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 
-	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
-
-	#Drucker
-	pacstrap /mnt cups system-config-printer hplip --needed
-	arch_chroot "systemctl enable org.cups.cupsd.service"
-
-	#SSD
-	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
-
-	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
-
-	#Touchpad
-	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
-
-	#Tablet
-	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
-	
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
+
+	#Grafik
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn --needed
+
+	#jdownloader
+	_jdownloader
+
+	#Update
+	arch_chroot "pacman -Sy --noconfirm"
+	pacman -Sy --noconfirm
+	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
+
+	#wine
+	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine steam xf86-input-joystick --needed
 }
 ins_apps() {
-_jdownloader() {
-	mkdir -p /mnt/opt/JDownloader/
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
-	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
-	arch_chroot "chmod -R 0775 /opt/JDownloader/"
-	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
-	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
-}
 set_mediaelch() {		
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
@@ -470,47 +502,19 @@ set_mediaelch() {
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
-	#Update
-	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -Sy yaourt --noconfirm"
-	pacman -Syy --noconfirm
-
-	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
-
-	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn --needed
-
-	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins --needed
-	arch_chroot "systemctl enable rpcbind"
-	arch_chroot "systemctl enable nfs-client.target"
-	arch_chroot "systemctl enable remote-fs.target"
-
-	#libs
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
-
-	#wine
-	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine wine_gecko wine-mono steam xf86-input-joystick --needed
-
-	#jdownloader
-	_jdownloader
-
 	#Variable
-	copy /b teamviewer.partaa + teamviewer.partab /mnt/teamviewer-11.pkg.tar.xz
+#	copy /b teamviewer.partaa + teamviewer.partab /mnt/teamviewer-11.pkg.tar.xz
 	cp *.pkg.tar.xz /mnt
 
-	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
-	arch_chroot "pacman -U mintstick-*-any.pkg.tar.xz --noconfirm"
+#	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
+#	arch_chroot "pacman -U mintstick-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
-	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
-	arch_chroot "systemctl enable teamviewerd"
+#	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
+#	arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
 	if (lsusb | grep Fingerprint); then
@@ -528,17 +532,12 @@ set_mediaelch() {
 	arch_chroot "tar -xf usr.pkg.tar.xz"
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
-	#Benutzer
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-	
 	rm /mnt/*.pkg.tar.xz
 }
 
 id_sys
 sel_info
 ins_base
-ins_apps
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
