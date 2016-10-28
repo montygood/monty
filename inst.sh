@@ -344,13 +344,13 @@ _jdownloader() {
 	rm /tmp/.passwd
 
 	#mkinitcpio
-	cp aic94xx-seq.fw /mnt/lib/firmware/
-	cp wd719x-risc.bin /mnt/lib/firmware/
-	cp wd719x-wcs.bin /mnt/lib/firmware/
+	mv aic94xx-seq.fw /mnt/lib/firmware/
+	mv wd719x-risc.bin /mnt/lib/firmware/
+	mv wd719x-wcs.bin /mnt/lib/firmware/
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
-	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
 
 	#Drucker
@@ -377,6 +377,7 @@ _jdownloader() {
 
 	#audio
 	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins avahi nss-mdns --needed
+	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	arch_chroot "systemctl enable avahi-daemon"
 	arch_chroot "systemctl enable rpcbind"
 	arch_chroot "systemctl enable nfs-client.target"
@@ -414,16 +415,6 @@ _jdownloader() {
 
 	#jdownloader
 	_jdownloader
-
-	#Update
-	arch_chroot "pacman -Sy --noconfirm"
-	pacman -Sy --noconfirm
-	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
-
-	#wine
-	if [[ $WINE == "YES" ]]; then
-		pacstrap /mnt playonlinux winetricks wine steam xf86-input-joystick --needed
-	fi	
 }
 ins_apps() {
 set_mediaelch() {		
@@ -501,7 +492,7 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 	#Variable
-	cp *.pkg.tar.xz /mnt
+	mv *.pkg.tar.xz /mnt
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
@@ -511,6 +502,7 @@ set_mediaelch() {
 	7za e teamviewer-11.7z.001 -o/mnt
 	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
 	arch_chroot "systemctl enable teamviewerd"
+	rm teamviewer-11.7z.*
 	
 	#Fingerprint
 	if (lsusb | grep Fingerprint); then
@@ -528,7 +520,18 @@ set_mediaelch() {
 	tar -xf usr.tar.gz -C /mnt
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
+	rm usr.tar.gz
 	rm /mnt/*.pkg.tar.xz
+
+	#Update
+	rm master.zip
+	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
+
+	#wine
+	if [[ $WINE == "YES" ]]; then
+		arch_chroot "pacman -S playonlinux winetricks wine icoutils wine_gecko wine-mono steam xf86-input-joystick --needed --noconfirm"
+	fi	
 
 	#Benutzer
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
@@ -540,3 +543,11 @@ sel_info
 ins_base
 ins_apps
 
+MOUNTED=""
+MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
+swapoff -a
+for i in ${MOUNTED[@]}; do
+	umount $i >/dev/null
+done
+
+reboot
