@@ -492,17 +492,21 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 	#Variable
+	rm master.zip
 	mv *.pkg.tar.xz /mnt
+	pacman -S p7zip --noconfirm
+	7za e teamviewer-11.7z.001 -o/mnt
+
+	#Update
+	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
-	pacman -S p7zip --noconfirm
-	7za e teamviewer-11.7z.001 -o/mnt
 	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
 	arch_chroot "systemctl enable teamviewerd"
-	rm teamviewer-11.7z.*
 	
 	#Fingerprint
 	if (lsusb | grep Fingerprint); then
@@ -522,11 +526,6 @@ set_mediaelch() {
 	
 	rm usr.tar.gz
 	rm /mnt/*.pkg.tar.xz
-
-	#Update
-	rm master.zip
-	arch_chroot "pacman -Syu --noconfirm"
-	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 
 	#wine
 	if [[ $WINE == "YES" ]]; then
