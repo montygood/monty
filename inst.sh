@@ -350,12 +350,8 @@ _jdownloader() {
 	arch_chroot "mkinitcpio -p linux"
 
 	#xorg
-	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
-
-	#Benutzer
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 
 	#Drucker
 	pacstrap /mnt cups system-config-printer hplip cups-filters ghostscript gsfonts --needed
@@ -414,7 +410,7 @@ _jdownloader() {
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
 
 	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn --needed
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed
 
 	#jdownloader
 	_jdownloader
@@ -532,7 +528,11 @@ set_mediaelch() {
 	tar -xf usr.tar.gz -C /mnt
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
-#	rm /mnt/*.pkg.tar.xz
+	rm /mnt/*.pkg.tar.xz
+
+	#Benutzer
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 
 id_sys
@@ -540,11 +540,3 @@ sel_info
 ins_base
 ins_apps
 
-MOUNTED=""
-MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
-swapoff -a
-for i in ${MOUNTED[@]}; do
-	umount $i >/dev/null
-done
-
-reboot
