@@ -529,7 +529,8 @@ set_mediaelch() {
 
 	#wine
 	if [[ $WINE == "YES" ]]; then
-		arch_chroot "pacman -S playonlinux winetricks wine icoutils wine_gecko wine-mono steam xf86-input-joystick --needed --noconfirm"
+		arch_chroot "pacman -S wine wine_gecko wine-mono xf86-input-joystick --needed --noconfirm"
+		arch_chroot "pacman -S playonlinux winetricks steam --needed --noconfirm"
 	fi	
 
 	#Benutzer
