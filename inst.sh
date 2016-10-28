@@ -425,7 +425,9 @@ _jdownloader() {
 	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 
 	#wine
-	[[ $WINE == "YES" ]] && pacstrap /mnt playonlinux winetricks wine steam xf86-input-joystick --needed
+	if [[ $WINE == "YES" ]]; then
+		pacstrap /mnt playonlinux winetricks wine steam xf86-input-joystick --needed
+	fi	
 }
 ins_apps() {
 set_mediaelch() {		
@@ -503,18 +505,16 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 	#Variable
-#	copy /b teamviewer.partaa + teamviewer.partab /mnt/teamviewer-11.pkg.tar.xz
 	cp *.pkg.tar.xz /mnt
-
-#	arch_chroot "pacman -U python2-pyparted-*.pkg.tar.xz --noconfirm"
-#	arch_chroot "pacman -U mintstick-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
-#	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
-#	arch_chroot "systemctl enable teamviewerd"
+	pacman -S p7zip --noconfirm
+	7za e teamviewer-11.7z.001 -o/mnt
+	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
+	arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
 	if (lsusb | grep Fingerprint); then
@@ -529,15 +529,16 @@ set_mediaelch() {
 	fi
 
 	#Settings
-	arch_chroot "tar -xf usr.pkg.tar.xz"
+	tar -xf usr.tar.gz -C /mnt
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
-	rm /mnt/*.pkg.tar.xz
+#	rm /mnt/*.pkg.tar.xz
 }
 
 id_sys
 sel_info
 ins_base
+ins_apps
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
