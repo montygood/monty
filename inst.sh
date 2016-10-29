@@ -402,8 +402,8 @@ set_mediaelch() {
 
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	arch_chroot "pacman -Syy --noconfirm"
-	arch_chroot "pacman -S yaourt --needed --noconfirm"
+	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -417,7 +417,7 @@ set_mediaelch() {
 	#Benutzer
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
-#	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd
 
@@ -473,7 +473,7 @@ set_mediaelch() {
 	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
-	sed -i "s/#session-wrapper=/etc/lightdm/Xsession/session-wrapper=/etc/lightdm/Xsession/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm.service"
@@ -516,7 +516,14 @@ set_mediaelch() {
 	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
 	#Benutzerrechte
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc && arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s//^#/' /mnt/etc/sudoers
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	cp bashrc /mnt/home/$USERNAME/.bashrc
+	cp dircolors /mnt/home/$USERNAME/.dircolors
+	cp dircolors_256 /mnt/home/$USERNAME/.dircolors_256
+	cp nanorc /mnt/home/$USERNAME/.nanorc
+	cp yaourtrc /mnt/home/$USERNAME/.yaourtrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 }
 
