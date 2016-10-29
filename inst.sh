@@ -516,7 +516,7 @@ set_mediaelch() {
 	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
 	#Benutzerrechte
-	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s//^#/' /mnt/etc/sudoers
+	sed -i 's/^%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	cp bashrc /mnt/home/$USERNAME/.bashrc
 	cp dircolors /mnt/home/$USERNAME/.dircolors
