@@ -101,7 +101,7 @@ sel_info() {
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
 
-	dialog --backtitle "$VERSION" --title "-| Windows Spiele |-" --yesno "\nWine und Steam installieren\n" 0 0
+	dialog --backtitle "$VERSION" --title "-| Windows Spiele |-" --yesno "\nWine installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 
 	#Wipe or zap
@@ -529,8 +529,7 @@ set_mediaelch() {
 
 	#wine
 	if [[ $WINE == "YES" ]]; then
-		arch_chroot "pacman -S wine wine_gecko wine-mono xf86-input-joystick --needed --noconfirm"
-		arch_chroot "pacman -S playonlinux winetricks steam --needed --noconfirm"
+		arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick gcc-multilib lib32-libxslt lib32-libcl lib32-libxcomposite lib32-mpg123 lib32-gnutls --needed --noconfirm"
 	fi	
 
 	#Benutzer
