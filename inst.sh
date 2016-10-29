@@ -495,10 +495,10 @@ set_mediaelch() {
 
 	#pamac
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur'"
-	echo "EnableAUR" >> /mnt/etc/pamac.conf
-	echo "SearchInAURBzDefault" >> /mnt/etc/pamac.conf
-	echo "CheckAURUpdates" >> /mnt/etc/pamac.conf
-	echo "NoConfirmBuild" >> /mnt/etc/pamac.conf
+	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 
 	#Skype
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype'"
