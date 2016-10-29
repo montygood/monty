@@ -353,7 +353,7 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 	#BASE
-	pacstrap /mnt base base-devel --needed
+	pacstrap -i /mnt base base-devel --needed
 
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
