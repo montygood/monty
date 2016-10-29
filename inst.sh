@@ -278,145 +278,6 @@ _jdownloader() {
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
-	pacstrap /mnt base base-devel --needed
-
-	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed
-		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -U -p /mnt > /mnt/etc/fstab
-	fi
-	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr dosfstools --needed
-		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		arch_chroot "mkdir -p /boot/EFI/boot"
-		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
-		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
-	fi
-
-	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-
-	#Hostname
-	echo "${HOSTNAME}" > /mnt/etc/hostname
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-
-	#Locale
-	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
-	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
-	
-	arch_chroot "locale-gen" >/dev/null
-
-	#Console
-	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
-
-	#Multi Mirror
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
-
-	#Yaourt Mirror
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-
-	#Zone
-	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
-
-	#Zeit
-	arch_chroot "hwclock --systohc --utc"
-
-	#PW
-	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
-
-	#Benutzer
-	arch_chroot "groupadd -r autologin -f"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
-	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	rm /tmp/.passwd
-
-	#mkinitcpio
-	mv aic94xx-seq.fw /mnt/lib/firmware/
-	mv wd719x-risc.bin /mnt/lib/firmware/
-	mv wd719x-wcs.bin /mnt/lib/firmware/
-	arch_chroot "mkinitcpio -p linux"
-
-	#xorg
-	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
-
-	#Drucker
-	pacstrap /mnt cups system-config-printer hplip cups-filters ghostscript gsfonts --needed
-	arch_chroot "systemctl enable org.cups.cupsd.service"
-
-	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
-
-	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
-
-	#Touchpad
-	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
-
-	#Tablet
-	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
-	
-	#SSD
-	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
-	
-	#Grafikkarte
-	ins_graphics_card
-
-	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins avahi nss-mdns --needed
-	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
-	arch_chroot "systemctl enable avahi-daemon"
-	arch_chroot "systemctl enable rpcbind"
-	arch_chroot "systemctl enable nfs-client.target"
-	arch_chroot "systemctl enable remote-fs.target"
-
-	#libs
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
-
-	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
-
-	#Anmeldescreen
-	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
-	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
-	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
-	sed -i "s/#session-wrapper=/etc/lightdm/Xsession/session-wrapper=/etc/lightdm/Xsession/" /mnt/etc/lightdm/lightdm.conf
-	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
-	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-	arch_chroot "systemctl enable lightdm.service"
-
-	#x11 Tastatur
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-
-	#Netzwerkkarte
-	pacstrap /mnt networkmanager network-manager-applet --needed
-	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
-
-	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
-
-	#Grafik
-	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed
-
-	#jdownloader
-	_jdownloader
-}
-ins_apps() {
 set_mediaelch() {		
 	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
@@ -491,60 +352,176 @@ set_mediaelch() {
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
-	#Variable
-	rm master.zip
-	mv *.pkg.tar.xz /mnt
-	pacman -S p7zip --noconfirm
-	7za e teamviewer-11.7z.001 -o/mnt
+	#BASE
+	pacstrap /mnt base base-devel --needed
 
-	#Update
+	#GRUB
+	if [[ $SYSTEM == "BIOS" ]]; then		
+		pacstrap /mnt grub dosfstools --needed
+		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		genfstab -U -p /mnt > /mnt/etc/fstab
+	fi
+	if [[ $SYSTEM == "UEFI" ]]; then		
+		pacstrap /mnt grub efibootmgr dosfstools --needed
+		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		arch_chroot "mkdir -p /boot/EFI/boot"
+		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+	fi
+
+	#SWAP
+	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
+
+	#Hostname
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
+
+	#Locale
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
+	arch_chroot "locale-gen" >/dev/null
+
+	#Console
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+
+	#Multi Mirror
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+
+	#Yaourt Mirror
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
 	arch_chroot "pacman -Syu --noconfirm"
-	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
+	arch_chroot "pacman -S yaourt --needed --noconfirm"
 
-	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
+	#Zone
+	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
+
+	#Zeit
+	arch_chroot "hwclock --systohc --utc"
+
+	#PW
+	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
+
+	#Benutzer
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
+	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	rm /tmp/.passwd
+
+	#mkinitcpio
+	mv aic94xx-seq.fw /mnt/lib/firmware/
+	mv wd719x-risc.bin /mnt/lib/firmware/
+	mv wd719x-wcs.bin /mnt/lib/firmware/
+	arch_chroot "mkinitcpio -p linux"
+
+	#xorg
+	pacstrap /mnt bash-completion gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio --needed
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
+
+	#Drucker
+	pacstrap /mnt cups system-config-printer hplip cups-filters ghostscript gsfonts --needed
+	arch_chroot "systemctl enable org.cups.cupsd.service"
+
+	#WiFi
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
+
+	#Bluetoo
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
+
+	#Touchpad
+	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
+
+	#Tablet
+	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
+	
+	#SSD
+	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
+	
+	#wine
+	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
+
+	#Grafikkarte
+	ins_graphics_card
+
+	#audio
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol cairo-dock cairo-dock-plug-ins avahi nss-mdns --needed
+	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
+	arch_chroot "systemctl enable avahi-daemon && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
+
+	#libs
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
+	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+
+	#Oberfaeche
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
+
+	#Anmeldescreen
+	pacstrap /mnt lightdm lightdm-gtk-greeter --needed
+	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#session-wrapper=/etc/lightdm/Xsession/session-wrapper=/etc/lightdm/Xsession/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
+	arch_chroot "systemctl enable lightdm.service"
+
+	#x11 Tastatur
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+
+	#Netzwerkkarte
+	pacstrap /mnt networkmanager network-manager-applet --needed && arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
+
+	#Grafik
+	pacstrap /mnt gimp shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed
+
+	#jdownloader
+	_jdownloader
+
+	#pamac
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur'"
 	echo "EnableAUR" >> /mnt/etc/pamac.conf
 	echo "SearchInAURBzDefault" >> /mnt/etc/pamac.conf
 	echo "CheckAURUpdates" >> /mnt/etc/pamac.conf
 	echo "NoConfirmBuild" >> /mnt/etc/pamac.conf
 
-	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
+	#Skype
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype'"
 
-	arch_chroot "pacman -U teamviewer-*.pkg.tar.xz --noconfirm"
-	arch_chroot "systemctl enable teamviewerd"
+	#Teamviewer
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer'" && arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	if (lsusb | grep Fingerprint); then
-		arch_chroot "pacman -U fingerprint-gui-*.pkg.tar.xz --noconfirm"
-		arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
-	fi
+	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui'" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 
 	#Mediaelch
-	if [[ $ELCH == "YES" ]]; then
-		arch_chroot "pacman -U mediaelch-*.pkg.tar.xz --noconfirm"
-		set_mediaelch
-	fi
+	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch'" && set_mediaelch
 
 	#Settings
-	tar -xf usr.tar.gz -C /mnt
-	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
-	rm usr.tar.gz
-	rm /mnt/*.pkg.tar.xz
-
-	#wine
-	if [[ $WINE == "YES" ]]; then
-		arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
-	fi	
-
 	#Benutzer
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc && arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 
 id_sys
 sel_info
 ins_base
-ins_apps
 
 MOUNTED=""
 MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
