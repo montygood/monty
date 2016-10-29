@@ -417,9 +417,9 @@ set_mediaelch() {
 	#Benutzer
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
-	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	rm /tmp/.passwd
+#	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd
 
 	#mkinitcpio
 	mv aic94xx-seq.fw /mnt/lib/firmware/
@@ -494,28 +494,28 @@ set_mediaelch() {
 	_jdownloader
 
 	#pamac
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur'"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 
 	#Skype
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype'"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
 
 	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer'" && arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" && arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui'" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
 
 	#Mediaelch
-	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch'" && set_mediaelch
+	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
 
 	#Settings
 	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
-	#Benutzer
+	#Benutzerrechte
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc && arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 }
 
