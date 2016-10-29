@@ -402,7 +402,7 @@ set_mediaelch() {
 
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
-	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "pacman -Syy --noconfirm"
 	arch_chroot "pacman -S yaourt --needed --noconfirm"
 
 	#Zone
@@ -517,6 +517,7 @@ set_mediaelch() {
 	
 	#Benutzerrechte
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc && arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+	arch_chroot "pacman -Syu --noconfirm"
 }
 
 id_sys
