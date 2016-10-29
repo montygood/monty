@@ -502,6 +502,10 @@ set_mediaelch() {
 	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 
 	arch_chroot "pacman -U pamac-aur-*-any.pkg.tar.xz --noconfirm"
+	echo "EnableAUR" >> /mnt/etc/pamac.conf
+	echo "SearchInAURBzDefault" >> /mnt/etc/pamac.conf
+	echo "CheckAURUpdates" >> /mnt/etc/pamac.conf
+	echo "NoConfirmBuild" >> /mnt/etc/pamac.conf
 
 	arch_chroot "pacman -U skype-*.pkg.tar.xz --noconfirm"
 
@@ -529,7 +533,7 @@ set_mediaelch() {
 
 	#wine
 	if [[ $WINE == "YES" ]]; then
-		arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick gcc-multilib lib32-libxslt lib32-libcl lib32-libxcomposite lib32-mpg123 lib32-gnutls --needed --noconfirm"
+		arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
 	fi	
 
 	#Benutzer
