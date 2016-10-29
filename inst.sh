@@ -417,8 +417,8 @@ set_mediaelch() {
 	#Benutzer
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp -s /bin/bash"
-	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	[[ -e /mnt/etc/sudoers ]] && sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+	ed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd
 
 	#mkinitcpio
@@ -462,7 +462,7 @@ set_mediaelch() {
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 
 	#libs
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread --needed
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed
 	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
 
@@ -516,7 +516,7 @@ set_mediaelch() {
 	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	
 	#Benutzerrechte
-	sed -i 's/^%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	cp bashrc /mnt/home/$USERNAME/.bashrc
 	cp dircolors /mnt/home/$USERNAME/.dircolors
