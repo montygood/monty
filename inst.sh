@@ -357,7 +357,7 @@ set_mediaelch() {
 
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed
+		pacstrap /mnt grub --needed
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -365,7 +365,7 @@ set_mediaelch() {
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr dosfstools --needed
+		pacstrap /mnt grub efibootmgr --needed
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -432,11 +432,11 @@ set_mediaelch() {
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
 
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip cups-filters ghostscript gsfonts --needed
+	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts --needed
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond --needed
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed																		  
 
 	#Bluetoo
 	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
@@ -463,8 +463,7 @@ set_mediaelch() {
 
 	#libs
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed
-	pacstrap /mnt gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-ffmpeg --needed
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed
 
 	#Oberfaeche
 	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
