@@ -97,6 +97,9 @@ sel_info() {
 	sel_password
 	sel_hostname
 	sel_hdd
+	
+	#kein schwarzes Bild
+	setterm -blank 0 -powersave off
 
 	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
