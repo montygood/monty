@@ -438,6 +438,10 @@ set_mediaelch() {
 	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts --needed
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 
+	#TLP
+	pacstrap /mnt tlp --needed
+    	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
+	
 	#WiFi
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed																		  
 
