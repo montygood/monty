@@ -1,1190 +1,549 @@
-#!/bin/bash
-TOTAL_HDD_SIZE=0
-TOTAL_RAM_SIZE=0
-SWAP_SIZE=0
-ROOT_SIZE=0
-HOME_SIZE=0
-BOOT_SIZE=200
-PID=0
-HOSTNAME=''
-LANGUAGE=''
-KEYMAP=''
-ANSWER=''
-TIMEZONE=''
-ARCH=''
-ARCH_ROOT='/mnt'
-USERNAME=''
-HDD_NAME=''
-VERSION=1.0.3
-DIALOG_TITLE='ArchFix Install Script Version: '$VERSION
+# !/bin/bash
 
-function mainMenu() {
-  clear
-  echo "               +                                           "
-  echo "               A                                           "
-  echo "              AAA                                          "
-  echo "             AAAAA                                         "
-  echo "             AAAAAA                                        "
-  echo "            ; AAAAA;                                       "
-  echo "           +AA.AAAAA    ArchFix Installation Script        "
-  echo "          +AAAAAAAAAA	  The fastest Install script ever! "
-  echo "         AAAAAAAAAAAAA;                                    "
-  echo "        AAAAAAAAAAAAAAA+     created by MemoryLeakX        "
-  echo "       AAAAAAA   AAAAAAA                                   "
-  echo "     .AAAAAA;     ;AAA;.A.                                 "
-  echo "    .AAAAAAA;     ;AAAAA.                                  "
-  echo "    AAAAAAAAA.   .AAAAAAAA.                                "
-  echo "   AAAAAA.           ,AAAAAA                               "
-  echo "  ;AAAA                 AAAA;                              "
-  echo "  AA;                     'AA                              "
-  echo " A.                          A;                            "
-  echo ""
-  message_print 0 "This script comes with no warranty …use at own risk"
-  
-  echo Press a key...
-  read -n 1
-  echo
-  clear
-  
-  ANSWER="/tmp/.fc"
-  
-  dialog --backtitle "$DIALOG_TITLE" \
-  --title "Installation Routine" --clear \
-  --menu "Please select the installation routine" 20 61 5 \
-  "1"  "Base System Installation" \
-  "2"  "Install Packages & Configure the System"  2> $ANSWER
-  retval=$?
-  choice=`cat $ANSWER`
-  case $retval in
-    0)
-      if [ $choice -eq 1 ]
-      then
-        dolanguage
-        dokeymap
-        dotimezone
-        enter_hostname
-        partitioning
-        install_base
-      else
-        load_configs
-        optimize_mirrorlist
-        install_yaourt
-        user_config
-        adduser
-        install_powerpill
-        install_compress_tools
-        install_alsa
-        install_pulse
-        install_bash_goodies
-        install_avahi_deamon
-        install_ntfs_tools
-        install_openssh
-        readahead_on
-        install_xserver
-        install_video_driver
-        install_infinality_font_config
-        install_cups
-        install_xfce
-        install_lightdm
-        
-        #clean package cache
-        pacman -Scc --noconfirm
-        
-        install_plank
-        install_archey
-        install_libreoffice
-        install_gimp
-        install_inkscape
-        install_firewall
-        install_gaming_stuff
-        install_extra_gtk_apps
-        install_extra_qt_apps
-        install_audio_tools_and_codec
-        install_video_tools_and_codec
-        
-        #clean package cache
-        pacman -Scc --noconfirm
-        
-        install_fonts
-        install_java
-        install_internet_tools
-        
-        #clean package cache
-        pacman -Scc --noconfirm
-        resecure_sudoers
-        clear
-        echo "finished!....."
-        sleep 2
-        reboot
-    fi;;
-    1)
-    echo "script was canceled!";;
-    255)
-    echo "script was canceled!";;
-  esac
-  return 0
+arch_chroot() {
+	arch-chroot /mnt /bin/bash -c "${1}"
 }
 
-function message_print() {
-  if [ "$1" = 1 ]
-  then
-    # green
-    color="32"
-  else
-    # red
-    color="31"
-  fi
-  
-  printf "\033[0;${color}m**$2**\033[m \n"
-  return 0
+id_sys() {
+	VERSION=" -| Arch Installation ($(uname -m)) |- "
+
+	# Test
+	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
+	if [[ `whoami` != "root" ]]; then
+		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
+		exit 1
+	fi
+	if [[ ! $(ping -c 1 google.com) ]]; then
+		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\nkein Internet Zugang.\nScript wird beendet\n" 0 0 && sleep 2
+		exit 1
+	fi
+
+	clear
+	pacman -Syy
+
+	# Apple System
+	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
+		modprobe -r -q efivars || true
+	else
+		modprobe -q efivarfs
+	fi
+
+	# BIOS or UEFI
+	if [[ -d "/sys/firmware/efi/" ]]; then
+		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
+			mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+		fi
+		SYSTEM="UEFI"
+	else
+		SYSTEM="BIOS"
+	fi
+}
+sel_info() {
+	LOCALE="de_CH.UTF-8"
+	KEYMAP="de_CH-latin1"
+	CODE="CH"
+	ZONE="Europe"
+	SUBZONE="Zurich"
+	XKBMAP="ch"
+
+	# Keymap
+	loadkeys $KEYMAP
+
+	#Benutzer
+	sel_user() {
+		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+		USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
+		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
+			sel_user
+		fi
+	}
+	#PW
+	sel_password() {
+		RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+		RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
+		if [[ $RPASSWD == $RPASSWD2 ]]; then 
+			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
+		else
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
+			sel_password
+		fi
+	}
+	#Host
+	sel_hostname() {
+		HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
+		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
+			sel_hostname
+		fi
+	}
+	#HDD
+	sel_hdd() {
+		DEVICE=""
+		devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
+		for i in ${devices_list[@]}; do
+			DEVICE="${DEVICE} ${i}"
+		done
+		DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+		IDEV=`echo $DEVICE | cut -c6-`
+		HD_SD="HDD"
+		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
+		VERSION="-| Arch Installation ($(uname -m)) |- $SYSTEM auf $HD_SD |-"
+		dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
+		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
+	}
+
+	sel_user
+	sel_password
+	sel_hostname
+	sel_hdd
+	
+	#kein schwarzes Bild
+	setterm -blank 0 -powersave off
+
+	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
+	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
+
+	dialog --backtitle "$VERSION" --title "-| Windows Spiele |-" --yesno "\nWine installieren\n" 0 0
+	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
+
+	#Wipe or zap
+	if [[ $WIPE == "YES" ]]; then
+		if [[ ! -e /usr/bin/wipe ]]; then
+			pacman -Sy --noconfirm wipe
+		fi	
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
+		wipe -Ifre ${DEVICE}
+	else
+		sgdisk --zap-all ${DEVICE}
+	fi
+	
+	#BIOS Part
+	if [[ $SYSTEM == "BIOS" ]]; then
+		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
+		mount ${DEVICE}2 /mnt
+	fi
+	
+	#UEFI Part
+	if [[ $SYSTEM == "UEFI" ]]; then
+		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
+		mount ${DEVICE}2 /mnt
+		mkdir -p /mnt/boot
+		mount ${DEVICE}1 /mnt/boot
+	fi		
+
+	#Swap
+	if [[ $HD_SD == "HDD" ]]; then
+		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
+		fallocate -l ${total_memory}M /mnt/swapfile
+		chmod 600 /mnt/swapfile
+		mkswap /mnt/swapfile >/dev/null
+		swapon /mnt/swapfile >/dev/null
+	fi
+
+	#Mirror
+	if ! (</etc/pacman.d/mirrorlist grep "rankmirrors" &>/dev/null) then
+		URL="https://www.archlinux.org/mirrorlist/?country=${CODE}&use_mirror_status=on"
+		MIRROR_TEMP=$(mktemp --suffix=-mirrorlist)
+		curl -so ${MIRROR_TEMP} ${URL}
+		sed -i 's/^#Server/Server/g' ${MIRROR_TEMP}
+		mv -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.orig
+		rankmirrors -n 10 ${MIRROR_TEMP} > /etc/pacman.d/mirrorlist
+		chmod +r /etc/pacman.d/mirrorlist
+		pacman-key --init
+		pacman-key --populate archlinux
+		pacman -Syy
+	fi
+}
+ins_base() {
+ins_graphics_card() {
+	ins_intel(){
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed
+		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
+		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
+			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		fi
+		# Systemd-boot
+		if [[ -e /mnt/boot/loader/loader.conf ]]; then
+			update=$(ls /mnt/boot/loader/entries/*.conf)
+			for i in ${upgate}; do
+				sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
+			done
+		fi			 
+	}
+	ins_ati(){
+		pacstrap /mnt xf86-video-ati --needed
+		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
+	}
+	NVIDIA=""
+	VB_MOD=""
+	GRAPHIC_CARD=""
+	INTEGRATED_GC="N/A"
+	GRAPHIC_CARD=$(lspci | grep -i "vga" | sed 's/.*://' | sed 's/(.*//' | sed 's/^[ \t]*//')
+	if [[ $(echo $GRAPHIC_CARD | grep -i "nvidia") != "" ]]; then
+		[[ $(lscpu | grep -i "intel\|lenovo") != "" ]] && INTEGRATED_GC="Intel" || INTEGRATED_GC="ATI"
+		if [[ $(dmesg | grep -i 'chipset' | grep -i 'nvc\|nvd\|nve') != "" ]]; then HIGHLIGHT_SUB_GC=4
+		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'?) != "" ]]; then HIGHLIGHT_SUB_GC=5
+		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nv4\|nv6') != "" ]]; then HIGHLIGHT_SUB_GC=6
+		else HIGHLIGHT_SUB_GC=3
+		fi	
+	elif [[ $(echo $GRAPHIC_CARD | grep -i 'intel\|lenovo') != "" ]]; then HIGHLIGHT_SUB_GC=2
+	elif [[ $(echo $GRAPHIC_CARD | grep -i 'ati') != "" ]]; then HIGHLIGHT_SUB_GC=1
+	elif [[ $(echo $GRAPHIC_CARD | grep -i 'via') != "" ]]; then HIGHLIGHT_SUB_GC=7
+	elif [[ $(echo $GRAPHIC_CARD | grep -i 'virtualbox') != "" ]]; then HIGHLIGHT_SUB_GC=8
+	elif [[ $(echo $GRAPHIC_CARD | grep -i 'vmware') != "" ]]; then HIGHLIGHT_SUB_GC=9
+	else HIGHLIGHT_SUB_GC=10
+	fi	
+	if [[ $HIGHLIGHT_SUB_GC == 1 ]] ; then
+		ins_ati
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 2 ]] ; then
+		ins_intel
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
+		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
+		pacstrap /mnt xf86-video-nouveau --needed
+		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
+		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
+		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
+		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed
+		NVIDIA_INST=1
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
+		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
+		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
+		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed
+		NVIDIA_INST=1
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
+		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
+		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
+		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed
+		NVIDIA_INST=1
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
+		pacstrap /mnt xf86-video-openchrome --needed
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
+		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
+		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
+		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
+		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed
+		umount -l /mnt/dev
+		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
+		arch_chroot "systemctl enable vboxservice"
+		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed
+	fi
+	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
+		pacstrap /mnt xf86-video-fbdev --needed
+	fi
+	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
+		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        Identifier "\"Nvidia Card"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        Driver "\"nvidia"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        VendorName "\"NVIDIA Corporation"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        Option "\"NoLogo"\" "\"true"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        #Option "\"UseEDID"\" "\"false"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        #Option "\"ConnectedMonitor"\" "\"DFP"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "        # ..." >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
+	fi
+}
+_jdownloader() {
+	mkdir -p /mnt/opt/JDownloader/
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
+	arch_chroot "chmod -R 0775 /opt/JDownloader/"
+	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
+	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
+}
+set_mediaelch() {		
+	echo "#!/bin/sh" > /mnt/usr/bin/elch
+	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo mkdir /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien1 /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Serien2 /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme1 /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Filme2 /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo mount -t nfs4 192.168.2.250:/export/Musik /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "MediaElch" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo umount /mnt/Musik" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Serien1" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Serien2" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
+	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
+	chmod +x /mnt/usr/bin/elch
+	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
+	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\path=/home/monty/Downloads" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Downloads\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\path=/mnt/Filme1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\1\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\path=/mnt/Filme2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\2\sepFolders=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Movies\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\path=/mnt/Musik" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\1\sepFolders=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Music\size=1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\1\path=/mnt/Serien1" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\2\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\2\path=/mnt/Serien2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TvShows\size=2" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Downloads]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DeleteArchives=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "KeepSource=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "Unrar=/bin/unrar" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Scrapers]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "AEBN\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\DiscType=BluRay" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "FanartTv\PersonalApiKey=" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "ShowAdult=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TMDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TMDbConcerts\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "TheTvDb\Language=de" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "UniversalMusicScraper\Language=en" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "UniversalMusicScraper\Prefer=theaudiodb" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[TvShows]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DvdOrder=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "ShowMissingEpisodesHint=true" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[Warnings]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "DontShowDeleteImageConfirm=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "[XBMC]" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemoteHost=192.168.2.251" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+}
+	#BASE
+	pacstrap /mnt base base-devel --needed
+
+	#GRUB
+	if [[ $SYSTEM == "BIOS" ]]; then		
+		pacstrap /mnt grub dosfstools --needed
+		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		genfstab -U -p /mnt > /mnt/etc/fstab
+	fi
+	if [[ $SYSTEM == "UEFI" ]]; then		
+		pacstrap /mnt grub efibootmgr dosfstools --needed
+		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		arch_chroot "mkdir -p /boot/EFI/boot"
+		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+	fi
+
+	#SWAP
+	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
+	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
+
+	#Hostname
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
+
+	#Locale
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
+	arch_chroot "locale-gen" >/dev/null
+
+	#Console
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+
+	#Multi Mirror
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+
+	#Yaourt Mirror
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
+
+	#Zone
+	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
+
+	#Zeit
+	arch_chroot "hwclock --systohc --utc"
+
+	#PW
+	arch_chroot "passwd root" < /tmp/.passwd >/dev/null
+
+	#Benutzer
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd
+
+	#mkinitcpio
+	mv aic94xx-seq.fw /mnt/lib/firmware/
+	mv wd719x-risc.bin /mnt/lib/firmware/
+	mv wd719x-wcs.bin /mnt/lib/firmware/
+	arch_chroot "mkinitcpio -p linux"
+
+	#xorg
+	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed
+	arch_chroot "timedatectl set-ntp true"
+
+	#Drucker
+	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed
+	arch_chroot "systemctl enable org.cups.cupsd.service"
+
+	#TLP
+	pacstrap /mnt tlp --needed
+    	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
+	
+	#WiFi
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed															  
+
+	#Bluetoo
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
+
+	#Touchpad
+	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
+
+	#Tablet
+	[[ $(dmesg | grep -i Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
+	
+	#SSD
+	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
+	
+	#wine
+	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
+
+	#Grafikkarte
+	ins_graphics_card
+
+	#audio
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed
+	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
+	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
+
+	#libs
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed
+	pacstrap /mnt gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed
+	
+	#Oberfaeche
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed
+
+	#Anmeldescreen
+	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed
+	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
+	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
+	arch_chroot "systemctl enable lightdm.service"
+
+	#x11 Tastatur
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+
+	#Netzwerkkarte
+	pacstrap /mnt networkmanager network-manager-applet --needed && arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed
+
+	#Grafik
+	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed
+
+	#jdownloader
+	_jdownloader
+
+	#pamac
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur --noconfirm'"
+	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+
+	#Skype
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
+
+	#Teamviewer
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" && arch_chroot "systemctl enable teamviewerd"
+	
+	#Fingerprint
+	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+
+	#Mediaelch
+	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
+
+	#Settings
+	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	
+	#Benutzerrechte
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	cp bashrc /mnt/home/$USERNAME/.bashrc
+	cp dircolors /mnt/home/$USERNAME/.dircolors
+	cp dircolors_256 /mnt/home/$USERNAME/.dircolors_256
+	cp nanorc /mnt/home/$USERNAME/.nanorc
+	cp yaourtrc /mnt/home/$USERNAME/.yaourtrc
+	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
+	arch_chroot "pacman -Syu --noconfirm"
 }
 
-function stop_spinner() {
-  kill -s SIGHUP $PID &
-  { wait $PID; } &> /dev/null
-  PID=0
-  return 0
-}
+id_sys
+sel_info
+ins_base
 
-function start_spinner() {
-  setterm -cursor off
-  parts=( "|" "/" "-" "\\" )
-  
-  while [ 1 ];
-  do
-    for ix in 0 1 2 3;
-    do
-      echo -en ${parts[$ix]}
-      sleep .1
-      echo -en "\b"
-    done
-  done
-  return 0
-}
+MOUNTED=""
+MOUNTED=$(mount | grep "/mnt" | awk '{print $3}' | sort -r)
+swapoff -a
+for i in ${MOUNTED[@]}; do
+	umount $i >/dev/null
+done
 
-function spinner()  {
-  if [ $1 == "start" ];
-  then
-    if [ $PID -eq 0 ];
-    then
-      start_spinner&
-      PID=$!
-    fi
-  elif [ $1 == "stop" ];
-  then
-    if [ $PID -ne 0 ];
-    then
-      stop_spinner
-    fi
-  fi
-  return 0
-}
-
-function add_module() {
-  for MODULE in $1; do
-    [[ $# -lt 2 ]] && MODULE_NAME="$MODULE" || MODULE_NAME="$2";
-    echo "$MODULE" >> /etc/modules-load.d/$MODULE_NAME.conf
-    modprobe "$MODULE"
-  done
-  return 0
-}
-
-function add_key() {
-  pacman-key -r $1
-  pacman-key --lsign-key $1
-  return 0
-}
-
-function add_repository() {
-  REPO=${1}
-  URL=${2}
-  [[ -n ${3} ]] && SIGLEVEL="\nSigLevel = ${3}" || SIGLEVEL=""
-  
-  CHECK_REPO=`grep -F "${REPO}" /etc/pacman.conf`
-  if [[ -z $CHECK_REPO ]]; then
-    echo -e "\n[${REPO}]${SIGLEVEL}\nServer = ${URL}" >> /etc/pacman.conf
-    pacman -Syy
-  fi
-  return 0
-}
-
-function replace_line() {
-  SEARCH=${1}
-  REPLACE=${2}
-  FILEPATH=${3}
-  FILEBASE=`basename ${3}`
-  
-  sed -e "s/${SEARCH}/${REPLACE}/" ${FILEPATH} > /tmp/${FILEBASE} 2>"$LOG"
-  if [[ ${?} -eq 0 ]]; then
-    mv /tmp/${FILEBASE} ${FILEPATH}
-  else
-    echo "failed: ${SEARCH} - ${FILEPATH}"
-  fi
-  return 0
-}
-
-function dokeymap() {
-  clear
-  echo "Scanning for keymaps..."
-  ANSWER="/tmp/.km"
-  KEYMAPS=
-  for i in $(localectl list-keymaps --no-pager); do
-    KEYMAPS="${KEYMAPS} ${i} -"
-  done
-  CANCEL=""
-  dialog --backtitle "$DIALOG_TITLE" --menu "Select A Keymap" 22 60 16 ${KEYMAPS} 2>${ANSWER} || CANCEL="1"
-  if [[ "${CANCEL}" = "1" ]]; then
-    S_NEXTITEM="1"
-    return 1
-  fi
-  KEYMAP=$(cat ${ANSWER})
-  echo ${KEYMAP} > keymap.config
-  return 0
-}
-
-function dolanguage() {
-  clear
-  declare -a COUNTRYCODE
-  COUNTRYCODE[0]="en_US"
-  COUNTRYCODE[1]="en_GB"
-  COUNTRYCODE[2]="fr_FR"
-  COUNTRYCODE[3]="es_ES"
-  COUNTRYCODE[4]="de_DE"
-  
-  ANSWER="/tmp/.ln"
-  COUNTRIES=
-  for i in "${COUNTRYCODE[@]}"; do
-    COUNTRIES="${COUNTRIES} ${i} -"
-  done
-  CANCEL=""
-  dialog --backtitle "$DIALOG_TITLE" --menu "Select A Localisation" 22 60 16 ${COUNTRIES} 2>${ANSWER} || CANCEL="1"
-  if [[ "${CANCEL}" = "1" ]]; then
-    S_NEXTITEM="1"
-    return 1
-  fi
-  LANGUAGE=$(cat ${ANSWER})
-  echo ${LANGUAGE} > locale.config
-  unset COUNTRYCODE
-  return 0
-}
-
-function load_configs() {
-  KEYMAP=$(<keymap.config)
-  TIMEZONE=$(<timezone.config)
-  HOSTNAME=$(<hostname.config)
-  LANGUAGE=$(<locale.config)
-  return 0
-}
-
-function dotimezone() {
-  clear
-  echo "Scanning for timezones..."
-  ANSWER="/tmp/.tz"
-  TIMEZONES=
-  for i in $(timedatectl list-timezones --no-pager); do
-    TIMEZONES="${TIMEZONES} ${i} -"
-  done
-  CANCEL=""
-  dialog --backtitle "$DIALOG_TITLE" --menu "Select A TIMEZONE" 22 60 16 ${TIMEZONES} 2>${ANSWER} || CANCEL="1"
-  if [[ "${CANCEL}" = "1" ]]; then
-    S_NEXTITEM="1"
-    return 1
-  fi
-  TIMEZONE=$(cat ${ANSWER})
-  echo ${TIMEZONE} > timezone.config
-  return 0
-}
-
-function enter_hostname() {
-  clear
-  HOSTNAME=$(dialog --stdout --clear --backtitle "$DIALOG_TITLE" \
-    --title "Enter the hostname of your choice" \
-  --inputbox "Please enter the hostname of your machine" 8 60)
-  echo ${HOSTNAME} > hostname.config
-  clear
-}
-
-function get_total_hdd_size() {
-  TOTAL_HDD_SIZE=$(fdisk -l $1 |grep "Disk "$1":" | head -n 2 | tail -n 1 | cut -d " " -f 5)
-  TOTAL_HDD_SIZE=$(($TOTAL_HDD_SIZE / 1024))
-  #HDD SIZE IN MB
-  TOTAL_HDD_SIZE=$(($TOTAL_HDD_SIZE / 1024))
-  return 0
-}
-
-function get_total_ram_size() {
-  TOTAL_RAM_SIZE=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-  #RAM SIZE IN MB
-  TOTAL_RAM_SIZE=$(($TOTAL_RAM_SIZE / 1024))
-  return 0
-}
-
-function calc_optimal_swap_size() {
-  get_total_ram_size
-  if [ $TOTAL_RAM_SIZE -lt 513 ]
-  then
-    SWAP_SIZE=$(($TOTAL_RAM_SIZE * 2))
-  else
-    SWAP_SIZE=$TOTAL_RAM_SIZE
-  fi
-  return 0
-}
-
-function calc_optimal_patition_size() {
-  TOTAL_HDD_SIZE=$(($TOTAL_HDD_SIZE - $BOOT_SIZE - $SWAP_SIZE))
-  
-  CHECK_VALUE=$(($TOTAL_HDD_SIZE - 35000))
-  if [ "$CHECK_VALUE" -gt 0 ]
-  then
-    ROOT_SIZE=35000
-  else
-    CHECK_VALUE=$(($TOTAL_HDD_SIZE - 15000))
-    if [ "$CHECK_VALUE" -gt 0 ]
-    then
-      ROOT_SIZE=15000
-    else
-      CHECK_VALUE=$(($TOTAL_HDD_SIZE - 10000))
-      if [ "$CHECK_VALUE" -gt 0 ]
-      then
-        ROOT_SIZE=10000
-      else
-        message_print 0 'Error! you have not enough disk space!'
-        message_print 0 'You need min. 12 GB diskspace!'
-      fi
-    fi
-  fi
-  
-  HOME_SIZE=$(($TOTAL_HDD_SIZE - $ROOT_SIZE))
-  
-  return 0
-}
-
-function arch_chroot() {
-  arch-chroot $ARCH_ROOT /bin/bash -c "${1}"
-  return 0
-}
-
-function partitioning() {
-  clear
-  calc_optimal_swap_size
-  
-  ANSWER="/tmp/.disk"
-  
-  disks1="`lsblk -r | grep disk | cut -d" " -f1`"
-  disks=""
-  
-  for i in $disks1; do disks="${disks} /dev/${i} -"; done
-  
-  dialog --backtitle "$DIALOG_TITLE"  \
-  --title "Partitioning" --clear \
-  --menu "Select a hard drive to partition." 0 0 0 $disks 2> $ANSWER
-  
-  retval=$?
-  
-  choice=`cat $ANSWER`
-  case $retval in
-    0)
-      HDD_NAME=$choice
-      get_total_hdd_size $HDD_NAME
-      calc_optimal_patition_size
-      echo '-----------------------'
-      echo 'boot: '$BOOT_SIZE ' MB'
-      echo 'root: '$ROOT_SIZE ' MB'
-      echo 'home: '$HOME_SIZE ' MB'
-      echo ''
-      echo 'swap: '$SWAP_SIZE ' MB'
-      echo '-----------------------'
-      
-      #Back to KB Sizes
-      BOOT_SIZE=$(($BOOT_SIZE * 1024))
-      ROOT_SIZE=$(($ROOT_SIZE * 1024))
-      HOME_SIZE=$(($HOME_SIZE * 1024))
-      SWAP_SIZE=$(($SWAP_SIZE * 1024))
-      
-      #Wiping the entire disk
-      dd if=/dev/zero of=$HDD_NAME  bs=512  count=1
-      
-      touch /tmp/fdisk.input
-      echo -e "n\np\n1\n\n+"$BOOT_SIZE"K\na\n1\nn\np\n2\n\n+"$SWAP_SIZE"K\nt\n2\n82\nn\np\n3\n\n+"$ROOT_SIZE"K\nn\np\n4\n\n+"$HOME_SIZE"K\nn\np\n5\n\nw" > /tmp/fdisk.input
-      
-      # Create Partitions
-      fdisk $HDD_NAME < /tmp/fdisk.input
-      
-      # Remove fdisk.input file
-      rm /tmp/fdisk.input
-      
-      mkfs.ext2 -L boot $HDD_NAME'1'
-      mkswap -L swap $HDD_NAME'2'
-      mkfs.ext4 -L root $HDD_NAME'3'
-      mkfs.ext4 -L home $HDD_NAME'4'
-      
-      #enable swap
-      swapon $HDD_NAME'2'
-      
-      #mount all patitions
-      mount $HDD_NAME'3' /mnt
-      mkdir /mnt/boot
-      mkdir /mnt/home
-      mount $HDD_NAME'1' /mnt/boot
-    mount $HDD_NAME'4' /mnt/home;;
-    1)
-    echo "script was canceled!";;
-    255)
-    echo "script was canceled!";;
-  esac
-  
-  return 0
-}
-
-function install_base() {
-  clear
-  echo "******************************************************"
-  echo "***************  Install Base System!  ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  pacstrap /mnt base base-devel
-  genfstab -p /mnt > /mnt/etc/fstab
-  echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
-  echo $HOSTNAME > /mnt/etc/hostname
-  echo 'LANG='$LANGUAGE'.UTF-8' > /mnt/etc/locale.conf
-  echo 'LC_COLLATE=C' >> /mnt/etc/locale.conf
-  echo 'KEYMAP='$KEYMAP > /mnt/etc/vconsole.conf
-  arch_chroot 'ln -s /usr/share/zoneinfo/'$TIMEZONE' /etc/localtime'
-  arch_chroot 'rm -rf /etc/locale.gen'
-  arch_chroot 'touch /etc/locale.gen'
-  echo $LANGUAGE'.UTF-8 UTF-8' > /mnt/etc/locale.gen
-  
-  #Set locales
-  #Steam workaround
-  if [ $LANGUAGE = "en_US" ]
-  then
-    echo "OK!"
-  else
-    echo 'en_US.UTF-8 UTF-8' >> /mnt/etc/locale.gen
-  fi
-  
-  #create locales
-  arch_chroot 'locale-gen'
-  
-  #Install extra system stuff
-  arch_chroot "pacman --noconfirm -S networkmanager sudo wpa_supplicant dialog"
-  
-  #enable NetworkManager
-  arch_chroot 'systemctl enable NetworkManager.service'
-  
-  #enable mutilib
-  MULTILIB=''
-  ARCH=$(uname -m)
-  if [ $ARCH = "x86_64" ]
-  then
-    MULTILIB=`grep -n "\[multilib\]" /mnt/etc/pacman.conf | cut -f1 -d:`
-    if [ -z $MULTILIB ]
-    then
-      echo -e "\n[multilib]\nInclude = /etc/pacman.d/mirrorlist" >> /mnt/etc/pacman.conf
-    else
-      sed -i "${MULTILIB}s/^#//" /mnt/etc/pacman.conf
-      local MULTILIB=$(( $MULTILIB + 1 ))
-      sed -i "${MULTILIB}s/^#//" /mnt/etc/pacman.conf
-    fi
-  fi
-  
-  arch_chroot 'pacman -Syy'
-  
-  #create Linux Kernel
-  arch_chroot 'mkinitcpio -p linux'
-  
-  #configure Clock
-  arch_chroot "hwclock --systohc --utc"
-  
-  #accountsservice Lightdm bugFix
-  arch_chroot "pacman --noconfirm -S accountsservice"
-  #git
-  arch_chroot "pacman --noconfirm -S git"
-  
-  #Enable Grub
-  arch_chroot 'pacman --noconfirm -S grub'
-  echo "" >> /mnt/etc/default/grub
-  echo "# fix broken grub.cfg gen" >> /mnt/etc/default/grub
-  echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
-  arch_chroot 'grub-install --target=i386-pc --recheck --debug '${HDD_NAME}
-  arch_chroot 'grub-mkconfig -o /boot/grub/grub.cfg'
-  
-  clear
-  #SET Root password
-  set_user_password "root" 1
-  clear
-
-  cd
-  cp -r archfix/ /mnt/root/
-  
-  umount $HDD_NAME'1'
-  umount $HDD_NAME'3'
-  umount $HDD_NAME'4'
-  
-  reboot #<< end
-  return 0
-}
-
-function optimize_mirrorlist() {
-  clear
-  echo "******************************************************"
-  echo "*************** optimizing mirrorlist! ***************"
-  echo "******************************************************"
-  echo ""
-  message_print 0 "******************************************************"
-  message_print 0 "*******please wait, this will take a few minutes!*****"
-  message_print 0 "******************************************************"
-  echo ""
-  
-  TFILE="/tmp/mirrorlist.tmp"
-  CCODE=${LANGUAGE:3:2}
-  URL="https://www.archlinux.org/mirrorlist/?country=${CCODE}&use_mirror_status=on"
-  
-  curl -so ${TFILE} ${URL}
-  sed -i 's/^#Server/Server/g' ${TFILE}
-  
-  echo -n " [working]... "
-  spinner "start"
-  rankmirrors -n 12 $TFILE > /etc/pacman.d/mirrorlist
-  sed -i '/^#/ d' /etc/pacman.d/mirrorlist
-  spinner "stop"
-  echo "";
-  echo "";
-  
-  pacman -Syy
-  return 0
-}
-
-function install_yaourt() {
-  clear
-  echo "******************************************************"
-  echo "***************   Installing YAOURT!   ***************"
-  echo "******************************************************"
-  echo ""
-  
-  cd /tmp
-  echo "Retrieving package-query ..."
-  curl -O https://aur.archlinux.org/packages/pa/package-query/package-query.tar.gz
-  echo "Retrieving yaourt ..."
-  curl -O https://aur.archlinux.org/packages/ya/yaourt/yaourt.tar.gz
-  
-  echo "Uncompressing package-query ..."
-  tar zxvf package-query.tar.gz
-  cd package-query
-  echo "Installing package-query ..."
-  makepkg -si --asroot --noconfirm
-  
-  cd ..
-  
-  echo "Uncompressing yaourt ..."
-  tar zxvf yaourt.tar.gz
-  cd yaourt
-  echo "Installing yaourt ..."
-  makepkg -si --asroot --noconfirm
-  
-  cd ..
-  
-  rm -rf package-query
-  rm -rf yaourt
-  rm -rf package-query.tar.gz
-  rm -rf yaourt.tar.gz
-  
-  cd
-  return 0
-}
-
-function install_package() {
-  case "$1" in
-    "pacman")
-      pacman --noconfirm --needed -S ${2}
-    ;;
-    "yaourt")
-      su - ${USERNAME} -c ' yaourt --noconfirm -S '${2}
-    ;;
-    "powerpill")
-      powerpill --noconfirm --needed -S ${2}
-    ;;
-    *)
-      echo ''
-    ;;
-  esac
-  
-  return 0
-}
-
-function adduser() {
-  clear
-  USERNAME=$(dialog --stdout --clear --backtitle "$DIALOG_TITLE" \
-    --title "Enter your Username" \
-  --inputbox "Please enter your Username" 8 60)
-  clear
-  useradd -m -g users -G audio,lp,network,optical,scanner,storage,sys,video,power,wheel -d /home/$USERNAME -s /bin/bash $USERNAME
-  
-  set_user_password $USERNAME 0
-  
-  ## Uncomment to allow members of group wheel to execute any command
-  sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /etc/sudoers
-  return 0
-}
-
-function set_user_password() {
-    while true; do
-    PASSWORD=$(dialog --stdout --clear --backtitle "$DIALOG_TITLE" --title "Enter the Password for the User: $1" --passwordbox "Enter your password" 10 60)
-    clear
-    CPASSWORD=$(dialog --stdout --clear --backtitle "$DIALOG_TITLE" --title "Re-enter the Password for the User: $1" --passwordbox "Enter your password" 10 60)
-    clear
-    if [ "$PASSWORD" == "$CPASSWORD" ]
-    then
-      if [ $2 -eq 0 ] 
-      then
-        echo -e "$PASSWORD\n$PASSWORD" | passwd $1
-      else
-        echo -e "$PASSWORD\n$PASSWORD" | arch_chroot passwd $1
-      fi
-      break
-    else
-      message_print 0 "Input was not identical"
-      sleep 2
-    fi
-  done
-}
-
-function resecure_sudoers(){
-  sed -i "/%wheel ALL=(ALL) NOPASSWD: ALL/s/^\(.*\)/#\1/g"  /etc/sudoers
-  sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /etc/sudoers
-}
-
-function install_powerpill() {
-  clear
-  echo "******************************************************"
-  echo "***************  Installing POWERPILL! ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "yaourt" "powerpill"
-  
-  echo -n " [updating powerpill]... "
-  spinner "start"
-  
-  reflector -p rsync -f n -l m
-  powerpill -Syu
-  
-  spinner "stop"
-  echo ""
-  echo ""
-  
-  return 0
-}
-
-function install_compress_tools() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing Compress Tools! ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "unrar zip p7zip arj unace unzip"
-  install_package "yaourt" "file-roller2-nn"
-  return 0
-}
-
-function install_alsa() {
-  clear
-  echo "******************************************************"
-  echo "*********       Installing Alsa!       ***************"
-  echo "******************************************************"
-  echo ""
-  ARCH=$(uname -m)
-  install_package "powerpill" "alsa-utils alsa-plugins"
-  [[ ${ARCH} == x86_64 ]] && install_package "powerpill" "lib32-alsa-plugins"
-  return 0
-}
-
-function install_pulse() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing Pulseaudio!   ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  ARCH=$(uname -m)
-  install_package "powerpill" "pulseaudio pulseaudio-alsa pavucontrol"
-  [[ ${ARCH} == x86_64 ]] && install_package "powerpill" "lib32-libpulse"
-  echo "load-module module-switch-on-connect" >> /etc/pulse/default.pa
-  return 0
-}
-
-function install_bash_goodies() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing Bash Goodies!   ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "bc rsync mlocate bash-completion pkgstats ntp"
-  updatedb
-  timedatectl set-ntp true
-  return 0
-}
-
-function user_config() {
-  clear
-  echo "******************************************************"
-  echo "*********     configure system!        ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  git clone https://github.com/memoryleakx/dotfiles.git
-  cp dotfiles/.bashrc dotfiles/.dircolors dotfiles/.dircolors_256 dotfiles/.nanorc dotfiles/.yaourtrc /etc/skel/
-  cp -r dotfiles/.config/ /etc/skel/
-  cp dotfiles/.bashrc dotfiles/.dircolors dotfiles/.dircolors_256 dotfiles/.nanorc dotfiles/.yaourtrc ~/
-  rm -rf dotfiles
-  return 0
-}
-
-function install_avahi_deamon() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing Avahi Deamon!   ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "avahi nss-mdns"
-  systemctl enable avahi-daemon
-  systemctl enable avahi-dnsconfd
-  return 0
-}
-
-function install_ntfs_tools() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing NTFS TOOLS!     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "ntfs-3g dosfstools exfat-utils fuse fuse-exfat"
-  add_module "fuse"
-  return 0
-}
-
-function install_openssh() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing OPEN SSH  !     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "openssh"
-  echo 'eval $(ssh-agent)' >> /etc/profile
-  return 0
-}
-
-function readahead_on() {
-  clear
-  echo "******************************************************"
-  echo "*********      enable readahead  !     ***************"
-  echo "******************************************************"
-  echo ""
-  
-  systemctl enable systemd-readahead-collect
-  systemctl enable systemd-readahead-replay
-  return 0
-}
-
-function install_xserver() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing X Server  !     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "xorg-server xorg-server-utils xorg-xinit"
-  install_package "powerpill" "xf86-input-synaptics xf86-input-mouse xf86-input-keyboard"
-  install_package "powerpill" "mesa gamin"
-  localectl set-keymap ${KEYMAP}
-  
-  #X Server Keyboard layout
-  CCODE=${LANGUAGE:0:2}
-  touch /etc/X11/xorg.conf.d/20-keyboard.conf
-  echo 'Section "InputClass"' >> /etc/X11/xorg.conf.d/20-keyboard.conf
-  echo '       Identifier "keyboard"' >> /etc/X11/xorg.conf.d/20-keyboard.conf
-  echo '       MatchIsKeyboard "yes"' >> /etc/X11/xorg.conf.d/20-keyboard.conf
-  echo '       Option "XkbLayout" "'$CCODE'"' >> /etc/X11/xorg.conf.d/20-keyboard.conf
-  echo 'EndSection' >> /etc/X11/xorg.conf.d/20-keyboard.conf
-  
-  return 0
-}
-
-function install_infinality_font_config() {
-  clear
-  echo "******************************************************"
-  echo "*******     Installing infinality font config ! ******"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  ARCH=$(uname -m)
-  add_key "962DDE58"
-  add_repository "infinality-bundle" "http://bohoomil.com/repo/\$arch"
-  [[ $ARCH == x86_64 ]] && add_repository "infinality-bundle-multilib" "http://bohoomil.com/repo/multilib/\$arch"
-  
-  pacman --noconfirm -Rdds freetype2 fontconfig cairo
-  pacman --noconfirm -Rdds freetype2-ubuntu fontconfig-ubuntu cairo-ubuntu
-  
-  pacman --noconfirm --needed -S infinality-bundle
-  [[ $ARCH == x86_64 ]] && pacman --noconfirm --needed -S infinality-bundle-multilib
-  
-  return 0
-}
-
-function install_openssh() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing OPEN SSH  !     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "openssh"
-  return 0
-}
-
-function install_video_driver() {
-  clear
-  ARCH=$(uname -m)
-  
-  ANSWER="/tmp/.video"
-  
-  dialog --backtitle "$DIALOG_TITLE" \
-  --title "Install Video Card Driver" --clear \
-  --menu "Please select your Video Card" 20 30 5 \
-  "1"  "NVIDIA" \
-  "2"  "bumblebee" \
-  "3"  "Catalyst" \
-  "4"  "VirtualBox" 2> $ANSWER
-  
-  retval=$?
-  
-  choice=`cat $ANSWER`
-  case $retval in
-    0)
-      if [ $choice -eq 1 ] #NVIDIA
-      then
-        pacman --noconfirm -Rdds nouveau-dri
-        pacman --noconfirm -Rdds mesa-libgl
-        pacman --noconfirm -Rdds lib32-mesa-libgl
-        install_package "powerpill" "nvidia nvidia-libgl nvidia-utils opencl-nvidia"
-        install_package "powerpill" "pangox-compat"
-        install_package "powerpill" "libva-vdpau-driver"
-        if [[ ${ARCH} == x86_64 ]]
-        then
-          pacman --noconfirm -Rdds lib32-nouveau-dri
-          install_package "powerpill" "lib32-nvidia-utils"
-          install_package "powerpill" "lib32-nvidia-libgl"
-          install_package "powerpill" "lib32-opencl-nvidia"
-        fi
-        mkinitcpio -p linux
-        depmod $(uname -r)
-        nvidia-xconfig --add-argb-glx-visuals --allow-glx-with-composite --composite -no-logo --render-accel -o /etc/X11/xorg.conf.d/20-nvidia.conf;
-      fi
-      
-      if [ $choice -eq 2 ] #bumblebee
-      then
-        pacman --noconfirm -Rdds nouveau-dri
-        pacman --noconfirm -Rdds mesa-libgl
-        pacman --noconfirm -Rdds lib32-mesa-libgl
-        install_package "powerpill" "xf86-video-intel bumblebee nvidia nvidia-libgl nvidia-utils opencl-nvidia"
-        install_package "powerpill" "pangox-compat"
-        install_package "powerpill" "libva-vdpau-driver"
-        if [[ ${ARCH} == x86_64 ]]
-        then
-          pacman --noconfirm -Rdds lib32-nouveau-dri
-          install_package "powerpill" "lib32-nvidia-utils"
-          install_package "powerpill" "lib32-nvidia-libgl"
-          install_package "powerpill" "lib32-opencl-nvidia"
-        fi
-        replace_line '*options nouveau modeset=1' '#options nouveau modeset=1' /etc/modprobe.d/modprobe.conf
-        replace_line '*MODULES="nouveau"' '#MODULES="nouveau"' /etc/mkinitcpio.conf
-        mkinitcpio -p linux
-        depmod $(uname -r)
-        gpasswd -a ${USERNAME} bumblebee
-      fi
-      
-      if [ $choice -eq 3 ] #Catalyst
-      then
-        pacman --noconfirm -Rdds ati-dri
-        [[ -f /etc/modules-load.d/ati.conf ]] && rm /etc/modules-load.d/ati.conf
-        if [[ ${ARCHI} == x86_64 ]]; then
-          pacman --noconfirm -Rdds lib32-ati-dri
-        fi
-        install_package "powerpill" "linux-headers"
-        install_package "yaourt" "catalyst-total"
-        mkinitcpio -p linux
-        depmod $(uname -r)
-        aticonfig --initial --output=/etc/X11/xorg.conf.d/20-radeon.conf
-        systemctl enable atieventsd
-        systemctl enable catalyst-hook
-        systemctl enable temp-links-catalyst
-      fi
-      
-      if [ $choice -eq 4 ] #VirtualBox
-      then
-        install_package "powerpill" "virtualbox-guest-utils"
-        install_package "powerpill" "mesa-libgl"
-        mkinitcpio -p linux
-        depmod $(uname -r)
-        add_module "vboxguest vboxsf vboxvideo" "virtualbox-guest"
-        gpasswd -a ${USERNAME} vboxsf
-        systemctl disable ntpd
-        systemctl enable vboxservice
-    fi;;
-    1)
-    echo "Cancel pressed.";;
-    255)
-    echo "ESC pressed.";;
-  esac
-  return 0
-}
-
-function install_cups() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing CUPS!         ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "cups cups-filters ghostscript gsfonts"
-  install_package "powerpill" "gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters hplip splix cups-pdf"
-  install_package "powerpill" "system-config-printer"
-  systemctl enable cups
-  return 0
-}
-
-function install_xfce() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing XFCE4!        ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "xfce4 xfce4-goodies mupdf"
-  install_package "powerpill" "gvfs gvfs-smb gvfs-afc lxpolkit"
-  install_package "powerpill" "xdg-user-dirs"
-  install_package "yaourt" "gnome-defaults-list"
-  install_package "yaourt" "xfce-theme-greybird-git"
-  install_package "powerpill" "faenza-icon-theme"
-  install_package "yaourt" "pa-applet-git"
-  install_package "yaourt" "xfce4-whiskermenu-plugin"
-  install_package "powerpill" "light-locker"
-  install_package "powerpill" "network-manager-applet"
-  
-  cp -fv /etc/skel/.xinitrc /home/${USERNAME}/
-  echo -e "exec startxfce4" >> /home/${USERNAME}/.xinitrc
-  chown -R ${USERNAME}:users /home/${USERNAME}/.xinitrc
-  
-  cd
-  rm -rf /usr/share/backgrounds/xfce
-  curl -O  http://fc01.deviantart.net/fs71/f/2014/081/b/e/arch_creative_construction_zone_by_memoryleakxxx-d7b6288.png
-  mv arch_creative_construction_zone_by_memoryleakxxx-d7b6288.png /usr/share/backgrounds/archbg.png
-  
-  return 0
-}
-
-function install_lightdm() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing LIGHTDM!      ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "lightdm lightdm-gtk3-greeter"
-  cd
-  rm -rf /etc/lightdm/lightdm-gtk-greeter.conf
-  curl -O  https://gist.githubusercontent.com/memoryleakx/a4b35ab3901241128d3e/raw/f5a95f823bf5871dd65059f8971977203640275f/lightdm-gtk-greeter.conf
-  mv lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
-  systemctl enable lightdm
-  return 0
-}
-
-function install_plank() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing PLANK DOCK!   ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "plank plank-config"
-  return 0
-}
-
-function install_archey() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing ArchEY!       ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "yaourt" "archey"
-  return 0
-}
-
-function install_libreoffice() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing libreoffice!  ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  CCODE=${LANGUAGE:0:2}
-  install_package "powerpill" "libreoffice-still-common libreoffice-still-calc libreoffice-still-writer"
-  install_package "powerpill" "hunspell hunspell-"$CCODE" libreoffice-still-"$CCODE
-  return 0
-}
-
-function install_gimp() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing GIMP!         ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  CCODE=${LANGUAGE:0:2}
-  install_package "powerpill" "gimp gimp-help-"$CCODE" gimp-plugin-gmic gimp-plugin-fblur"
-  return 0
-}
-
-function install_inkscape() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing inkscape!     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  CCODE=${LANGUAGE:0:2}
-  install_package "powerpill" "inkscape"
-  return 0
-}
-
-function install_firewall() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing Firewall!     ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  pacman --noconfirm -Rdds firewalld
-  install_package "powerpill" "ufw gufw"
-  return 0
-}
-
-function install_gaming_stuff() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing Gaming Stuff! ***************"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "steam playonlinux"
-  return 0
-}
-
-function install_extra_gtk_apps() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing GTK Apps!            **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  pacman --noconfirm -Rns mousepad xfce4-taskmanager
-  install_package "powerpill" "geany geany-plugins"
-  install_package "yaourt" "geany-themes"
-  install_package "yaourt" "gnome-system-monitor-gtk2"
-  return 0
-}
-
-function install_extra_qt_apps() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing QT Apps!             **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "qtcreator gdb"
-  install_package "powerpill" "keepassx"
-  return 0
-}
-
-function install_audio_tools_and_codec() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing Audio Tools!         **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  #Codecs
-  install_package "powerpill" "gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gstreamer0.10 gstreamer0.10-plugins"
-  #Tools
-  install_package "yaourt" "spotify"
-  install_package "yaourt" "radiotray"
-  install_package "powerpill" "ffmpeg-compat"
-  return 0
-}
-
-function install_video_tools_and_codec() {
-  clear
-  echo "******************************************************"
-  echo "*********   Installing Video Tools!         **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  #Codecs
-  package_install "libquicktime libdvdread libdvdnav libdvdcss cdrdao"
-  #Tools
-  install_package "powerpill" "parole openshot"
-  return 0
-}
-
-function install_fonts() {
-  clear
-  echo "******************************************************"
-  echo "*********      Installing Fonts!            **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  pacman --noconfirm -Rns ttf-droid
-  pacman --noconfirm -Rns ttf-roboto
-  pacman --noconfirm -Rns ttf-ubuntu-font-family
-  pacman --noconfirm -Rns otf-oswald-ib
-  install_package "yaourt" "ttf-google-fonts-git"
-  install_package "yaourt" "ttf-ms-fonts"
-  return 0
-}
-
-function install_internet_tools() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing Internet Tools!    **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  CCODE=${LANGUAGE:0:2}
-  install_package "powerpill" "chromium"
-  install_package "yaourt" "chromium-pepper-flash"
-  install_package "powerpill" "thunderbird thunderbird-i18n-"$CCODE
-  install_package "powerpill" "pidgin skype"
-  install_package "yaourt" "pidgin-pbar"
-  install_package "powerpill" "uget transmission-gtk"
-  return 0
-}
-
-function install_java() {
-  clear
-  echo "******************************************************"
-  echo "*********     Installing Java!              **********"
-  echo "******************************************************"
-  echo ""
-  sleep 2
-  install_package "powerpill" "jre7-openjdk icedtea-web"
-  return 0
-}
-
-mainMenu
+reboot
