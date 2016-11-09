@@ -515,7 +515,12 @@ set_mediaelch() {
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" && arch_chroot "systemctl enable teamviewerd"
 	
 	#Fingerprint
-	[[ $(lsusb | grep Fingerprint) != "" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'" && arch_chroot "useradd -G plugdev,scanner ${USERNAME}"
+	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
+		arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'"
+		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
+		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then echo -e "auth\t\tsufficient\tpam_fingerprint-gui.so" >> /mnt/etc/pam.d/sudo ; fi
+		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then echo -e "auth\t\tsufficient\tpam_fingerprint-gui.so" >> /mnt/etc/pam.d/su ; fi
+	fi
 
 	#Mediaelch
 	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
