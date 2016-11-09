@@ -518,8 +518,8 @@ set_mediaelch() {
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
-		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then echo -e "auth\t\tsufficient\tpam_fingerprint-gui.so" >> /mnt/etc/pam.d/sudo ; fi
-		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then echo -e "auth\t\tsufficient\tpam_fingerprint-gui.so" >> /mnt/etc/pam.d/su ; fi
+		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
+		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
 
 	#Mediaelch
