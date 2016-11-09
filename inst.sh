@@ -453,8 +453,7 @@ set_mediaelch() {
 	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed
 
 	#Tablet
-	[[ $(lsmod | grep wacom) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
-	[[ $(lsusb | grep Wacom) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
+	[[ $(dmesg | grep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed
 	
 	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
