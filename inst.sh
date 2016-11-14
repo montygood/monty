@@ -471,7 +471,7 @@ set_mediaelch() {
 
 	#libs
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed
-	pacstrap /mnt gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed
+	pacstrap /mnt gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-base-plugins gstreamer0.10-python gstreamer0.10-ugly gstreamer0.10-ugly-plugins phonon-qt4-gstreamer --needed
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed
 	
 	#Oberfaeche
