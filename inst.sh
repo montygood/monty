@@ -8,7 +8,7 @@ id_sys() {
 	VERSION=" -| Arch Installation ($(uname -m)) |- "
 
 	# Test
-	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Systemtest |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
@@ -115,7 +115,6 @@ sel_info() {
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
 		wipe -Ifre ${DEVICE}
 	else
-#		dd if=/dev/zero of=/dev/${DEVICE}
 		parted -s ${DEVICE} print | awk '/^ / {print $1}' > /tmp/.del_parts
 		for del_part in $(tac /tmp/.del_parts); do
 			parted -s ${DEVICE} rm ${del_part} 2>/tmp/.errlog
@@ -124,9 +123,6 @@ sel_info() {
 		part_table=$(parted -s ${DEVICE} print | grep -i 'partition table' | awk '{print $3}' >/dev/null 2>&1)
 		([[ $SYSTEM == "BIOS" ]] && [[ $part_table != "msdos" ]]) && parted -s ${DEVICE} mklabel msdos
 		([[ $SYSTEM == "UEFI" ]] && [[ $part_table != "gpt" ]]) && parted -s ${DEVICE} mklabel gpt
-
-
-
 	fi
 	
 	#BIOS Part
@@ -140,9 +136,6 @@ sel_info() {
 	#UEFI Part
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
-#		parted -s ${DEVICE} mkpart ESP fat32 1MiB 513MiB
-#		parted -s ${DEVICE} set 1 boot on
-#		parted -s ${DEVICE} mkpart primary ext3 513MiB 100%		
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
@@ -383,21 +376,9 @@ set_mediaelch() {
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pacstrap /mnt efibootmgr dosfstools --needed
-		arch_chroot "bootctl --path=/boot install"
+		bootctl --path=/mnt/boot install
 		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
 		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
-
-
-
-
-#		pacstrap /mnt grub efibootmgr dosfstools --needed
-#		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
-#		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-#		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-#		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-#		arch_chroot "mkdir -p /boot/EFI/boot"
-#		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
-#		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
 	fi
 
 	#SWAP
