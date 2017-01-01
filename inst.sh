@@ -115,7 +115,7 @@ sel_info() {
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
 		wipe -Ifre ${DEVICE}
 	else
-		sgdisk --zap-all ${DEVICE}
+		dd if=/dev/zero of=/dev/${DEVICE}
 	fi
 	
 	#BIOS Part
@@ -128,7 +128,10 @@ sel_info() {
 	
 	#UEFI Part
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		#echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
+		parted -s ${DEVICE} mkpart ESP fat32 1MiB 513MiB
+		parted -s ${DEVICE} set 1 boot on
+		parted -s ${DEVICE} mkpart primary ext3 513MiB 100%		
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
@@ -368,14 +371,22 @@ set_mediaelch() {
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub efibootmgr dosfstools --needed
-		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		arch_chroot "mkdir -p /boot/EFI/boot"
-		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+		pacstrap /mnt efibootmgr dosfstools --needed
+		arch_chroot "bootctl --path=/boot install"
+		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
 		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+
+
+
+
+#		pacstrap /mnt grub efibootmgr dosfstools --needed
+#		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=arch_grub --recheck"
+#		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+#		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+#		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+#		arch_chroot "mkdir -p /boot/EFI/boot"
+#		arch_chroot "mv -r /boot/EFI/arch_grub/grubx64.efi /boot/EFI/boot/bootx64.efi"
+#		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
 	fi
 
 	#SWAP
@@ -471,7 +482,7 @@ set_mediaelch() {
 
 	#libs
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed
-	pacstrap /mnt gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-base-plugins gstreamer0.10-python gstreamer0.10-ugly gstreamer0.10-ugly-plugins phonon-qt4-gstreamer --needed
+	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed
 	
 	#Oberfaeche
