@@ -54,18 +54,18 @@ sel_info() {
 		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 		USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
 		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger Benutzername\n\n" 0 0
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
 			sel_user
 		fi
 	}
 	#PW
 	sel_password() {
 		RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-		RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort bestätigen:" 0 0 "")
+		RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
 		if [[ $RPASSWD == $RPASSWD2 ]]; then 
 			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
 		else
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswörter stimmen nicht überein\n\n" 0 0
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
 			sel_password
 		fi
 	}
@@ -73,7 +73,7 @@ sel_info() {
 	sel_hostname() {
 		HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
 		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngültiger PC-Name\n\n" 0 0
+			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
 			sel_hostname
 		fi
 	}
@@ -89,7 +89,7 @@ sel_info() {
 		HD_SD="HDD"
 		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
 		VERSION="-| Arch Installation ($(uname -m)) |- $SYSTEM auf $HD_SD |-"
-		dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} löschen\n\n" 0 0
+		dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
 		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 	}
 
