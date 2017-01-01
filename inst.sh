@@ -8,7 +8,7 @@ id_sys() {
 	VERSION=" -| Arch Installation ($(uname -m)) |- "
 
 	# Test
-	dialog --backtitle "$VERSION" --title "-| Systemprüfung |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
+	dialog --backtitle "$VERSION" --title "-| Systemtests |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
 	if [[ `whoami` != "root" ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
