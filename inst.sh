@@ -378,7 +378,7 @@ set_mediaelch() {
 		pacstrap /mnt efibootmgr dosfstools --needed
 		bootctl --path=/mnt/boot install
 		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
-		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/bootloader/entries/arch.conf
+		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/boot/loader/entries/arch.conf
 		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
 	fi
 
