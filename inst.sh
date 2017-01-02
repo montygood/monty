@@ -1,18 +1,12 @@
 # !/bin/bash
-
 arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}"
 }
-
 id_sys() {
 	VERSION=" -| Arch Installation ($(uname -m)) |- "
 
 	# Test
-	dialog --backtitle "$VERSION" --title "-| Systemtest |-" --infobox "\nTeste Voraussetzungen\n\n" 0 0 && sleep 2
-	if [[ `whoami` != "root" ]]; then
-		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\ndu bist nicht 'root'\nScript wird beendet\n" 0 0 && sleep 2
-		exit 1
-	fi
+	dialog --backtitle "$VERSION" --title "-| Systemtest |-" --infobox "\nTeste System\n\n" 0 0 && sleep 2
 	if [[ ! $(ping -c 1 google.com) ]]; then
 		dialog --backtitle "$VERSION" --title "-| Fehler |-" --infobox "\nkein Internet Zugang.\nScript wird beendet\n" 0 0 && sleep 2
 		exit 1
@@ -28,7 +22,6 @@ id_sys() {
 		modprobe -q efivarfs
 	fi
 
-	# BIOS or UEFI
 	if [[ -d "/sys/firmware/efi/" ]]; then
 		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
 			mount -t efivarfs efivarfs /sys/firmware/efi/efivars
@@ -40,6 +33,7 @@ id_sys() {
 }
 sel_info() {
 	LOCALE="de_CH.UTF-8"
+	LANGUAGE="de_DE"
 	KEYMAP="de_CH-latin1"
 	CODE="CH"
 	ZONE="Europe"
@@ -48,7 +42,6 @@ sel_info() {
 
 	# Keymap
 	loadkeys $KEYMAP
-
 	#Benutzer
 	sel_user() {
 		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
@@ -117,8 +110,7 @@ sel_info() {
 	else
 		parted -s ${DEVICE} print | awk '/^ / {print $1}' > /tmp/.del_parts
 		for del_part in $(tac /tmp/.del_parts); do
-			parted -s ${DEVICE} rm ${del_part} 2>/tmp/.errlog
-			check_for_error
+			parted -s ${DEVICE} rm ${del_part}
 		done
 		part_table=$(parted -s ${DEVICE} print | grep -i 'partition table' | awk '{print $3}' >/dev/null 2>&1)
 		([[ $SYSTEM == "BIOS" ]] && [[ $part_table != "msdos" ]]) && parted -s ${DEVICE} mklabel msdos
@@ -127,15 +119,22 @@ sel_info() {
 	
 	#BIOS Part
 	if [[ $SYSTEM == "BIOS" ]]; then
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		parted -s ${DEVICE} mkpart primary ext4 1MiB 100%
+		parted -s ${DEVICE} set 1 boot on
+		#echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
-		mount ${DEVICE}2 /mnt
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}1 >/dev/null
+		mount ${DEVICE}1 /mnt
 	fi
 	
 	#UEFI Part
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
+		parted -s ${DEVICE} mkpart ESP fat32 1MiB 513MiB
+		parted -s ${DEVICE} set 1 boot on
+		parted -s ${DEVICE} mkpart primary ext4 513MiB 100%
+		#echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
+
 		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
@@ -375,12 +374,12 @@ set_mediaelch() {
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr dosfstools --needed
-		bootctl --path=/mnt/boot install
-		bl_root=$"PARTUUID="$(blkid -s PARTUUID ${DEVICE}1 | sed 's/.*=//g' | sed 's/"//g')
-		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
-		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/boot/loader/entries/arch.conf
+		#pacstrap /mnt efibootmgr dosfstools gptfdisk --needed
+		arch_chroot "bootctl --path=/boot install"
 		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+		bl_root=$"PARTUUID="$(blkid -s PARTUUID ${DEVICE}2 | sed 's/.*=//g' | sed 's/"//g')
+ 		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
+		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/boot/loader/entries/arch.conf
 	fi
 
 	#SWAP
@@ -394,9 +393,10 @@ set_mediaelch() {
 	#Locale
 	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen" >/dev/null
+	export LANG=${LOCALE}
 
 	#Console
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
@@ -433,7 +433,11 @@ set_mediaelch() {
 	mv aic94xx-seq.fw /mnt/lib/firmware/
 	mv wd719x-risc.bin /mnt/lib/firmware/
 	mv wd719x-wcs.bin /mnt/lib/firmware/
-	arch_chroot "mkinitcpio -p linux"
+	KERNEL=""
+	KERNEL=$(ls /mnt/boot/*.img | grep -v "fallback" | sed "s~/mnt/boot/initramfs-~~g" | sed s/\.img//g | uniq)
+	for i in ${KERNEL}; do
+		arch_chroot "mkinitcpio -p ${i}"
+	done
 
 	#xorg
 	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed
@@ -446,7 +450,7 @@ set_mediaelch() {
 
 	#TLP
 	pacstrap /mnt tlp --needed
-    	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
+    arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
 	
 	#WiFi
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed															  
