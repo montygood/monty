@@ -25,6 +25,48 @@ id_sys() {
 		SYSTEM="BIOS"
 	fi
 }
+#Benutzer?
+sel_user() {
+	FULLNAME=$(whiptail --nocancel --title "Benutzer" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+	USERNAME=$(whiptail --nocancel --title "Benutzer" --stdout --inputbox "Anmeldenamen" 0 0 "")
+	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
+		whiptail --title "FEHLER" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
+		sel_user
+	fi
+}
+#PW?
+sel_password() {
+	RPASSWD=$(whiptail --nocancel --title "Root & $USERNAME" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+	RPASSWD2=$(whiptail --nocancel --title " | Root & $USERNAME" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
+	if [[ $RPASSWD == $RPASSWD2 ]]; then 
+		echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
+	else
+		whiptail --title "FEHLER" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
+		sel_password
+	fi
+}
+#Host?
+sel_hostname() {
+	HOSTNAME=$(whiptail --nocancel --title "Hostname" --stdout --inputbox "PC-Namen:" 0 0 "")
+	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
+		whiptail --title "FEHLER" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
+		sel_hostname
+	fi
+}
+#HDD?
+sel_hdd() {
+	DEVICE=""
+	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
+	for i in ${devices_list[@]}; do
+		DEVICE="${DEVICE} ${i}"
+	done
+	DEVICE=$(whiptail --nocancel --title "Laufwerk" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+	IDEV=`echo $DEVICE | cut -c6-`
+	HD_SD="HDD"
+	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
+	whiptail --title "Wipen" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
+	if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
+}
 sel_info() {
 	#kein schwarzes Bild
 	setterm -blank 0 -powersave off
@@ -37,52 +79,6 @@ sel_info() {
 	XKBMAP="ch"
 	# Keymap
 	loadkeys $KEYMAP
-	#Benutzer?
-	sel_user() {
-		FULLNAME=$(whiptail --nocancel --title "Benutzer" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
-		USERNAME=$(whiptail --nocancel --title "Benutzer" --stdout --inputbox "Anmeldenamen" 0 0 "")
-		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-			whiptail --title "FEHLER" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
-			sel_user
-		fi
-	}
-	#PW?
-	sel_password() {
-		RPASSWD=$(whiptail --nocancel --title "Root & $USERNAME" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-		RPASSWD2=$(whiptail --nocancel --title " | Root & $USERNAME" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
-		if [[ $RPASSWD == $RPASSWD2 ]]; then 
-			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
-		else
-			whiptail --title "FEHLER" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
-			sel_password
-		fi
-	}
-	#Host?
-	sel_hostname() {
-		HOSTNAME=$(whiptail --nocancel --title "Hostname" --stdout --inputbox "PC-Namen:" 0 0 "")
-		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
-			whiptail --title "FEHLER" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
-			sel_hostname
-		fi
-	}
-	#HDD?
-	sel_hdd() {
-		DEVICE=""
-		devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
-		for i in ${devices_list[@]}; do
-			DEVICE="${DEVICE} ${i}"
-		done
-		DEVICE=$(whiptail --nocancel --title "Laufwerk" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
-		IDEV=`echo $DEVICE | cut -c6-`
-		HD_SD="HDD"
-		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
-		whiptail --title "Wipen" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
-		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
-	}
-	sel_user
-	sel_password
-	sel_hostname
-	sel_hdd
 	#Medieaelch?
 	whiptail --title "MediaElch" --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
@@ -117,7 +113,11 @@ sel_info() {
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
-		mkdir -p /mnt/boot
+		mkdir -p /mnt/bootsel_user
+sel_password
+sel_hostname
+sel_hdd
+
 		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log & pid=$! msg="Mounte" load
 		check_error
 	fi		
@@ -550,6 +550,10 @@ check_error() {
 }
 
 id_sys
+sel_user
+sel_password
+sel_hostname
+sel_hdd
 sel_info
 ins_base
 
