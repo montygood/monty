@@ -9,8 +9,7 @@ id_sys() {
 	clear
 	echo "" > /tmp/.errlog
 	clear
-	pacman -Syy &>>/tmp/error.log & pid=$! msg="Update..." load
-	check_error
+	pacman -Syy
 	# Apple?
 	if [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Inc.' ]] || [[ "$(cat /sys/class/dmi/id/sys_vendor)" == 'Apple Computer, Inc.' ]]; then
 		modprobe -r -q efivars || true
@@ -135,9 +134,9 @@ sel_info() {
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
-		pacman -S reflector --needed --noconfirm &>>/tmp/error.log & pid=$! msg="Installiere..." load
+		pacman -Sy reflector --needed --noconfirm &>>/tmp/error.log & pid=$! msg="Installiere..." load
 		check_error
-		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>>/tmp/error2.log & pid=$! msg="Spiegelserver werden sortiert..." load
+		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>>/tmp/error.log & pid=$! msg="Spiegelserver werden sortiert..." load
 		check_error
 	fi
 	(pacman-key --init
@@ -149,7 +148,7 @@ sel_info() {
 ins_base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
@@ -164,7 +163,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
@@ -195,7 +194,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
@@ -204,7 +203,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		NVIDIA_INST=1
 	fi
@@ -213,7 +212,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		NVIDIA_INST=1
 	fi
@@ -222,12 +221,12 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
@@ -235,7 +234,7 @@ ins_graphics_card() {
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
@@ -243,11 +242,11 @@ ins_graphics_card() {
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
@@ -264,7 +263,7 @@ ins_graphics_card() {
 }
 _jdownloader() {
 	mkdir -p /mnt/opt/JDownloader/
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar &>>/tmp/error2.log & pid=$! msg="JDownloader Download" load
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar &>>/tmp/error.log & pid=$! msg="JDownloader Download" load
 	check_error
 	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
 	arch_chroot "chmod -R 0775 /opt/JDownloader/"
@@ -302,7 +301,7 @@ set_mediaelch() {
 	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
-	chmod +x /mnt/usr/bin/elch &>>/tmp/error2.log & pid=$! msg="Mediaelch-bin" load
+	chmod +x /mnt/usr/bin/elch &>>/tmp/error.log & pid=$! msg="Mediaelch-bin" load
 	check_error
 	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
 	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
@@ -354,11 +353,11 @@ set_mediaelch() {
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 }
 	#BASE
-	pacstrap /mnt base base-devel --needed &>>/tmp/error2.log & pid=$! msg="Installiere Base" load
+	pacstrap /mnt base base-devel --needed &>>/tmp/error.log & pid=$! msg="Installiere Base" load
 	check_error
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt grub dosfstools --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
@@ -367,7 +366,7 @@ set_mediaelch() {
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 		check_error
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 		arch_chroot "bootctl --path=/boot install"
@@ -423,21 +422,21 @@ set_mediaelch() {
 		arch_chroot "mkinitcpio -p ${i}"
 	done
 	#xorg
-	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#TLP
-	pacstrap /mnt tlp --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt tlp --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
     	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load & check_error														  
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log & pid=$! msg="Installiere" load & check_error														  
 	#Bluetoo
 	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
 	#Touchpad
@@ -451,22 +450,22 @@ set_mediaelch() {
 	#Grafikkarte
 	ins_graphics_card
 	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	#libs
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
-	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	#Anmeldescreen
-	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
@@ -477,14 +476,14 @@ set_mediaelch() {
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
-	pacstrap /mnt networkmanager network-manager-applet --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt networkmanager network-manager-applet --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	#Grafik
-	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error2.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
 	check_error
 	#jdownloader
 	_jdownloader
