@@ -1,6 +1,6 @@
 #!/bin/bash
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}"
+	arch-chroot /mnt /bin/bash -c "${1}" &>>/tmp/error.log
 }
 id_sys() {
 	# update
@@ -105,14 +105,14 @@ sel_info() {
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
 		mount ${DEVICE}2 /mnt
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log
 		echo j | mkfs.vfat -F32 ${DEVICE}1 &>>/tmp/error.log
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
 		mount ${DEVICE}2 /mnt
@@ -510,15 +510,9 @@ set_mediaelch() {
 check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "Fehler") != "" ]]; then
 		dialog --title " Fehler " --msgbox "$(cat /tmp/error.log | grep -i "Fehler")" 0 0
-		echo "" > /tmp/error.log
-	fi 
-	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "Warnung") != "" ]]; then
-		dialog --title " Warnung " --msgbox "$(cat /tmp/error.log | grep -i "Warnung")" 0 0
-		echo "" > /tmp/error.log
 	fi 
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
 		dialog --title " ERROR " --msgbox "$(cat /tmp/error.log | grep -i "error")" 0 0
-		echo "" > /tmp/error.log
 	fi 
 }
 id_sys
