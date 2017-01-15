@@ -3,9 +3,9 @@ arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}"
 }
 id_sys() {
-	VERSION=" -| Arch Installation ($(uname -m)) |- "
+	VERSION="-| Arch Installation ($(uname -m)) |-"
 	# update
-	dialog --backtitle "$VERSION" --title "-| System-refresh |-" --infobox "\nneuste Versionen werden gesucht\n\n" 0 0 && sleep 2
+	dialog --title "-| System-refresh |-" --infobox "\nneuste Versionen werden gesucht\n\n" 0 0 && sleep 2
 	clear
 	echo "" > /tmp/.errlog
 	clear
@@ -37,32 +37,33 @@ sel_info() {
 	SUBZONE="Zurich"
 	XKBMAP="ch"
 	# Keymap
+	export LANG=${LOCALE}
 	loadkeys $KEYMAP
 	#Benutzer?
 	sel_user() {
-		FULLNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
-		USERNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
+		FULLNAME=$(dialog --nocancel --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+		USERNAME=$(dialog --nocancel --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
 		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
+			dialog --title "-| FEHLER |-" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
 			sel_user
 		fi
 	}
 	#PW?
 	sel_password() {
-		RPASSWD=$(dialog --nocancel --backtitle "$VERSION" --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-		RPASSWD2=$(dialog --nocancel --backtitle "$VERSION" --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
+		RPASSWD=$(dialog --nocancel --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+		RPASSWD2=$(dialog --nocancel --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
 		if [[ $RPASSWD == $RPASSWD2 ]]; then 
 			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
 		else
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
+			dialog --title "-| FEHLER |-" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
 			sel_password
 		fi
 	}
 	#Host?
 	sel_hostname() {
-		HOSTNAME=$(dialog --nocancel --backtitle "$VERSION" --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
+		HOSTNAME=$(dialog --nocancel --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
 		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --backtitle "$VERSION" --title "-| FEHLER |-" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
+			dialog --title "-| FEHLER |-" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
 			sel_hostname
 		fi
 	}
@@ -73,12 +74,12 @@ sel_info() {
 		for i in ${devices_list[@]}; do
 			DEVICE="${DEVICE} ${i}"
 		done
-		DEVICE=$(dialog --nocancel --backtitle "$VERSION" --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+		DEVICE=$(dialog --nocancel --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 		IDEV=`echo $DEVICE | cut -c6-`
 		HD_SD="HDD"
 		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
 		VERSION="-| Arch Installation ($(uname -m)) |- $SYSTEM auf $HD_SD |-"
-		dialog --backtitle "$VERSION" --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
+		dialog --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
 		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 	}
 	sel_user
@@ -86,41 +87,41 @@ sel_info() {
 	sel_hostname
 	sel_hdd
 	#Mediaelch?
-	dialog --backtitle "$VERSION" --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
+	dialog --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
 	#Wine?
-	dialog --backtitle "$VERSION" --title "-| Windows Spiele |-" --yesno "\nWine installieren\n" 0 0
+	dialog --title "-| Windows Spiele |-" --yesno "\nWine installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 	#Wipe or zap?
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm wipe
 		fi	
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
+		dialog --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
 		wipe -Ifre ${DEVICE}
 	else
-		sgdisk --zap-all ${DEVICE} &>>/tmp/error.log & pid=$! msg="entferne Partitionen" load
+		sgdisk --zap-all ${DEVICE} &>>/tmp/error.log
 		check_error
-		wipefs -a ${DEVICE} &>>/tmp/error.log & pid=$! msg="teste Harddisk" load
+		wipefs -a ${DEVICE} &>>/tmp/error.log
 		check_error
 	fi
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		dialog --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}1 >/dev/null
-		mount ${DEVICE}1 /mnt &>>/tmp/error.log & pid=$! msg="Mounte" load
+		mount ${DEVICE}1 /mnt &>>/tmp/error.log
 		check_error
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
-		dialog --backtitle "$VERSION" --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		dialog --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
-		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log & pid=$! msg="Mounte" load
+		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log
 		check_error
 	fi		
 	#Swap?
@@ -129,26 +130,25 @@ sel_info() {
 		fallocate -l ${total_memory}M /mnt/swapfile
 		chmod 600 /mnt/swapfile
 		mkswap /mnt/swapfile >/dev/null
-		swapon /mnt/swapfile  &>>/tmp/error.log & pid=$! msg="Swap wird erstellt" load
+		swapon /mnt/swapfile  &>>/tmp/error.log
 		check_error
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
-		pacman -Sy reflector --needed --noconfirm &>>/tmp/error.log & pid=$! msg="Installiere..." load
+		pacman -Sy reflector --needed --noconfirm &>>/tmp/error.log
 		check_error
-		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>>/tmp/error.log & pid=$! msg="Spiegelserver werden sortiert..." load
+		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>>/tmp/error.log
+		check_error
+		(pacman-key --init
+		pacman-key --populate archlinux) &>>/tmp/error.log
+		pacman -Syy &>>/tmp/error.log
 		check_error
 	fi
-	(pacman-key --init
-	pacman-key --populate archlinux) &>>/tmp/error.log & pid=$! msg="Aktualisiere Keys" load
-	check_error
-	pacman -Syy &>>/tmp/error.log & pid=$! msg="Aktualisiere System..." load
-	check_error
 }
 ins_base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error.log
 		check_error
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
@@ -163,7 +163,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error.log
 		check_error
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
@@ -194,7 +194,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error.log
 		check_error
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
@@ -203,7 +203,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error.log
 		check_error
 		NVIDIA_INST=1
 	fi
@@ -212,7 +212,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error.log
 		check_error
 		NVIDIA_INST=1
 	fi
@@ -221,12 +221,12 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error.log
 		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error.log
 		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
@@ -234,7 +234,7 @@ ins_graphics_card() {
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error.log
 		check_error
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
@@ -242,11 +242,11 @@ ins_graphics_card() {
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error.log
 		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error.log
 		check_error
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
@@ -262,23 +262,23 @@ ins_graphics_card() {
 	fi
 }
 _jdownloader() {
-	mkdir -p /mnt/opt/JDownloader/
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar &>>/tmp/error.log & pid=$! msg="JDownloader Download" load
+	mkdir -p /mnt/opt/JDownloader/ &>>/tmp/error.log
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar &>>/tmp/error.log
+	arch_chroot "chown -R 1000:1000 /opt/JDownloader/" &>>/tmp/error.log
+	arch_chroot "chmod -R 0775 /opt/JDownloader/" &>>/tmp/error.log
+	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
 	check_error
-	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
-	arch_chroot "chmod -R 0775 /opt/JDownloader/"
-	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
-	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
 set_mediaelch() {		
-	echo "#!/bin/sh" > /mnt/usr/bin/elch
+	echo "#!/bin/sh" > /mnt/usr/bin/elch &>>/tmp/error.log
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
@@ -301,10 +301,9 @@ set_mediaelch() {
 	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
-	chmod +x /mnt/usr/bin/elch &>>/tmp/error.log & pid=$! msg="Mediaelch-bin" load
-	check_error
-	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
-	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	chmod +x /mnt/usr/bin/elch &>>/tmp/error.log
+	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/ &>>/tmp/error.log
+	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf &>>/tmp/error.log
 	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Downloads\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Downloads\1\path=/home/monty/Downloads" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
@@ -351,13 +350,14 @@ set_mediaelch() {
 	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
+	check_error
 }
 	#BASE
-	pacstrap /mnt base base-devel --needed &>>/tmp/error.log & pid=$! msg="Installiere Base" load
+	pacstrap /mnt base base-devel --needed &>>/tmp/error.log
 	check_error
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt grub dosfstools --needed &>>/tmp/error.log
 		check_error
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
@@ -366,7 +366,7 @@ set_mediaelch() {
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error.log
 		check_error
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 		arch_chroot "bootctl --path=/boot install"
@@ -422,21 +422,21 @@ set_mediaelch() {
 		arch_chroot "mkinitcpio -p ${i}"
 	done
 	#xorg
-	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log
 	check_error
-	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error.log
 	check_error
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
-	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed &>>/tmp/error.log
 	check_error
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#TLP
-	pacstrap /mnt tlp --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt tlp --needed &>>/tmp/error.log
 	check_error
-    	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
+	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log & pid=$! msg="Installiere" load & check_error														  
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log & check_error														  
 	#Bluetoo
 	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
 	#Touchpad
@@ -450,22 +450,22 @@ set_mediaelch() {
 	#Grafikkarte
 	ins_graphics_card
 	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed &>>/tmp/error.log
 	check_error
 	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	#libs
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed &>>/tmp/error.log
 	check_error
-	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed &>>/tmp/error.log
 	check_error
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed &>>/tmp/error.log
 	check_error
 	#Oberfaeche
-	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed &>>/tmp/error.log
 	check_error
 	#Anmeldescreen
-	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed &>>/tmp/error.log
 	check_error
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
@@ -476,14 +476,14 @@ set_mediaelch() {
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
-	pacstrap /mnt networkmanager network-manager-applet --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt networkmanager network-manager-applet --needed &>>/tmp/error.log
 	check_error
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed &>>/tmp/error.log
 	check_error
 	#Grafik
-	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error.log & pid=$! msg="Installiere" load
+	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error.log
 	check_error
 	#jdownloader
 	_jdownloader
@@ -511,27 +511,8 @@ set_mediaelch() {
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	cp bashrc /mnt/home/$USERNAME/.bashrc
-	cp dircolors /mnt/home/$USERNAME/.dircolors
-	cp dircolors_256 /mnt/home/$USERNAME/.dircolors_256
-	cp nanorc /mnt/home/$USERNAME/.nanorc
-	cp yaourtrc /mnt/home/$USERNAME/.yaourtrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
-}
-load() {
-	{	int="1"
-        	while ps | grep "$pid" &> /dev/null
-    	    	do
-    	            sleep 1
-    	            echo $int
-    	        	if [ "$int" -lt "100" ]; then
-    	        		int=$((int+1))
-    	        	fi
-    	        done
-            echo 100
-            sleep 1
-	} | whiptail --gauge "$msg" 6 60 0
 }
 check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "Fehler") != "" ]]; then
