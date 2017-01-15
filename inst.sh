@@ -105,19 +105,19 @@ sel_info() {
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log
+		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
-		mount ${DEVICE}2 /mnt &>>/tmp/error.log
+		mount ${DEVICE}2 /mnt
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log	
-		echo j | mkfs.vfat -F32 ${DEVICE}1  &>>/tmp/error.log
+		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
+		echo j | mkfs.vfat -F32 ${DEVICE}1 &>>/tmp/error.log
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
-		mount ${DEVICE}2 /mnt &>>/tmp/error.log
-		mkdir -p /mnt/boot &>>/tmp/error.log
-		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log
+		mount ${DEVICE}2 /mnt
+		mkdir -p /mnt/boot
+		mount ${DEVICE}1 /mnt/boot
 	fi		
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
@@ -343,45 +343,49 @@ set_mediaelch() {
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>>/tmp/error.log
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>>/tmp/error.log
-		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg" &>>/tmp/error.log
-		genfstab -U -p /mnt > /mnt/etc/fstab &>>/tmp/error.log
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		dialog --title " Installiere Grub " --infobox "\nBitte warten" 0 0
-		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error.log
-		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot" &>>/tmp/error.log
-		arch_chroot "bootctl --path=/boot install" &>>/tmp/error.log
-		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab &>>/tmp/error.log
-		bl_root=$"PARTUUID="$(blkid -s PARTUUID ${DEVICE}2 | sed 's/.*=//g' | sed 's/"//g')
- 		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf &>>/tmp/error.log
-		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/boot/loader/entries/arch.conf &>>/tmp/error.log
+		pacstrap /mnt efibootmgr dosfstools grub --needed &>>/tmp/error.log
+		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>>/tmp/error.log
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>>/tmp/error.log
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		genfstab -U -p /mnt >> /mnt/etc/fstab
+#		arch_chroot "bootctl --path=/boot install"
+#		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
+#		bl_root=$"PARTUUID="$(blkid -s PARTUUID ${DEVICE}2 | sed 's/.*=//g' | sed 's/"//g')
+# 		echo -e "default  arch\ntimeout 1" > /mnt/boot/loader/loader.conf
+#		echo -e "title\tArch Linux\nlinux\t/vmlinuz-linux\ninitrd\t/initramfs-linux.img\noptions\troot=${bl_root} rw" > /mnt/boot/loader/entries/arch.conf
 	fi
 	#SWAP
 	dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
-	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab &>>/tmp/error.log
+	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab &>>/tmp/error.log
 	#Hostname
 	dialog --title " Hostname " --infobox "\nBitte warten" 0 0
-	echo "${HOSTNAME}" > /mnt/etc/hostname &>>/tmp/error.log
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts &>>/tmp/error.log
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 	#Locale
 	dialog --title " Sprache " --infobox "\nBitte warten" 0 0
-	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf &>>/tmp/error.log
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf &>>/tmp/error.log
-	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf &>>/tmp/error.log
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen &>>/tmp/error.log
 	arch_chroot "locale-gen" >/dev/null
 	export LANG=${LOCALE} &>>/tmp/error.log
 	#Console
 	dialog --title " Konsole " --infobox "\nBitte warten" 0 0
-	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf &>>/tmp/error.log
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf &>>/tmp/error.log
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 	#Multi Mirror
 	if [ $(uname -m) == x86_64 ]; then
 		dialog --title " Mirror 64 " --infobox "\nBitte warten" 0 0
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf &>>/tmp/error.log
+		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
 	#Yaourt Mirror
 	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
@@ -399,17 +403,13 @@ set_mediaelch() {
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers &>>/tmp/error.log
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers &>>/tmp/error.log
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd &>>/tmp/error.log
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null && rm /tmp/.passwd
 	#mkinitcpio
 	dialog --title " mkinitcpio " --infobox "\nBitte warten" 0 0
 	mv aic94xx-seq.fw /mnt/lib/firmware/ &>>/tmp/error.log
 	mv wd719x-risc.bin /mnt/lib/firmware/ &>>/tmp/error.log
 	mv wd719x-wcs.bin /mnt/lib/firmware/ &>>/tmp/error.log
-	KERNEL=""
-	KERNEL=$(ls /mnt/boot/*.img | grep -v "fallback" | sed "s~/mnt/boot/initramfs-~~g" | sed s/\.img//g | uniq)
-	for i in ${KERNEL}; do
-		arch_chroot "mkinitcpio -p ${i}" &>>/tmp/error.log
-	done
+	arch_chroot "mkinitcpio -p linux"
 	#xorg
 	dialog --title " XORG " --infobox "\nBitte warten" 0 0
 	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed &>>/tmp/error.log
@@ -497,9 +497,10 @@ set_mediaelch() {
 	fi
 	#Mediaelch
 	dialog --title " Einstellungen " --infobox "\nBitte warten" 0 0
-	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
+	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch &>>/tmp/error.log
 	#Settings
-	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	tar -xf usr.tar.gz -C /mnt &>>/tmp/error.log
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
