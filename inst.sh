@@ -1,6 +1,6 @@
 #!/bin/bash
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}"
+	arch-chroot /mnt /bin/bash -c "${1}" &>>/tmp/error.log
 }
 id_sys() {
 	# update
@@ -96,12 +96,10 @@ sel_info() {
 			pacman -Sy --noconfirm wipe
 		fi	
 		dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
-		wipe -Ifre ${DEVICE}
+		wipe -Ifre ${DEVICE} &>>/tmp/error.log
 	else
 		sgdisk --zap-all ${DEVICE} &>>/tmp/error.log
-		check_error
 		wipefs -a ${DEVICE} &>>/tmp/error.log
-		check_error
 	fi
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
@@ -109,7 +107,6 @@ sel_info() {
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt &>>/tmp/error.log
-		check_error
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
@@ -120,7 +117,6 @@ sel_info() {
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log
-		check_error
 	fi		
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
@@ -129,25 +125,20 @@ sel_info() {
 		chmod 600 /mnt/swapfile
 		mkswap /mnt/swapfile >/dev/null
 		swapon /mnt/swapfile  &>>/tmp/error.log
-		check_error
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
 		pacman -Sy reflector --needed --noconfirm &>>/tmp/error.log
-		check_error
 		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>>/tmp/error.log
-		check_error
 		(pacman-key --init
 		pacman-key --populate archlinux) &>>/tmp/error.log
 		pacman -Syy &>>/tmp/error.log
-		check_error
 	fi
 }
 ins_base() {
 ins_graphics_card() {
 	ins_intel(){
 		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error.log
-		check_error
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -162,7 +153,6 @@ ins_graphics_card() {
 	}
 	ins_ati(){
 		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error.log
-		check_error
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -193,7 +183,6 @@ ins_graphics_card() {
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
 		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error.log
-		check_error
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -202,7 +191,6 @@ ins_graphics_card() {
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error.log
-		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -211,7 +199,6 @@ ins_graphics_card() {
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error.log
-		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -220,12 +207,10 @@ ins_graphics_card() {
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error.log
-		check_error
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
 		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error.log
-		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
@@ -233,7 +218,6 @@ ins_graphics_card() {
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
 		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error.log
-		check_error
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
 		arch_chroot "systemctl enable vboxservice"
@@ -241,11 +225,9 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
 		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error.log
-		check_error
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
 		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error.log
-		check_error
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -273,7 +255,6 @@ _jdownloader() {
 	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	check_error
 }
 set_mediaelch() {		
 	echo "#!/bin/sh" > /mnt/usr/bin/elch &>>/tmp/error.log
@@ -348,15 +329,12 @@ set_mediaelch() {
 	echo "RemotePassword=xbmc" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemotePort=80" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "RemoteUser=xbmc	" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
-	check_error
 }
 	#BASE
 	pacstrap /mnt base base-devel --needed &>>/tmp/error.log
-	check_error
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pacstrap /mnt grub dosfstools --needed &>>/tmp/error.log
-		check_error
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -365,7 +343,6 @@ set_mediaelch() {
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pacstrap /mnt efibootmgr dosfstools grub gptfdisk --needed &>>/tmp/error.log
-		check_error
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 		arch_chroot "bootctl --path=/boot install"
 		genfstab -t PARTUUID -p /mnt > /mnt/etc/fstab
@@ -420,21 +397,17 @@ set_mediaelch() {
 		arch_chroot "mkinitcpio -p ${i}"
 	done
 	#xorg
-	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g dosfstools exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log
-	check_error
+	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g exfat-utils f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error.log
-	check_error
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
 	pacstrap /mnt cups system-config-printer hplip cups-filters cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix --needed &>>/tmp/error.log
-	check_error
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#TLP
 	pacstrap /mnt tlp --needed &>>/tmp/error.log
-	check_error
 	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
 	#WiFi
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log & check_error														  
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog iw rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log														  
 	#Bluetoo
 	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed && arch_chroot "systemctl enable bluetooth.service"
 	#Touchpad
@@ -449,22 +422,16 @@ set_mediaelch() {
 	ins_graphics_card
 	#audio
 	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol avahi nss-mdns --needed &>>/tmp/error.log
-	check_error
 	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	#libs
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine --needed &>>/tmp/error.log
-	check_error
 	pacstrap /mnt gstreamer0.10-base gstreamer0.10-base-plugins gstreamer0.10-ugly gstreamer0.10-ugly-plugins gstreamer0.10-good gstreamer0.10-good-plugins gstreamer0.10-bad gstreamer0.10-bad-plugins gstreamer0.10-ffmpeg gstreamer0.10 gstreamer0.10-plugins --needed &>>/tmp/error.log
-	check_error
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gst-vaapi libde265 --needed &>>/tmp/error.log
-	check_error
 	#Oberfäche
 	pacstrap /mnt cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator --needed &>>/tmp/error.log
-	check_error
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter accountsservice --needed &>>/tmp/error.log
-	check_error
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
@@ -475,14 +442,11 @@ set_mediaelch() {
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
 	pacstrap /mnt networkmanager network-manager-applet --needed &>>/tmp/error.log
-	check_error
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Office
 	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed &>>/tmp/error.log
-	check_error
 	#Grafik
 	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error.log
-	check_error
 	#jdownloader
 	_jdownloader
 	#pamac
@@ -494,7 +458,8 @@ set_mediaelch() {
 	#Skype
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
 	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" && arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" 
+	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'"
@@ -527,8 +492,11 @@ check_error() {
 	fi 
 }
 id_sys
+check_error
 sel_info
+check_error
 ins_base
+check_error
 swapoff -a
 umount -R /mnt
 reboot
