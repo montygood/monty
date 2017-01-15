@@ -3,9 +3,8 @@ arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}"
 }
 id_sys() {
-	VERSION="-| Arch Installation ($(uname -m)) |-"
 	# update
-	dialog --title "-| System-refresh |-" --infobox "\nneuste Versionen werden gesucht\n\n" 0 0 && sleep 2
+	whiptail --title " System-refresh " --infobox "\nneuste Version wird gesucht\n\n" 0 0 && sleep 2
 	clear
 	echo "" > /tmp/.errlog
 	clear
@@ -41,29 +40,29 @@ sel_info() {
 	loadkeys $KEYMAP
 	#Benutzer?
 	sel_user() {
-		FULLNAME=$(dialog --nocancel --title "-| Benutzer |-" --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
-		USERNAME=$(dialog --nocancel --title "-| Benutzer |-" --stdout --inputbox "Anmeldenamen" 0 0 "")
+		FULLNAME=$(whiptail --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
+		USERNAME=$(whiptail --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
 		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --title "-| FEHLER |-" --msgbox "\nUngueltiger Benutzername\n\n" 0 0
+			whiptail --title " FEHLER " --msgbox "\nUngueltiger Benutzername\n\n" 0 0
 			sel_user
 		fi
 	}
 	#PW?
 	sel_password() {
-		RPASSWD=$(dialog --nocancel --title "-| Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-		RPASSWD2=$(dialog --nocancel --title " | Root & $USERNAME |-" --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
+		RPASSWD=$(whiptail --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+		RPASSWD2=$(whiptail --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
 		if [[ $RPASSWD == $RPASSWD2 ]]; then 
 			echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
 		else
-			dialog --title "-| FEHLER |-" --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
+			whiptail --title " FEHLER " --msgbox "\nPasswoerter stimmen nicht ueberein\n\n" 0 0
 			sel_password
 		fi
 	}
 	#Host?
 	sel_hostname() {
-		HOSTNAME=$(dialog --nocancel --title "-| Hostname |-" --stdout --inputbox "PC-Namen:" 0 0 "")
+		HOSTNAME=$(whiptail --nocancel --title " Hostname " --stdout --inputbox "PC-Namen:" 0 0 "")
 		if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --title "-| FEHLER |-" --msgbox "\nUngueltiger PC-Name\n\n" 0 0
+			whiptail --title " FEHLER " --msgbox "\nUngueltiger PC-Name\n\n" 0 0
 			sel_hostname
 		fi
 	}
@@ -74,12 +73,11 @@ sel_info() {
 		for i in ${devices_list[@]}; do
 			DEVICE="${DEVICE} ${i}"
 		done
-		DEVICE=$(dialog --nocancel --title "-| Laufwerk |-" --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+		DEVICE=$(whiptail --nocancel --title " Laufwerk " --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 		IDEV=`echo $DEVICE | cut -c6-`
 		HD_SD="HDD"
 		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
-		VERSION="-| Arch Installation ($(uname -m)) |- $SYSTEM auf $HD_SD |-"
-		dialog --title "-| Wipen |-" --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
+		whiptail --title " Wipen " --yesno "\nWARNUNG:\nAlle Daten unwiederuflich auf ${DEVICE} loeschen\n\n" 0 0
 		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 	}
 	sel_user
@@ -87,17 +85,17 @@ sel_info() {
 	sel_hostname
 	sel_hdd
 	#Mediaelch?
-	dialog --title "-| MediaElch |-" --yesno "\nMediaElch installieren\n" 0 0
+	whiptail --title " MediaElch " --yesno "\nMediaElch installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
 	#Wine?
-	dialog --title "-| Windows Spiele |-" --yesno "\nWine installieren\n" 0 0
+	whiptail --title " Windows Spiele " --yesno "\nWine installieren\n" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 	#Wipe or zap?
 	if [[ $WIPE == "YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm wipe
 		fi	
-		dialog --title "-| Harddisk |-" --infobox "\nWipe Bitte warten\n\n" 0 0
+		whiptail --title " Harddisk " --infobox "\nWipe Bitte warten\n\n" 0 0
 		wipe -Ifre ${DEVICE}
 	else
 		sgdisk --zap-all ${DEVICE} &>>/tmp/error.log
@@ -108,7 +106,7 @@ sel_info() {
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
-		dialog --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		whiptail --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}1 >/dev/null
 		mount ${DEVICE}1 /mnt &>>/tmp/error.log
 		check_error
@@ -116,7 +114,7 @@ sel_info() {
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}		
-		dialog --title "-| Harddisk |-" --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
+		whiptail --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\n\n" 0 0
 		echo j | mkfs.vfat -F32 ${DEVICE}1 >/dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 >/dev/null
 		mount ${DEVICE}2 /mnt
