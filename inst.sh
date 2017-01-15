@@ -1,6 +1,6 @@
 #!/bin/bash
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}" &>>/tmp/error.log
+	arch-chroot /mnt /bin/bash -c "${1}"
 }
 id_sys() {
 	# update
@@ -94,9 +94,9 @@ sel_info() {
 	if [[ $WIPE == "YES" ]]; then
 		dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
 		if [[ ! -e /usr/bin/wipe ]]; then
-			pacman -Sy --noconfirm wipe &>>/tmp/error.log
+			pacman -Sy --noconfirm wipe
 		fi	
-		wipe -Ifre ${DEVICE} &>>/tmp/error.log
+		wipe -Ifre ${DEVICE}
 	else
 		dialog --title " Harddisk " --infobox "\nlöschen Bitte warten" 0 0
 		sgdisk --zap-all ${DEVICE} &>>/tmp/error.log
@@ -106,7 +106,7 @@ sel_info() {
 	if [[ $SYSTEM == "BIOS" ]]; then
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2  &>>/tmp/error.log
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
 		mount ${DEVICE}2 /mnt &>>/tmp/error.log
 	fi
 	#UEFI Part?
@@ -114,10 +114,10 @@ sel_info() {
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>>/tmp/error.log	
 		echo j | mkfs.vfat -F32 ${DEVICE}1  &>>/tmp/error.log
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2  &>>/tmp/error.log
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>>/tmp/error.log
 		mount ${DEVICE}2 /mnt &>>/tmp/error.log
 		mkdir -p /mnt/boot &>>/tmp/error.log
-		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log &>>/tmp/error.log
+		mount ${DEVICE}1 /mnt/boot &>>/tmp/error.log
 	fi		
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
@@ -125,8 +125,8 @@ sel_info() {
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile &>>/tmp/error.log
 		chmod 600 /mnt/swapfile &>>/tmp/error.log
-		mkswap /mnt/swapfile  &>>/tmp/error.log
-		swapon /mnt/swapfile  &>>/tmp/error.log
+		mkswap /mnt/swapfile &>>/tmp/error.log
+		swapon /mnt/swapfile
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
@@ -141,7 +141,7 @@ sel_info() {
 ins_base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -155,7 +155,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-ati --needed
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -185,7 +185,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-nouveau --needed
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -193,7 +193,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed &>>/tmp/error.log
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -201,7 +201,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed &>>/tmp/error.log
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -209,28 +209,28 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed &>>/tmp/error.log
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-openchrome --needed
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed &>>/tmp/error.log
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev --needed &>>/tmp/error.log
+		pacstrap /mnt xf86-video-fbdev --needed
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -245,22 +245,22 @@ ins_graphics_card() {
 	fi
 }
 _jdownloader() {
-	mkdir -p /mnt/opt/JDownloader/ &>>/tmp/error.log
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar &>>/tmp/error.log
-	arch_chroot "chown -R 1000:1000 /opt/JDownloader/" &>>/tmp/error.log
-	arch_chroot "chmod -R 0775 /opt/JDownloader/" &>>/tmp/error.log
-	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
-	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop &>>/tmp/error.log
+	mkdir -p /mnt/opt/JDownloader/
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
+	arch_chroot "chmod -R 0775 /opt/JDownloader/"
+	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
+	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
+	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 }
 set_mediaelch() {		
-	echo "#!/bin/sh" > /mnt/usr/bin/elch &>>/tmp/error.log
+	echo "#!/bin/sh" > /mnt/usr/bin/elch
 	echo "wol 00:01:2e:3a:5e:81" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien1" >> /mnt/usr/bin/elch
 	echo "sudo mkdir /mnt/Serien2" >> /mnt/usr/bin/elch
@@ -283,9 +283,9 @@ set_mediaelch() {
 	echo "sudo rmdir /mnt/Filme1" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Filme2" >> /mnt/usr/bin/elch
 	echo "sudo rmdir /mnt/Musik" >> /mnt/usr/bin/elch
-	chmod +x /mnt/usr/bin/elch &>>/tmp/error.log
-	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/ &>>/tmp/error.log
-	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf &>>/tmp/error.log
+	chmod +x /mnt/usr/bin/elch
+	mkdir -p /mnt/home/${USERNAME}/.config/kvibes/
+	echo "[Directories]" > /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Concerts\size=0" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Downloads\1\autoReload=false" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
 	echo "Downloads\1\path=/home/monty/Downloads" >> /mnt/home/${USERNAME}/.config/kvibes/MediaElch.conf
@@ -384,7 +384,7 @@ set_mediaelch() {
 		/Include/s/#//g}' /mnt/etc/pacman.conf &>>/tmp/error.log
 	fi
 	#Yaourt Mirror
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf &>>/tmp/error.log ; fi
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
 	dialog --title " Yaourt " --infobox "\nBitte warten" 0 0
 	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 	#Zone
@@ -406,13 +406,13 @@ set_mediaelch() {
 	mv wd719x-risc.bin /mnt/lib/firmware/ &>>/tmp/error.log
 	mv wd719x-wcs.bin /mnt/lib/firmware/ &>>/tmp/error.log
 	KERNEL=""
-	KERNEL=$(ls /mnt/boot/*.img | grep -v "fallback" | sed "s~/mnt/boot/initramfs-~~g" | sed s/\.img//g | uniq) &>>/tmp/error.log
+	KERNEL=$(ls /mnt/boot/*.img | grep -v "fallback" | sed "s~/mnt/boot/initramfs-~~g" | sed s/\.img//g | uniq)
 	for i in ${KERNEL}; do
 		arch_chroot "mkinitcpio -p ${i}" &>>/tmp/error.log
 	done
 	#xorg
 	dialog --title " XORG " --infobox "\nBitte warten" 0 0
-	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed  &>>/tmp/error.log
+	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip --needed &>>/tmp/error.log
 	pacstrap /mnt xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput --needed &>>/tmp/error.log
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
@@ -426,7 +426,7 @@ set_mediaelch() {
 	#WiFi
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant --needed &>>/tmp/error.log														  
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed  &>>/tmp/error.log && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && pacstrap /mnt blueman --needed &>>/tmp/error.log && arch_chroot "systemctl enable bluetooth.service"
 	#Touchpad
 	[[ $(dmesg | grep -i Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed &>>/tmp/error.log
 	#Tablet
@@ -437,7 +437,7 @@ set_mediaelch() {
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
 	#Grafikkarte
 	dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
-	ins_graphics_card
+	ins_graphics_card &>>/tmp/error.log
 	#audio
 	dialog --title " Sound " --infobox "\nBitte warten" 0 0
 	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol nss-mdns --needed &>>/tmp/error.log
@@ -461,7 +461,7 @@ set_mediaelch() {
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf &>>/tmp/error.log
 	arch_chroot "systemctl enable lightdm.service"
 	#x11 Tastatur
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf &>>/tmp/error.log
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Office
@@ -472,7 +472,7 @@ set_mediaelch() {
 	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla --needed &>>/tmp/error.log
 	#jdownloader
 	dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
-	_jdownloader
+	_jdownloader &>>/tmp/error.log
 	#pamac
 	dialog --title " Pamac " --infobox "\nBitte warten" 0 0
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur --noconfirm'"
@@ -492,17 +492,17 @@ set_mediaelch() {
 		dialog --title " Fingerprint " --infobox "\nBitte warten" 0 0
 		arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
-		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo  &>>/tmp/error.log ; fi
-		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su  &>>/tmp/error.log ; fi
+		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
+		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
 	#Mediaelch
 	dialog --title " Einstellungen " --infobox "\nBitte warten" 0 0
 	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
 	#Settings
-	tar -xf usr.tar.gz -C /mnt  &>>/tmp/error.log && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	tar -xf usr.tar.gz -C /mnt && arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
-	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers &>>/tmp/error.log
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc &>>/tmp/error.log
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 }
