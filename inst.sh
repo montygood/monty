@@ -511,9 +511,6 @@ check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "Fehler") != "" ]]; then
 		dialog --title " Fehler " --msgbox "$(cat /tmp/error.log | grep -i "Fehler")" 0 0
 	fi 
-	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
-		dialog --title " ERROR " --msgbox "$(cat /tmp/error.log | grep -i "error")" 0 0
-	fi 
 }
 id_sys
 check_error
