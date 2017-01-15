@@ -108,7 +108,7 @@ sel_info() {
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE}
 		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}1 >/dev/null
-		mount ${DEVICE}1 /mnt &>>/tmp/error.log
+		mount ${DEVICE}2 /mnt &>>/tmp/error.log
 		check_error
 	fi
 	#UEFI Part?
