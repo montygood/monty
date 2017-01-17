@@ -445,13 +445,13 @@ set_mediaelch() {
 	#Grafik
 	pac_strap "gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake clementine mkvtoolnix-gui meld deluge geany geany-plugins gtk-recordmydesktop picard gparted gthumb xfburn filezilla"
 	#jdownloader
-	_jdownloader &>> /tmp/error.log | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
+	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur --noconfirm'"
-	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf &>> /tmp/error.log
-	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf &>> /tmp/error.log
-	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf &>> /tmp/error.log
-	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf &>> /tmp/error.log
+	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 	#Skype
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
 	#Teamviewer
@@ -465,7 +465,7 @@ set_mediaelch() {
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su &>> /tmp/error.log ; fi
 	fi
 	#Mediaelch
-	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch &>> /tmp/error.log
+	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch
 	#Settings
 	tar -xf usr.tar.gz -C /mnt &>> /tmp/error.log
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
