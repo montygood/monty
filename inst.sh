@@ -22,7 +22,7 @@ arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}" &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
 }
 pac_strap() {
-	pacstrap /mnt "${1}" --needed &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
+	pacstrap /mnt "${1}" --needed | dialog --title " Installiere " --infobox "\n${1}" 0 0
 }
 _sys() {
 	# Apple?
@@ -122,15 +122,15 @@ _select() {
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-		fallocate -l ${total_memory}M /mnt/swapfile &>> /tmp/error.log | dialog --title " Swap berechnen " --infobox "\nBitte warten" 0 0
-		chmod 600 /mnt/swapfile &>> /tmp/error.log
-		mkswap /mnt/swapfile &>> /tmp/error.log | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
-		swapon /mnt/swapfile &>> /tmp/error.log
+		fallocate -l ${total_memory}M /mnt/swapfile
+		chmod 600 /mnt/swapfile
+		mkswap /mnt/swapfile &> /dev/null | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
+		swapon /mnt/swapfile
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
 		pacman -Sy reflector --needed --noconfirm &> /dev/null | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
-		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>> /tmp/error.log | dialog --title " Mirror updates " --infobox "\nschnellste Mirrors werden gesucht\nBitte warten..." 0 0
+		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &> /dev/null | dialog --title " Mirror updates " --infobox "\nschnellste Mirrors werden gesucht\nBitte warten..." 0 0
 		(pacman-key --init
 		pacman-key --populate archlinux) &> /dev/null | dialog --title " Mirror refresh " --infobox "\nBitte warten" 0 0
 		pacman -Syy &> /dev/null | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
@@ -340,25 +340,25 @@ set_mediaelch() {
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pac_strap "grub dosfstools"
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>> /tmp/error.log
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>> /tmp/error.log
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -U -p /mnt > /mnt/etc/fstab &>> /tmp/error.log
+		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pac_strap "efibootmgr dosfstools grub"
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>> /tmp/error.log
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>> /tmp/error.log
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -U -p /mnt > /mnt/etc/fstab &>> /tmp/error.log
+		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
 	#SWAP	
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
-	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab &>> /tmp/error.log
+	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 	#Hostname
-	echo "${HOSTNAME}" > /mnt/etc/hostname &>> /tmp/error.log
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts &>> /tmp/error.log
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 	#Locale
 	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf &>> /tmp/error.log
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf &>> /tmp/error.log
