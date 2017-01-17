@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#kein schwarzes Bild
+setterm -blank 0 -powersave off
 # default
 LOCALE="de_CH.UTF-8"
 LANGUAGE="de_DE"
@@ -8,22 +10,19 @@ ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
 loadkeys $KEYMAP
-#kein schwarzes Bild
-setterm -blank 0 -powersave off
 
 #Prozesse
 check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
 		dialog --title " Fehler " --msgbox "$(cat /tmp/error.log)" 0 0
-	fi 
+	fi
+	dialog --title " Protokoll " --msgbox "$(cat /tmp/error.log)" 0 0
 }
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}" &>> /tmp/error.log | dialog --title " Installiere ${1} " --infobox "\nBitte warten" 0 0
-	check_error
+	arch-chroot /mnt /bin/bash -c "${1}" &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
 }
 pac_strap() {
-	pacstrap /mnt "${1}" --needed &>> /tmp/error.log | dialog --title " Installiere ${1} " --infobox "\nBitte warten" 0 0
-	check_error
+	pacstrap /mnt "${1}" --needed &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
 }
 _sys() {
 	# Apple?
@@ -45,11 +44,11 @@ _sys() {
 }
 _select() {
 	#Benutzer?
+	FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 	sel_user() {
-		FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 		USERNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
 		if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
-			dialog --title " FEHLER " --msgbox "\nUngültiger Benutzername" 0 0
+			dialog --title " FEHLER " --msgbox "\nUngültiger Benutzername\n alles in Kleinbuchstaben" 0 0
 			sel_user
 		fi
 	}
@@ -79,7 +78,7 @@ _select() {
 		for i in ${devices_list[@]}; do
 			DEVICE="${DEVICE} ${i}"
 		done
-		DEVICE=$(dialog --nocancel --title " Laufwerk " --menu "zum Installieren" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
+		DEVICE=$(dialog --nocancel --title " Laufwerk " --menu "Worauf soll Installiert werden" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 		IDEV=`echo $DEVICE | cut -c6-`
 		HD_SD="HDD"
 		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
@@ -97,59 +96,54 @@ _select() {
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 	#Wipe or zap?
-	if [[ $WIPE == "YES" ]]; then
-		dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
+	if [[ $WIPE=="YES" ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
-			pacman -Sy --noconfirm wipe
+			pacman -Sy --noconfirm wipe &>> /tmp/error.log
 		fi	
-		wipe -Ifre ${DEVICE}
+		wipe -Ifre ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
 	else
-		dialog --title " Harddisk " --infobox "\nlöschen Bitte warten" 0 0
-		sgdisk --zap-all ${DEVICE} &>> /tmp/error.log
-		wipefs -a ${DEVICE} &>> /tmp/error.log
+		sgdisk --zap-all ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
+		wipefs -a ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
 	fi
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
-		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>> /tmp/error.log
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\nBitte warten" 0 0
 		mount ${DEVICE}2 /mnt &>> /tmp/error.log
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
-		dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert" 0 0
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &>> /tmp/error.log
-		echo j | mkfs.vfat -F32 ${DEVICE}1 &>> /tmp/error.log
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log
+		echo j | mkfs.vfat -F32 ${DEVICE}1 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Boot) wird Formatiert" 0 0
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Root) wird Formatiert" 0 0
 		mount ${DEVICE}2 /mnt &>> /tmp/error.log
 		mkdir -p /mnt/boot &>> /tmp/error.log
 		mount ${DEVICE}1 /mnt/boot &>> /tmp/error.log
 	fi		
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
-		dialog --title " Swap " --infobox "\nBitte warten" 0 0
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-		fallocate -l ${total_memory}M /mnt/swapfile &>> /tmp/error.log
+		fallocate -l ${total_memory}M /mnt/swapfile &>> /tmp/error.log | dialog --title " Swap berechnen " --infobox "\nBitte warten" 0 0
 		chmod 600 /mnt/swapfile &>> /tmp/error.log
-		mkswap /mnt/swapfile &>> /tmp/error.log
-		swapon /mnt/swapfile
+		mkswap /mnt/swapfile &>> /tmp/error.log | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
+		swapon /mnt/swapfile &>> /tmp/error.log
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
-		dialog --title " Mirror " --infobox "\nBitte warten" 0 0
-		pacman -Sy reflector --needed --noconfirm &>> /tmp/error.log
-		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>> /tmp/error.log
+		pacman -Sy reflector --needed --noconfirm &>> /tmp/error.log | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
+		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>> /tmp/error.log | dialog --title " Mirror updates " --infobox "\nschnellste Mirrors werden gesucht\nBitte warten..." 0 0
 		(pacman-key --init
-		pacman-key --populate archlinux) &>> /tmp/error.log
+		pacman-key --populate archlinux) &>> /tmp/error.log | dialog --title " Mirror refresh " --infobox "\nBitte warten" 0 0
 		pacman -Syy &>> /tmp/error.log | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
 	fi
+	#Error
 	check_error
 	_base
 }
 _base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed
+		pac_strap "xf86-video-intel libva-intel-driver intel-ucode"
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -163,7 +157,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati --needed
+		pac_strap "xf86-video-ati"
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -193,7 +187,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau --needed
+		pac_strap "xf86-video-nouveau"
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -201,7 +195,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed
+		pac_strap "${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings"
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -209,7 +203,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed
+		pac_strap "${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings"
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -217,28 +211,28 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed
+		pac_strap "${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings"
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome --needed
+		pac_strap "xf86-video-openchrome"
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed
+		pac_strap "virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD"
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed
+		pac_strap "xf86-video-vmware xf86-input-vmmouse"
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev --needed
+		pac_strap "xf86-video-fbdev"
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -350,7 +344,7 @@ set_mediaelch() {
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>> /tmp/error.log
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>> /tmp/error.log
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -U -p /mnt > /mnt/etc/fstab
+		genfstab -U -p /mnt > /mnt/etc/fstab &>> /tmp/error.log
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pac_strap "efibootmgr dosfstools grub"
@@ -358,48 +352,47 @@ set_mediaelch() {
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub &>> /tmp/error.log
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg &>> /tmp/error.log
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -U -p /mnt > /mnt/etc/fstab
+		genfstab -U -p /mnt > /mnt/etc/fstab &>> /tmp/error.log
 	fi
 	#SWAP	
-	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
+	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab &>> /tmp/error.log
 	#Hostname
-	echo "${HOSTNAME}" > /mnt/etc/hostname | dialog --title " Hostname " --infobox "\nBitte warten" 0 0
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
+	echo "${HOSTNAME}" > /mnt/etc/hostname &>> /tmp/error.log
+	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts &>> /tmp/error.log
 	#Locale
-	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf | dialog --title " Sprache " --infobox "\nBitte warten" 0 0
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf
+	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf &>> /tmp/error.log
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf &>> /tmp/error.log
+	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf &>> /tmp/error.log
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen &>> /tmp/error.log
 	arch_chroot "locale-gen"
 	export LANG=${LOCALE} &>> /tmp/error.log
 	#Console
-	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf | dialog --title " Konsole " --infobox "\nBitte warten" 0 0
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf &>> /tmp/error.log
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf &>> /tmp/error.log
 	#Multi Mirror
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf | dialog --title " Mirror 64 " --infobox "\nBitte warten" 0 0
+		/Include/s/#//g}' /mnt/etc/pacman.conf &>> /tmp/error.log
 	fi
 	#Yaourt Mirror
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf &>> /tmp/error.log ; fi
 	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	#Zeit
 	arch_chroot "hwclock --systohc --utc"
 	#Root PW
-	arch_chroot "passwd root" < /tmp/.passwd >/dev/null | dialog --title " Benutzer " --infobox "\nBitte warten" 0 0
+	arch_chroot "passwd root" < /tmp/.passwd
 	#Benutzer
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers &>> /tmp/error.log
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers &>> /tmp/error.log
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd >/dev/null
-	rm /tmp/.passwd
+	arch_chroot "'passwd ${USERNAME}' < /tmp/.passwd"
 	#mkinitcpio
-	mv aic94xx-seq.fw /mnt/lib/firmware/ &>> /tmp/error.log | dialog --title " mkinitcpio " --infobox "\nBitte warten" 0 0
+	mv aic94xx-seq.fw /mnt/lib/firmware/ &>> /tmp/error.log
 	mv wd719x-risc.bin /mnt/lib/firmware/ &>> /tmp/error.log
 	mv wd719x-wcs.bin /mnt/lib/firmware/ &>> /tmp/error.log
 	arch_chroot "mkinitcpio -p linux"
@@ -446,7 +439,7 @@ set_mediaelch() {
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf &>> /tmp/error.log
 	arch_chroot "systemctl enable lightdm.service"
 	#x11 Tastatur
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf &>> /tmp/error.log
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
 	#Office
@@ -456,42 +449,39 @@ set_mediaelch() {
 	#jdownloader
 	_jdownloader &>> /tmp/error.log | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
-	dialog --title " Pamac " --infobox "\nBitte warten" 0 0
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf &>> /tmp/error.log
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf &>> /tmp/error.log
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf &>> /tmp/error.log
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf &>> /tmp/error.log
 	#Skype
-	dialog --title " Skype " --infobox "\nBitte warten" 0 0
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
 	#Teamviewer
-	dialog --title " Teamviewer " --infobox "\nBitte warten" 0 0
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" 
 	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		dialog --title " Fingerprint " --infobox "\nBitte warten" 0 0
 		arch_chroot "su - ${USERNAME} -c 'yaourt -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
-		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
-		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
+		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo &>> /tmp/error.log ; fi
+		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su &>> /tmp/error.log ; fi
 	fi
 	#Mediaelch
 	[[ $ELCH == "YES" ]] && arch_chroot "su - ${USERNAME} -c 'yaourt -S mediaelch --noconfirm'" && set_mediaelch &>> /tmp/error.log
 	#Settings
-	dialog --title " Einstellungen " --infobox "\nBitte warten" 0 0
 	tar -xf usr.tar.gz -C /mnt &>> /tmp/error.log
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
-	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
-	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers &>> /tmp/error.log
+	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc &>> /tmp/error.log
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
+	#Error
 	check_error
+	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
+	#Herunterfahren
 	swapoff -a
 	umount -R /mnt
 	reboot
 }
 _sys
-
