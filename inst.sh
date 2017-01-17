@@ -19,10 +19,10 @@ check_error() {
 	fi
 }
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}" | dialog --title " Chroote " --infobox "\n${1}" 0 0
+	arch-chroot /mnt /bin/bash -c "${1}"
 }
 pac_strap() {
-	pacstrap /mnt "${1}" --needed | dialog --title " Strappe " --infobox "\n${1}" 0 0
+	pacstrap /mnt "${1}" --needed
 }
 _sys() {
 	# Apple?
