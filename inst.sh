@@ -415,7 +415,7 @@ set_mediaelch() {
 	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
 	#wine
-	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks xf86-input-joystick lib32-libxcomposite --needed --noconfirm"
+	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
 	#Grafikkarte
 	ins_graphics_card &>> /tmp/error.log | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
 	#audio
@@ -476,6 +476,10 @@ set_mediaelch() {
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
 	check_error
-	nano /tmp/error.log
+	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
+	#Herunterfahren
+	swapoff -a
+	umount -R /mnt
+	reboot
 }
 _sys
