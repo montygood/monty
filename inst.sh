@@ -372,7 +372,7 @@ set_mediaelch() {
 		/Include/s/#//g}' /mnt/etc/pacman.conf &>> /tmp/error.log
 	fi
 	#Yaourt Mirror
-	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf &>> /tmp/error.log ; fi
+	if ! (</mnt/etc/pacman.conf grep "archlinuxfr"); then echo -e "\n[archlinuxfr]\nSigLevel = Never\nServer = http://repo.archlinux.fr/$(uname -m)" >> /mnt/etc/pacman.conf ; fi
 	arch_chroot "pacman -Sy yaourt --needed --noconfirm"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
@@ -473,10 +473,6 @@ set_mediaelch() {
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
 	check_error
-	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
-	#Herunterfahren
-	swapoff -a
-	umount -R /mnt
-	reboot
+	nano /tmp/error.log
 }
 _sys
