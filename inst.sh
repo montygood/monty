@@ -9,6 +9,7 @@ KEYMAP="de_CH-latin1"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
+export LANG=${LOCALE} &>> /tmp/error.log
 loadkeys $KEYMAP
 
 #Prozesse
@@ -366,7 +367,6 @@ set_mediaelch() {
 	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf &>> /tmp/error.log
 	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen &>> /tmp/error.log
 	arch_chroot "locale-gen"
-	export LANG=${LOCALE} &>> /tmp/error.log
 	#Console
 	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf &>> /tmp/error.log
 	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf &>> /tmp/error.log
