@@ -108,16 +108,16 @@ _select() {
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\nBitte warten" 0 0
-		mount ${DEVICE}2 /mnt &>> /tmp/error.log
+		mount ${DEVICE}2 /mnt
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
 		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
 		echo j | mkfs.vfat -F32 ${DEVICE}1 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Boot) wird Formatiert" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Root) wird Formatiert" 0 0
-		mount ${DEVICE}2 /mnt &>> /tmp/error.log
-		mkdir -p /mnt/boot &>> /tmp/error.log
-		mount ${DEVICE}1 /mnt/boot &>> /tmp/error.log
+		mount ${DEVICE}2 /mnt
+		mkdir -p /mnt/boot
+		mount ${DEVICE}1 /mnt/boot
 	fi		
 	#Swap?
 	if [[ $HD_SD == "HDD" ]]; then
@@ -477,9 +477,5 @@ set_mediaelch() {
 	#Error
 	check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
-	#Herunterfahren
-	swapoff -a
-	umount -R /mnt
-	reboot
 }
 _sys
