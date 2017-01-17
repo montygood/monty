@@ -17,7 +17,6 @@ check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
 		dialog --title " Fehler " --msgbox "$(cat /tmp/error.log)" 0 0
 	fi
-	dialog --title " Protokoll " --msgbox "$(cat /tmp/error.log)" 0 0
 }
 arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "${1}" &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
@@ -98,7 +97,7 @@ _select() {
 	dialog --title " Wipen " --yesno "\nWARNUNG:\nAlle Daten auf ${DEVICE} löschen" 0 0
 	if [[ $? -eq 0 ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
-			pacman -Sy --noconfirm wipe &>> /tmp/error.log
+			pacman -Sy --noconfirm wipe &> /dev/null
 		fi	
 		wipe -Ifre ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
 	else
@@ -130,11 +129,11 @@ _select() {
 	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
-		pacman -Sy reflector --needed --noconfirm &>> /tmp/error.log | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
+		pacman -Sy reflector --needed --noconfirm &> /dev/null | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
 		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &>> /tmp/error.log | dialog --title " Mirror updates " --infobox "\nschnellste Mirrors werden gesucht\nBitte warten..." 0 0
 		(pacman-key --init
-		pacman-key --populate archlinux) &>> /tmp/error.log | dialog --title " Mirror refresh " --infobox "\nBitte warten" 0 0
-		pacman -Syy &>> /tmp/error.log | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
+		pacman-key --populate archlinux) &> /dev/null | dialog --title " Mirror refresh " --infobox "\nBitte warten" 0 0
+		pacman -Syy &> /dev/null | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
 	fi
 	#Error
 	check_error
