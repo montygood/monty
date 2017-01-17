@@ -19,10 +19,10 @@ check_error() {
 	fi
 }
 arch_chroot() {
-	arch-chroot /mnt "${1}" | dialog --title " Installiere " --infobox "\n${1}" 0 0
+	arch-chroot /mnt /bin/bash -c "${1}" | dialog --title " Chroote " --infobox "\n${1}" 0 0
 }
 pac_strap() {
-	pacstrap /mnt "${1}" --needed | dialog --title " Installiere " --infobox "\n${1}" 0 0
+	pacstrap /mnt "${1}" --needed | dialog --title " Strappe " --infobox "\n${1}" 0 0
 }
 _sys() {
 	# Apple?
@@ -477,5 +477,9 @@ set_mediaelch() {
 	#Error
 	check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
+	#Herunterfahren
+	swapoff -a
+	umount -R /mnt
+	reboot
 }
 _sys
