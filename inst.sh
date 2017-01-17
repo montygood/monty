@@ -476,10 +476,6 @@ set_mediaelch() {
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
 	check_error
-	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
-	#Herunterfahren
-	swapoff -a
-	umount -R /mnt
-	reboot
+	nano /tmp/error.log
 }
 _sys
