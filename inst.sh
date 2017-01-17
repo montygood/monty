@@ -9,7 +9,7 @@ KEYMAP="de_CH-latin1"
 ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
-export LANG=${LOCALE} &>> /tmp/error.log
+export LANG=${LOCALE}
 loadkeys $KEYMAP
 
 #Prozesse
@@ -19,7 +19,7 @@ check_error() {
 	fi
 }
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "${1}" &>> /tmp/error.log | dialog --title " Installiere " --infobox "\n${1}" 0 0
+	arch-chroot /mnt "${1}" | dialog --title " Installiere " --infobox "\n${1}" 0 0
 }
 pac_strap() {
 	pacstrap /mnt "${1}" --needed | dialog --title " Installiere " --infobox "\n${1}" 0 0
