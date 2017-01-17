@@ -100,10 +100,10 @@ _select() {
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm wipe &>> /tmp/error.log
 		fi	
-		wipe -Ifre ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
+		wipe -Ifre ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
 	else
-		sgdisk --zap-all ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
-		wipefs -a ${DEVICE} &>> /tmp/error.log | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
+		sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
+		wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
 	fi
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
