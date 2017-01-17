@@ -388,7 +388,7 @@ set_mediaelch() {
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-	arch_chroot "'passwd ${USERNAME}' < /tmp/.passwd"
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
 	#mkinitcpio
 	mv aic94xx-seq.fw /mnt/lib/firmware/
 	mv wd719x-risc.bin /mnt/lib/firmware/
