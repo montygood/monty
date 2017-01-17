@@ -83,8 +83,6 @@ _select() {
 		IDEV=`echo $DEVICE | cut -c6-`
 		HD_SD="HDD"
 		if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
-		dialog --title " Wipen " --yesno "\nWARNUNG:\nAlle Daten auf ${DEVICE} löschen" 0 0
-		if [[ $? -eq 0 ]]; then WIPE="YES" ; fi
 	}
 	sel_user
 	sel_password
@@ -97,7 +95,8 @@ _select() {
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 	#Wipe or zap?
-	if [[ $WIPE=="YES" ]]; then
+	dialog --title " Wipen " --yesno "\nWARNUNG:\nAlle Daten auf ${DEVICE} löschen" 0 0
+	if [[ $? -eq 0 ]]; then
 		if [[ ! -e /usr/bin/wipe ]]; then
 			pacman -Sy --noconfirm wipe &>> /tmp/error.log
 		fi	
