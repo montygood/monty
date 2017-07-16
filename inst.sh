@@ -456,7 +456,7 @@ set_mediaelch() {
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 	#Skype
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
+	#arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" 
 	arch_chroot "systemctl enable teamviewerd"
