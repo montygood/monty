@@ -432,7 +432,7 @@ set_mediaelch() {
 	#Oberfäche
 	arch_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator"
 	#Anmeldescreen
-	arch_strap "lightdm lightdm-gtk-greeter"
+	arch_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
