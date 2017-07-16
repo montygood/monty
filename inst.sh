@@ -475,6 +475,7 @@ set_mediaelch() {
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+	cp xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
