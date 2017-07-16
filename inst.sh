@@ -402,7 +402,7 @@ set_mediaelch() {
 	arch_strap "xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput"
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
-	arch_strap "cups system-config-printer hplip cups-pdf ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
+	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends  ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#TLP
 	arch_strap "tlp"
