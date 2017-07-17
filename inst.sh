@@ -427,7 +427,7 @@ set_mediaelch() {
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	#libs
 	arch_strap "libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine"
-	arch_strap "gstreamer0.10-base gstreamer0.10-ugly gstreamer0.10-good gstreamer0.10-bad gstreamer0.10 gstreamer0.10-plugins"
+	#arch_strap "gstreamer0.10-base gstreamer0.10-ugly gstreamer0.10-good gstreamer0.10-bad gstreamer0.10 gstreamer0.10-plugins"
 	arch_strap "gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 	#Oberfäche
 	arch_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator"
@@ -456,7 +456,7 @@ set_mediaelch() {
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 	#Skype
-	arch_chroot "su - ${USERNAME} -c 'yaourt -S skypeforlinux --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S skypeforlinux-bin --noconfirm'"
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" 
 	arch_chroot "systemctl enable teamviewerd"
