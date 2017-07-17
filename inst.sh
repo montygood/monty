@@ -399,10 +399,10 @@ set_mediaelch() {
 	arch_chroot "mkinitcpio -p linux"
 	#xorg
 	arch_strap "bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip"
-	arch_strap "xorg-server xorg-server-utils xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput"
+	arch_strap "xorg-server xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput"
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
-	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends  ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
+	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
 	arch_chroot "systemctl enable org.cups.cupsd.service"
 	#TLP
 	arch_strap "tlp"
@@ -456,7 +456,7 @@ set_mediaelch() {
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 	#Skype
-	#  arch_chroot "su - ${USERNAME} -c 'yaourt -S skype --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'yaourt -S skypeforlinux --noconfirm'"
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'yaourt -S teamviewer --noconfirm'" 
 	arch_chroot "systemctl enable teamviewerd"
@@ -475,7 +475,6 @@ set_mediaelch() {
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-	cp xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
