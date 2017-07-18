@@ -431,7 +431,7 @@ set_mediaelch() {
 	arch_strap "libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine"
 	arch_strap "gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 	#Oberfäche
-	arch_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator"
+	arch_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator networkmanager"
 	#Anmeldescreen
 	arch_strap "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
