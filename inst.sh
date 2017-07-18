@@ -479,7 +479,7 @@ set_mediaelch() {
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	#Error
-	check_error
+	#check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
 	#Herunterfahren
 	swapoff -a
