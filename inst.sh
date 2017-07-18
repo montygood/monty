@@ -1,7 +1,9 @@
 #!/bin/bash
 
 #kein schwarzes Bild
-setterm -blank 0 -powersave off
+case $(tty) in /dev/tty[0-9]*)
+    setterm -blank 0 -powersave off ;;
+esac
 # default
 LOCALE="de_CH.UTF-8"
 LANGUAGE="de_DE"
@@ -403,20 +405,20 @@ set_mediaelch() {
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
 	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
-	arch_chroot "systemctl enable org.cups.cupsd.service"
+	arch_chroot "systemctl enable org.cups.cupsd"
 	#TLP
 	arch_strap "tlp"
-	arch_chroot "systemctl enable tlp.service && systemctl enable tlp-sleep.service && systemctl disable systemd-rfkill.service && tlp start"
+	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 	#WiFi
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"												  
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | grep -i Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
 	#Touchpad
 	[[ $(dmesg | grep -i Touchpad) != "" ]] && arch_strap "xf86-input-synaptics"
 	#Tablet
 	[[ $(dmesg | grep Tablet) != "" ]] && arch_strap "xf86-input-wacom"
 	#SSD
-	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim.service && systemctl enable fstrim.timer"
+	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
 	#wine
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
 	#Grafikkarte
@@ -427,7 +429,6 @@ set_mediaelch() {
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	#libs
 	arch_strap "libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine"
-	#arch_strap "gstreamer0.10-base gstreamer0.10-ugly gstreamer0.10-good gstreamer0.10-bad gstreamer0.10 gstreamer0.10-plugins"
 	arch_strap "gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav"
 	#Oberfäche
 	arch_strap "cinnamon nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator"
@@ -438,11 +439,11 @@ set_mediaelch() {
 	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-	arch_chroot "systemctl enable lightdm.service"
+	arch_chroot "systemctl enable lightdm"
 	#x11 Tastatur
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
-	arch_chroot "systemctl enable NetworkManager.service && systemctl enable NetworkManager-dispatcher.service"
+	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	#Office
 	arch_strap "libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de"
 	#Grafik
