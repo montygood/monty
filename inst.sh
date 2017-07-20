@@ -410,13 +410,14 @@ set_mediaelch() {
 	arch_strap "tlp"
 	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 	#WiFi
+	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_strap "broadcom-wl"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"												  
 	#Bluetoo
-	[[ $(dmesg | grep -i Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
 	#Touchpad
-	[[ $(dmesg | grep -i Touchpad) != "" ]] && arch_strap "xf86-input-synaptics"
+	[[ $(dmesg | egrep Touchpad) != "" ]] && arch_strap "xf86-input-synaptics"
 	#Tablet
-	[[ $(dmesg | grep Tablet) != "" ]] && arch_strap "xf86-input-wacom"
+	[[ $(dmesg | egrep Tablet) != "" ]] && arch_strap "xf86-input-wacom"
 	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
 	#wine
