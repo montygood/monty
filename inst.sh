@@ -410,7 +410,7 @@ set_mediaelch() {
 	arch_strap "tlp"
 	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 	#WiFi
-	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_strap ""su - ${USERNAME} -c 'yaourt -S broadcom-wl --noconfirm'"
+	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_strap "su - ${USERNAME} -c 'yaourt -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"												  
 	#Bluetoo
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
