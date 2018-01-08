@@ -398,9 +398,9 @@ set_mediaelch() {
 	mv aic94xx-seq.fw /mnt/lib/firmware/
 	mv wd719x-risc.bin /mnt/lib/firmware/
 	mv wd719x-wcs.bin /mnt/lib/firmware/
-	arch_chroot "mkinitcpio -p linux"
+	arch_chroot "mkinitcpio -p linux-lts"
 	#xorg
-	arch_strap "bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip"
+	arch_strap "bc rsync mlocate pkgstats ntp bash-completion mesa gamin gksu gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip"
 	arch_strap "xorg-server xorg-apps xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput"
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
