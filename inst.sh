@@ -8,7 +8,7 @@ esac
 LOCALE="de_CH.UTF-8"
 LANGUAGE="de_DE"
 KEYMAP="de_CH-latin1"
-ZONE="Europe"kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk,
+ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
 export LANG=${LOCALE}
