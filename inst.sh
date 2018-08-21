@@ -93,8 +93,8 @@ _select() {
 	sel_hostname
 	sel_hdd
 	#Mediaelch?
-	dialog --title " MediaElch " --yesno "\nMediaElch installieren" 0 0
-	if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
+	#dialog --title " MediaElch " --yesno "\nMediaElch installieren" 0 0
+	#if [[ $? -eq 0 ]]; then ELCH="YES" ; fi
 	#Wine?
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
