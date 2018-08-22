@@ -95,17 +95,8 @@ _select() {
 	#Wine?
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
-	#Wipe or zap?
-	dialog --title " Wipen " --yesno "\nWARNUNG:\nAlle Daten auf ${DEVICE} löschen" 0 0
-	if [[ $? -eq 0 ]]; then
-		if [[ ! -e /usr/bin/wipe ]]; then
-			pacman -Sy --noconfirm wipe &> /dev/null
-		fi	
-		wipe -Ifre ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nWipe Bitte warten" 0 0
-	else
-		sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
-		wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
-	fi
+	sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
+	wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
 		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
