@@ -12,8 +12,8 @@ ZONE="Europe"
 SUBZONE="Zurich"
 XKBMAP="ch"
 export LANG=${LOCALE}
+export LANGUAGE=${LANGUAGE}
 loadkeys $KEYMAP
-
 #Prozesse
 check_error() {
 	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
@@ -294,8 +294,9 @@ _jdownloader() {
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
 	#AUR Mirror
-	arch_chroot "pacman -Sy git --needed --noconfirm"
-	arch_chroot "su - ${USERNAME} -c 'git clone https://aur.archlinux.org/trizen.git && cd trizen && makepkg -si --noconfirm'"
+	mv trizen-1.51.tar.gz /mnt/tmp/
+	arch_chroot "pacman -U /tmp/trizen-1.51.tar.gz --needed --noconfirm"
+	#arch_chroot "su - ${USERNAME} -c 'git clone https://aur.archlinux.org/trizen.git && cd trizen && makepkg -si'"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	#Zeit
@@ -319,7 +320,7 @@ _jdownloader() {
 	arch_chroot "su - ${USERNAME} -c 'trizen -S gksu --noconfirm'"
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
-	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree foomatic-filters splix"
+	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix"
 	arch_chroot "systemctl enable org.cups.cupsd"
 	#TLP
 	arch_strap "tlp"
