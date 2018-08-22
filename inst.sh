@@ -294,8 +294,8 @@ _jdownloader() {
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
 	#AUR Mirror
-	mv trizen-1.51.tar.gz /mnt/tmp/
-	arch_chroot "pacman -U /tmp/trizen-1.51.tar.gz --needed --noconfirm"
+	mv trizen-1:1.51-1-any.pkg.tar.xz /mnt/tmp/
+	arch_chroot "pacman -U /tmp/trizen-1:1.51-1-any.pkg.tar.xz --needed --noconfirm"
 	#arch_chroot "su - ${USERNAME} -c 'git clone https://aur.archlinux.org/trizen.git && cd trizen && makepkg -si'"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
