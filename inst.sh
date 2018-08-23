@@ -295,10 +295,10 @@ _jdownloader() {
 	fi
 	arch_chroot "pacman -Sy"
 	#AUR Mirror
-#	mv trizen-any.pkg.tar.xz /mnt/
-#	arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm"
-#	rm /mnt/trizen-any.pkg.tar.xz
-arch_chroot "pacman -S git --noconfirm" && arch_chroot "sudo -u ${USERNAME} git clone https://aur.archlinux.org/trizen.git" && arch_chroot "cd trizen" && arch_chroot "sudo -u ${USERNAME} makepkg -si --noconfirm"
+	mv trizen-any.pkg.tar.xz /mnt/
+	arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm"
+	rm /mnt/trizen-any.pkg.tar.xz
+# arch_chroot "pacman -S git --noconfirm" && arch_chroot "sudo -u ${USERNAME} git clone https://aur.archlinux.org/trizen.git" && arch_chroot "cd trizen" && arch_chroot "sudo -u ${USERNAME} makepkg -si --noconfirm"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	#Zeit
