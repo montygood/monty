@@ -371,8 +371,6 @@ _jdownloader() {
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-	#Skype
-	mv skypeforlinux.pkg.tar.xz /mnt/ && arch_chroot "pacman -U skypeforlinux.pkg.tar.xz --needed --noconfirm" && rm /mnt/skypeforlinux.pkg.tar.xz
 	#Teamviewer
 	mv teamviewer.pkg.tar.xz /mnt/ && arch_chroot "pacman -U teamviewer.pkg.tar.xz --needed --noconfirm" && rm /mnt/teamviewer.pkg.tar.xz
 	arch_chroot "systemctl enable teamviewerd"
