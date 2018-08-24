@@ -329,7 +329,7 @@ _jdownloader() {
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && mv broadcom-wl.pkg.tar.xz /mnt/ && arch_chroot "pacman -U broadcom-wl.pkg.tar.xz --needed --noconfirm" && rm /mnt/broadcom-wl.pkg.tar.xz
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"  
 	#Bluetoo
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
 	#Touchpad
 	[[ $(dmesg | egrep Touchpad) != "" ]] && arch_strap "xf86-input-synaptics"
 	#Tablet
