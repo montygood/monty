@@ -13,6 +13,8 @@ SUBZONE="Zurich"
 XKBMAP="ch"
 export LANG=${LOCALE}
 export LANGUAGE=${LANGUAGE}
+export LC_ALL=${LOCALE}
+export LC_TYPE=${LOCALE}
 loadkeys $KEYMAP
 #Prozesse
 check_error() {
@@ -389,6 +391,7 @@ _jdownloader() {
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
+	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#Error
 	#check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
