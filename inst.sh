@@ -295,9 +295,7 @@ _jdownloader() {
 	fi
 	arch_chroot "pacman -Sy"
 	#AUR Mirror
-	mv trizen-any.pkg.tar.xz /mnt/
-	arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm"
-	rm /mnt/trizen-any.pkg.tar.xz
+	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	#Zeit
@@ -318,7 +316,6 @@ _jdownloader() {
 	#xorg
 	arch_strap "bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip"
 	arch_strap "xorg-server xorg-apps xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput"
-	arch_chroot "su - ${USERNAME} -c 'trizen -S gksu --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
 	arch_chroot "timedatectl set-ntp true"
 	#Drucker
 	arch_strap "cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix"
@@ -327,7 +324,7 @@ _jdownloader() {
 	arch_strap "tlp"
 	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 	#WiFi
-	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
+	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && mv broadcom-wl.pkg.tar.xz /mnt/ && arch_chroot "pacman -U broadcom-wl.pkg.tar.xz --needed --noconfirm" && rm /mnt/broadcom-wl.pkg.tar.xz
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"  
 	#Bluetoo
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth"
@@ -369,19 +366,19 @@ _jdownloader() {
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
-	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
+	mv pamac-aur.pkg.tar.xz /mnt/ && arch_chroot "pacman -U pamac-aur.pkg.tar.xz --needed --noconfirm" && rm /mnt/pamac-aur.pkg.tar.xz
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 	#Skype
-	arch_chroot "su - ${USERNAME} -c 'trizen -S skypeforlinux-preview-bin --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
+	mv skypeforlinux.pkg.tar.xz /mnt/ && arch_chroot "pacman -U skypeforlinux.pkg.tar.xz --needed --noconfirm" && rm /mnt/skypeforlinux.pkg.tar.xz
 	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
+	mv teamviewer.pkg.tar.xz /mnt/ && arch_chroot "pacman -U teamviewer.pkg.tar.xz --needed --noconfirm" && rm /mnt/teamviewer.pkg.tar.xz
 	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noinstall --noconfirm'" && arch_chroot "pacman -U /tmp/*/*.pkg.tar.xz --noconfirm'"
+		mv fingerprint.pkg.tar.xz /mnt/ && arch_chroot "pacman -U fingerprint.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint.pkg.tar.xz
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
@@ -394,7 +391,7 @@ _jdownloader() {
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
-	rch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#Error
 	#check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
