@@ -311,9 +311,6 @@ _jdownloader() {
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
 	#mkinitcpio
-	mv aic94xx-seq.fw /mnt/lib/firmware/
-	mv wd719x-risc.bin /mnt/lib/firmware/
-	mv wd719x-wcs.bin /mnt/lib/firmware/
 	arch_chroot "mkinitcpio -p linux"
 	#xorg
 	arch_strap "bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip"
@@ -326,7 +323,7 @@ _jdownloader() {
 	arch_strap "tlp"
 	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 	#WiFi
-	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && mv broadcom-wl.pkg.tar.xz /mnt/ && arch_chroot "pacman -U broadcom-wl.pkg.tar.xz --needed --noconfirm" && rm /mnt/broadcom-wl.pkg.tar.xz
+	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && arch_strap "dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant"  
 	#Bluetoo
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch_strap "blueman" && arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
@@ -368,17 +365,19 @@ _jdownloader() {
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
-	mv pamac-aur.pkg.tar.xz /mnt/ && arch_chroot "pacman -U pamac-aur.pkg.tar.xz --needed --noconfirm" && rm /mnt/pamac-aur.pkg.tar.xz
+	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+	#mintstick
+	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
 	#Teamviewer
-	mv teamviewer.pkg.tar.xz /mnt/ && arch_chroot "pacman -U teamviewer.pkg.tar.xz --needed --noconfirm" && rm /mnt/teamviewer.pkg.tar.xz
+	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		mv fingerprint.pkg.tar.xz /mnt/ && arch_chroot "pacman -U fingerprint.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint.pkg.tar.xz
+		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
