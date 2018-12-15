@@ -370,8 +370,13 @@ _jdownloader() {
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+	#filebot
+	arch_strap "jre8-openjdk java-openjfx libmediainfo"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
+	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="${LOCALE}"/g' /mnt/bin/filebot
+	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="${LOCALE}"/g' /mnt/bin/filebot
 	#mintstick
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 	arch_chroot "systemctl enable teamviewerd"
