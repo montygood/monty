@@ -375,6 +375,20 @@ _jdownloader() {
 	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
 	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="${LOCALE}"/g' /mnt/bin/filebot
 	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="${LOCALE}"/g' /mnt/bin/filebot
+	echo '#!/bin/sh' >> /mnt/bin/plexup
+	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
+	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
+	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
+	echo "sudo umount /storage" >> /mnt/bin/plexup
+	arch_chroot "chmod +x /bin/plexup"
+	#myup
+	echo '#!/bin/sh' >> /mnt/bin/myup
+	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
+	echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
+	echo "sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)" >> /mnt/bin/myup
+	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
+	echo "sudo fstrim -v /" >> /mnt/bin/myup
+	arch_chroot "chmod +x /bin/myup"
 	#mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 	#Teamviewer
@@ -388,7 +402,7 @@ _jdownloader() {
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
 	#Settings
-	tar -xf usr.tar.gz -C /mnt
+	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
