@@ -359,51 +359,13 @@ _jdownloader() {
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	#Office
-	arch_strap "libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de"
+	# arch_strap "libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de"
 	#Grafik
-	arch_strap "gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla"
+	# arch_strap "gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla"
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
-	#pamac
-	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
-	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
-	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
-	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
-	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-	#filebot
-	arch_strap "jre8-openjdk java-openjfx libmediainfo"
-	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
-	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="${LOCALE}"/g' /mnt/bin/filebot
-	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="${LOCALE}"/g' /mnt/bin/filebot
-	echo '#!/bin/sh' >> /mnt/bin/plexup
-	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
-	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
-	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
-	echo "sudo umount /storage" >> /mnt/bin/plexup
-	arch_chroot "chmod +x /bin/plexup"
-	#myup
-	echo '#!/bin/sh' >> /mnt/bin/myup
-	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
-	echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
-	echo "sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)" >> /mnt/bin/myup
-	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
-	echo "sudo fstrim -v /" >> /mnt/bin/myup
-	arch_chroot "chmod +x /bin/myup"
-	#mintstick
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
-	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-	arch_chroot "systemctl enable teamviewerd"
-	#Fingerprint
-	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
-		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
-		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
-		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
-	fi
 	#Settings
 	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
-	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
