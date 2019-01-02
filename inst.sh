@@ -382,8 +382,8 @@ _jdownloader() {
 	#mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-	arch_chroot "systemctl enable teamviewerd"
+#	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+#	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
