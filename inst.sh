@@ -349,9 +349,9 @@ _jdownloader() {
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
+#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 	#Grafik
-	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla
+#	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
