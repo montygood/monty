@@ -298,6 +298,7 @@ _jdownloader() {
 	arch_chroot "pacman -Sy"
 	#AUR Mirror
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
+	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
 	#Zeit
@@ -359,25 +360,45 @@ _jdownloader() {
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	#Office
-	# arch_strap "libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de"
+	arch_strap "libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de"
 	#Grafik
-	# arch_strap "gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla"
+	arch_strap "gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla"
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
+	#pamac
+	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
+	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+	#filebot
+	arch_strap "jre8-openjdk java-openjfx libmediainfo"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
+	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
+	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
+	#mintstick
+	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
+	#Fingerprint
+	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
+		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
+		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
+		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
+		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
+	fi
 	#Settings
 	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
-	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#Error
 	#check_error
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
 	#Herunterfahren
-	swapoff -a
-	umount -R /mnt
-	reboot
+#	swapoff -a
+#	umount -R /mnt
+#	reboot
 }
 _sys
