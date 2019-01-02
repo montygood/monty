@@ -18,16 +18,8 @@ export LC_TYPE=${LOCALE}
 loadkeys $KEYMAP
 
 #Prozesse
-check_error() {
-	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "error") != "" ]]; then
-		dialog --title " Error " --msgbox "$(cat /tmp/error.log)" 0 0
-	fi
-	if [[ $? -eq 0 ]] && [[ $(cat /tmp/error.log | grep -i "fehler") != "" ]]; then
-		dialog --title " Fehler " --msgbox "$(cat /tmp/error.log)" 0 0
-	fi
-}
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "$1" &>> /tmp/error.log
+	arch-chroot /mnt /bin/bash -c "$1"
 }
 _sys() {
 	# Apple?
@@ -408,12 +400,9 @@ _jdownloader() {
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
-	#Error
-	check_error
-	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
 	#Herunterfahren
 	swapoff -a
-	umount -R /mnt
-	reboot
+#	umount -R /mnt
+#	reboot
 }
 _sys
