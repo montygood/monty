@@ -14,7 +14,6 @@ SUBZONE="Zurich"
 XKBMAP="ch"
 export LANG=${LOCALE}
 export LANGUAGE=${LANGUAGE}
-export LC_ALL=${LOCALE}
 export LC_TYPE=${LOCALE}
 loadkeys $KEYMAP
 
@@ -28,7 +27,7 @@ check_error() {
 	fi
 }
 arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "$1"
+	arch-chroot /mnt /bin/bash -c "$1" &>> /tmp/error.log
 }
 _sys() {
 	# Apple?
