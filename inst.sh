@@ -254,73 +254,59 @@ _jdownloader() {
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 		genfstab -U -p /mnt > /mnt/etc/fstab
 	fi
-	#SWAP	
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-	#Hostname
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-	#Locale
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen"
-	#Console
 	echo -e "KEYMAP=sg-latin1" > /mnt/etc/vconsole.conf
 	echo FONT="lat9w-16" >> /mnt/etc/vconsole.conf
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Multi Mirror
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	#AUR Mirror
-	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-	#Zone
 	arch_chroot "ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-	#Zeit
 	arch_chroot "hwclock --systohc --utc"
-	#Root PW
 	arch_chroot "passwd root" < /tmp/.passwd
-	#Benutzer
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
-	#mkinitcpio
 	arch_chroot "mkinitcpio -p linux"
-	#xorg
+	ins_graphics_card &>> /tmp/error.log | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
+
+	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
+
 	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
 	pacstrap /mnt xorg-server xorg-apps xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput
 	arch_chroot "timedatectl set-ntp true"
-	#Drucker
+
 	pacstrap /mnt cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix
 	arch_chroot "systemctl enable org.cups.cupsd"
-	#TLP
+
 	pacstrap /mnt tlp
 	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
-	#WiFi
+
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant
-
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman && arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
-	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
-	#wine
-	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
-	#Grafikkarte
-	ins_graphics_card &>> /tmp/error.log | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
-	#audio
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol nss-mdns
 	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
-	#libs
+
 	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
 	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
-	#Oberfäche
 	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator networkmanager
+	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol nss-mdns
+
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
 	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
@@ -329,34 +315,25 @@ _jdownloader() {
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm"
-	#x11 Tastatur
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-	#Netzwerkkarte
-	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
-	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
-	#Grafik
-	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla
-	#jdownloader
-	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
-	#pamac
+
 	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-	#filebot
-	pacstrap /mnt jre8-openjdk java-openjfx libmediainfo
-	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
-	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
-	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
+
+	#wine
+	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
+	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
+	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
+
 	echo '#!/bin/sh' >> /mnt/bin/plexup
 	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
 	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
 	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
 	echo "sudo umount /storage" >> /mnt/bin/plexup
 	arch_chroot "chmod +x /bin/plexup"
-	#myup
+
 	echo '#!/bin/sh' >> /mnt/bin/myup
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
 	echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
@@ -364,12 +341,11 @@ _jdownloader() {
 	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
 	arch_chroot "chmod +x /bin/myup"
-	#mintstick
+
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
-	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 	arch_chroot "systemctl enable teamviewerd"
-	#Fingerprint
+
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
