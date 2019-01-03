@@ -263,13 +263,7 @@ _jdownloader() {
 	arch_chroot "locale-gen"
 	echo -e "KEYMAP=sg-latin1" > /mnt/etc/vconsole.conf
 	echo FONT="lat9w-16" >> /mnt/etc/vconsole.conf
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-	#Multi Mirror
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
+
 	arch_chroot "ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 	arch_chroot "hwclock --systohc --utc"
 	arch_chroot "passwd root" < /tmp/.passwd
@@ -285,13 +279,6 @@ _jdownloader() {
 
 	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs ttf-dejavu xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
 	pacstrap /mnt xorg-server xorg-apps xorg-xinit xorg-xkill xorg-twm xorg-xclock xterm xf86-input-keyboard xf86-input-mouse xf86-input-libinput
-	arch_chroot "timedatectl set-ntp true"
-
-	pacstrap /mnt cups system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix
-	arch_chroot "systemctl enable org.cups.cupsd"
-
-	pacstrap /mnt tlp
-	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant
@@ -299,13 +286,8 @@ _jdownloader() {
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
-	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
-	arch_chroot "systemctl enable avahi-daemon && systemctl enable avahi-dnsconfd && systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 
-	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
-	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
-	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview gnome-terminal gnome-screenshot eog gnome-calculator networkmanager
-	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-utils alsa-plugins nfs-utils jre7-openjdk wol nss-mdns
+	pacstrap /mnt gtk-engine-murrine cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager
 
 	#Anmeldescreen
 	pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
@@ -314,7 +296,6 @@ _jdownloader() {
 	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-	arch_chroot "systemctl enable lightdm"
 
 	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
@@ -322,46 +303,15 @@ _jdownloader() {
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 
-	#wine
-	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
-	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 
-	echo '#!/bin/sh' >> /mnt/bin/plexup
-	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
-	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
-	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
-	echo "sudo umount /storage" >> /mnt/bin/plexup
-	arch_chroot "chmod +x /bin/plexup"
-
-	echo '#!/bin/sh' >> /mnt/bin/myup
-	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
-	echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
-	echo "sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)" >> /mnt/bin/myup
-	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
-	echo "sudo fstrim -v /" >> /mnt/bin/myup
-	arch_chroot "chmod +x /bin/myup"
-
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
-	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-	arch_chroot "systemctl enable teamviewerd"
-
-	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
-		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
-		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
-		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
-	fi
-	#Settings
-	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
-	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-	#Benutzerrechte
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
-	#Error
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+
 	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
 	#Herunterfahren
 	swapoff -a
