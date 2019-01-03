@@ -6,7 +6,6 @@ case $(tty) in /dev/tty[0-9]*)
 esac
 
 # default
-LOCALE="de_CH.UTF-8"
 loadkeys de_CH-latin1
 
 #Prozesse
@@ -81,28 +80,29 @@ _select() {
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
 	sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle aktuelle Infos der Harddisk\nBitte warten" 0 0
 	wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
-	total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
-		echo -e "o\ny\nn\n1\n\n+2M\n\nn\n2\n\n+1M\nEF02\nn\n4\n\n+${total_memory}M\n8200\nn\n3\n\n\n\nw\ny" | gdisk /dev/"$DRIVE" &> /dev/null
+		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\nBitte warten" 0 0
 		mount ${DEVICE}2 /mnt
-		wipefs -a ${DEVICE}3
-		mkswap ${DEVICE}3
-		swapon ${DEVICE}3
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "n\n\n\n512M\nef00\nn\n3\n\n+${total_memory}M\n8200\nn\n\n\n\n\nw\ny" | gdisk /dev/"$DRIVE" &> /dev/null
+		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
 		echo j | mkfs.vfat -F32 ${DEVICE}1 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Boot) wird Formatiert" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Root) wird Formatiert" 0 0
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
-		wipefs -a ${DEVICE}3
-		mkswap ${DEVICE}3
-		swapon ${DEVICE}3
 	fi		
+	#Swap?
+	if [[ $HD_SD == "HDD" ]]; then
+		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
+		fallocate -l ${total_memory}M /mnt/swapfile
+		chmod 600 /mnt/swapfile
+		mkswap /mnt/swapfile &> /dev/null | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
+		swapon /mnt/swapfile
+	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
 		pacman -Sy reflector --needed --noconfirm &> /dev/null | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
