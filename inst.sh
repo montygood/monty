@@ -7,15 +7,7 @@ esac
 
 # default
 LOCALE="de_CH.UTF-8"
-LANGUAGE="de_DE"
-KEYMAP="de_CH-latin1"
-ZONE="Europe"
-SUBZONE="Zurich"
-XKBMAP="ch"
-export LANG=${LOCALE}
-export LANGUAGE=${LANGUAGE}
-export LC_TYPE=${LOCALE}
-loadkeys $KEYMAP
+loadkeys de_CH-latin1
 
 #Prozesse
 arch_chroot() {
@@ -87,31 +79,30 @@ _select() {
 	#Wine?
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
-	sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nlösche Infos der Harddisk\nBitte warten" 0 0
+	sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle aktuelle Infos der Harddisk\nBitte warten" 0 0
 	wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
+	total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
+		echo -e "o\ny\nn\n1\n\n+2M\n\nn\n2\n\n+1M\nEF02\nn\n4\n\n+${total_memory}M\n8200\nn\n3\n\n\n\nw\ny" | gdisk /dev/"$DRIVE" &> /dev/null
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\nBitte warten" 0 0
 		mount ${DEVICE}2 /mnt
+		wipefs -a ${DEVICE}3
+		mkswap ${DEVICE}3
+		swapon ${DEVICE}3
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
+		echo -e "n\n\n\n512M\nef00\nn\n3\n\n+${total_memory}M\n8200\nn\n\n\n\n\nw\ny" | gdisk /dev/"$DRIVE" &> /dev/null
 		echo j | mkfs.vfat -F32 ${DEVICE}1 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Boot) wird Formatiert" 0 0
 		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Root) wird Formatiert" 0 0
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
+		wipefs -a ${DEVICE}3
+		mkswap ${DEVICE}3
+		swapon ${DEVICE}3
 	fi		
-	#Swap?
-	if [[ $HD_SD == "HDD" ]]; then
-		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-		fallocate -l ${total_memory}M /mnt/swapfile
-		chmod 600 /mnt/swapfile
-		mkswap /mnt/swapfile &> /dev/null | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
-		swapon /mnt/swapfile
-	fi
 	#Mirror?
 	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
 		pacman -Sy reflector --needed --noconfirm &> /dev/null | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
@@ -121,7 +112,6 @@ _select() {
 		pacman -Syy &> /dev/null | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
 	fi
 	#Error
-	check_error
 	_base
 }
 _base() {
@@ -271,25 +261,22 @@ _jdownloader() {
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 	#Locale
-	echo "LANG=\"${LOCALE}\"" > /mnt/etc/locale.conf
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=${LANGUAGE} >> /mnt/etc/locale.conf
-	sed -i "s/#${LOCALE}/${LOCALE}/" /mnt/etc/locale.gen
+	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
+	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen"
 	#Console
-	echo -e "KEYMAP=${KEYMAP}" > /mnt/etc/vconsole.conf
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+	echo -e "KEYMAP=sg-latin1" > /mnt/etc/vconsole.conf
+	echo FONT="lat9w-16" >> /mnt/etc/vconsole.conf
 	#Multi Mirror
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	arch_chroot "pacman -Sy"
 	#AUR Mirror
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#Zone
-	arch_chroot "ln -s /usr/share/zoneinfo/${ZONE}/${SUBZONE} /etc/localtime"
+	arch_chroot "ln -s /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 	#Zeit
 	arch_chroot "hwclock --systohc --utc"
 	#Root PW
@@ -315,11 +302,9 @@ _jdownloader() {
 	#WiFi
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt dialog rp-pppoe wireless_tools wpa_actiond wpa_supplicant
-	#Bluetoo
+
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman && arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
-	#Touchpad
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics
-	#Tablet
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
 	#SSD
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
@@ -345,13 +330,13 @@ _jdownloader() {
 	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 	arch_chroot "systemctl enable lightdm"
 	#x11 Tastatur
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Netzwerkkarte
 	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 	#Office
-#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de ttf-liberation hunspell-de aspell-de firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 	#Grafik
-#	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla
+	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan vlc handbrake mkvtoolnix-gui deluge geany geany-plugins picard gparted gthumb filezilla
 	#jdownloader
 	_jdownloader | dialog --title " JDownloader " --infobox "\nBitte warten" 0 0
 	#pamac
@@ -382,8 +367,8 @@ _jdownloader() {
 	#mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 	#Teamviewer
-#	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-#	arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+	arch_chroot "systemctl enable teamviewerd"
 	#Fingerprint
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
@@ -400,9 +385,11 @@ _jdownloader() {
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
+	#Error
+	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
 	#Herunterfahren
 	swapoff -a
-#	umount -R /mnt
-#	reboot
+	umount -R /mnt
+	reboot
 }
 _sys
