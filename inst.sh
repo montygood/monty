@@ -113,14 +113,11 @@ _select() {
 		swapon /mnt/swapfile
 	fi
 	#Mirror?
-	if ! (</etc/pacman.d/mirrorlist grep "reflector" &>/dev/null) then
-		pacman -Sy reflector --needed --noconfirm &> /dev/null | dialog --title " Mirror download " --infobox "\nBitte warten" 0 0
-		reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist &> /dev/null | dialog --title " Mirror updates " --infobox "\nschnellste Mirrors werden gesucht\nBitte warten..." 0 0
-		(pacman-key --init
-		pacman-key --populate archlinux) &> /dev/null | dialog --title " Mirror refresh " --infobox "\nBitte warten" 0 0
-		pacman -Syu &> /dev/null | dialog --title " System-refresh " --infobox "\nneuste Versionen werden gesucht\nBitte warten..." 0 0
-	fi
-	#Error
+	pacman -Sy reflector --needed --noconfirm
+	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
+	pacman-key --init
+	pacman-key --populate archlinux
+	pacman -Syy
 	_base
 }
 _base() {
