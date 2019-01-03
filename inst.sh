@@ -286,17 +286,20 @@ ins_graphics_card() {
 	#audio
 	pacstrap /mnt alsa-utils
 	#Fenster
-	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview 
+	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager
 	#Internet
 	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 	#Medien
 	pacstrap /mnt vlc handbrake mkvtoolnix-gui
+	#Office
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
+	#Dienste
+	arch_chroot "systemctl enable NetworkManager"
 
 #	#Pakete
 #	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
-#	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-terminal gnome-screenshot eog gnome-calculator networkmanager
-#	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk wol nss-mdns
-#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de 
+#	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-terminal gnome-screenshot eog gnome-calculator
+#	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk wol nss-mdns	 
 #	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan  deluge geany geany-plugins picard gparted gthumb filezilla
 #	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
 #	pacstrap /mnt xorg-apps xorg-xkill xf86-input-keyboard xf86-input-mouse xf86-input-libinput
@@ -306,7 +309,6 @@ ins_graphics_card() {
 	#Service
 #	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 #	arch_chroot "systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
-#	arch_chroot "systemctl enable NetworkManager && systemctl enable NetworkManager-dispatcher"
 
 	#lightdm
 #	pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
@@ -397,10 +399,9 @@ ins_graphics_card() {
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 
-	#log & ende 
-	cp -f /tmp/error.log /mnt/home/$USERNAME/error.log
+	#Ende 
 	swapoff -a
-#	umount -R /mnt
-#	reboot
+	umount -R /mnt
+	reboot
 }
 _sys
