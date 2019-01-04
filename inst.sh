@@ -123,7 +123,7 @@ _select() {
 _base() {
 ins_graphics_card() {
 	ins_intel(){
-		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
+		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode --needed --noconfirm
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
 			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
@@ -137,7 +137,7 @@ ins_graphics_card() {
 		fi			 
 	}
 	ins_ati(){
-		pacstrap /mnt xf86-video-ati
+		pacstrap /mnt xf86-video-ati --needed --noconfirm
 		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
 	}
 	NVIDIA=""
@@ -167,7 +167,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		pacstrap /mnt xf86-video-nouveau
+		pacstrap /mnt xf86-video-nouveau --needed --noconfirm
 		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
@@ -175,7 +175,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings --needed --noconfirm
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
@@ -183,7 +183,7 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings --needed --noconfirm
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
@@ -191,28 +191,28 @@ ins_graphics_card() {
 		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings
+		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings --needed --noconfirm
 		NVIDIA_INST=1
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		pacstrap /mnt xf86-video-openchrome
+		pacstrap /mnt xf86-video-openchrome --needed --noconfirm
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
 		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
 		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
 		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD
+		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD --needed --noconfirm
 		umount -l /mnt/dev
 		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
 		arch_chroot "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed --noconfirm
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		pacstrap /mnt xf86-video-fbdev
+		pacstrap /mnt xf86-video-fbdev --needed --noconfirm
 	fi
 	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
 		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
@@ -243,12 +243,12 @@ ins_graphics_card() {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	arch_chroot "pacman -Syy"
+	arch_chroot "pacman -Sy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#GRUB
 	arch_chroot "mkinitcpio -p linux"
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools
+		pacstrap /mnt grub dosfstools --needed --noconfirm
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -256,7 +256,7 @@ ins_graphics_card() {
 		genfstab -Up /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr dosfstools grub
+		pacstrap /mnt efibootmgr dosfstools grub --needed --noconfirm
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -273,17 +273,13 @@ ins_graphics_card() {
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
 	#Pakete
-	pacstrap /mnt acpid dbus avahi cups cronie
+	pacstrap /mnt acpid dbus avahi cups cronie --needed --noconfirm
 	arch_chroot "systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
 	arch_chroot "hwclock -w"
-	pacstrap /mnt xorg-server xorg-xinit
+	pacstrap /mnt xorg-server xorg-xinit --needed --noconfirm
 	#Grafikkarte
-	ins_graphics_card &>> /tmp/error.log | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
-	#Tastatur
-	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
-#	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-	#Schrift
-	pacstrap /mnt ttf-liberation ttf-dejavu 
+	ins_graphics_card | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
+	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -306,41 +302,33 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 exec cinnamon-session
 EOF
+	#Schrift
+	pacstrap /mnt ttf-liberation ttf-dejavu --needed --noconfirm
 	#audio
-	pacstrap /mnt alsa-utils
+	pacstrap /mnt alsa-utils --needed --noconfirm
 	#Fenster
-	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager
+	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm
 	#Internet
-#	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
+	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed --noconfirm
 	#Medien
-#	pacstrap /mnt vlc handbrake mkvtoolnix-gui
+	pacstrap /mnt vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins --needed --noconfirm
 	#Office
-#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
+	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed --noconfirm
 	#Dienste
 	arch_chroot "systemctl enable NetworkManager"
 
 #	#Pakete
-#	pacstrap /mnt libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
-#	pacstrap /mnt gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-terminal gnome-screenshot eog gnome-calculator
-#	pacstrap /mnt pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk wol nss-mdns	 
-#	pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur shotwell simple-scan  deluge geany geany-plugins picard gparted gthumb filezilla
-#	pacstrap /mnt bc rsync mlocate pkgstats ntp bash-completion mesa gamin gnome-keyring gvfs gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
-#	pacstrap /mnt xorg-apps xorg-xkill xf86-input-keyboard xf86-input-mouse xf86-input-libinput
-#	pacstrap /mnt system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix
-#	pacstrap /mnt tlp
+#	libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
+#	gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-screenshot eog gnome-calculator
+#	pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk nss-mdns
+#	shotwell simple-scan deluge picard gparted gthumb filezilla
+#	rsync mlocate pkgstats ntp gamin gnome-keyring gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler 
+#	python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
+#	Xorg-apps xorg-xkill
+#	system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix
 
 	#Service
-#	arch_chroot "systemctl enable tlp && systemctl enable tlp-sleep && systemctl disable systemd-rfkill && tlp start"
 #	arch_chroot "systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
-
-	#lightdm
-#	pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
-#	sed -i "s/#pam-service=lightdm/pam-service=lightdm/" /mnt/etc/lightdm/lightdm.conf
-#	sed -i "s/#pam-autologin-service=lightdm-autologin/pam-autologin-service=lightdm-autologin/" /mnt/etc/lightdm/lightdm.conf
-#	sed -i "s/#session-wrapper=\/etc\/lightdm\/Xsession/session-wrapper=\/etc\/lightdm\/Xsession/" /mnt/etc/lightdm/lightdm.conf
-#	sed -i "s/#autologin-user=/autologin-user=${USERNAME}/" /mnt/etc/lightdm/lightdm.conf
-#	sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-#	arch_chroot "systemctl enable lightdm"
 
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
@@ -355,10 +343,10 @@ EOF
 	#Treiber
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt rp-pppoe wireless_tools wpa_actiond
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman && arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
-	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics
-	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
+	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt rp-pppoe wireless_tools wpa_actiond --needed --noconfirm
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman --needed --noconfirm&& arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
+	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed --noconfirm
+	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed --noconfirm
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
 	[[ ${ARCHI} == x86_64 ]] && arch_chroot "pacman -S lib32-alsa-plugins lib32-libpulse --needed --noconfirm"
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
@@ -387,18 +375,14 @@ EOF
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 
 	#Teamviewer
-#	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-#	arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+	arch_chroot "systemctl enable teamviewerd"
 
 	#Filebot
-#	pacstrap /mnt jre8-openjdk java-openjfx libmediainfo
+	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm
 	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
-	sed -i 's/^export LANG="en_EN.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
-	sed -i 's/^export LC_ALL="en_EN.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
-
-	#Einstellungen
-#	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
-#	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
+	sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
 
 	#plexupload
 	echo '#!/bin/sh' >> /mnt/bin/plexup
@@ -418,6 +402,10 @@ EOF
 	arch_chroot "chmod +x /bin/myup"
 
 	#update
+#	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
+#	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
