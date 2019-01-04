@@ -232,7 +232,7 @@ ins_graphics_card() {
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
-	sed -i "s/#en_EN.UTF-8/en_EN.UTF-8/" /mnt/etc/locale.gen
+	sed -i "s/#en_EN.UTF-8/en_US.UTF-8/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen"
 	echo -e "KEYMAP=sg-latin1" > /mnt/etc/vconsole.conf
 	echo FONT="lat9w-16" >> /mnt/etc/vconsole.conf
@@ -279,10 +279,19 @@ ins_graphics_card() {
 	#Grafikkarte
 	ins_graphics_card &>> /tmp/error.log | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
 	#Tastatur
-	arch_chroot "localectl set-x11-keymap ch pc105 nodeadkeys"
+	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
+#	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Schrift
 	pacstrap /mnt ttf-liberation ttf-dejavu 
 #	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
+
+	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
+	cat > /mnt/home/$USERNAME/.bash_profile << EOF
+if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
+    exec startx -- vt1 >/dev/null 2>&1
+fi
+EOF
+
 	#audio
 	pacstrap /mnt alsa-utils
 	#Fenster
