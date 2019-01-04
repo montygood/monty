@@ -105,11 +105,5 @@ bluez-firmware
 pulseaudio-bluetooth
 ##############################
 #Pakete
-#icedtea-web 
-#autofs
-#p7zip
-#lzop
-#cpio
-#foomatic-db
-#foomatic-db-engine
-#foomatic-db-nonfree
+autofs
+p7zip
