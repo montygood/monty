@@ -87,19 +87,19 @@ _select() {
 	#Wine?
 	dialog --title " Windows Spiele " --yesno "\nWine installieren" 0 0
 	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
-	sgdisk --zap-all ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle aktuelle Infos der Harddisk\nBitte warten" 0 0
-	wipefs -a ${DEVICE} &> /dev/null | dialog --title " Harddisk " --infobox "\nSammle neue Infos der Harddisk\nBitte warten" 0 0
+	sgdisk --zap-all ${DEVICE} 2>> monty.log
+	wipefs -a ${DEVICE} 2>> monty.log
 	#BIOS Part?
 	if [[ $SYSTEM == "BIOS" ]]; then
-		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE wird Formatiert\nBitte warten" 0 0
+		echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} 2>> monty.log
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 2>> monty.log
 		mount ${DEVICE}2 /mnt
 	fi
 	#UEFI Part?
 	if [[ $SYSTEM == "UEFI" ]]; then
-		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
-		echo j | mkfs.vfat -F32 ${DEVICE}1 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Boot) wird Formatiert" 0 0
-		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null | dialog --title " Harddisk " --infobox "\nHarddisk $DEVICE (Root) wird Formatiert" 0 0
+		echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} 2>> monty.log
+		echo j | mkfs.vfat -F32 ${DEVICE}1 2>> monty.log
+		echo j | mkfs.ext4 -q -L arch ${DEVICE}2 2>> monty.log
 		mount ${DEVICE}2 /mnt
 		mkdir -p /mnt/boot
 		mount ${DEVICE}1 /mnt/boot
@@ -109,14 +109,14 @@ _select() {
 		total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
 		fallocate -l ${total_memory}M /mnt/swapfile
 		chmod 600 /mnt/swapfile
-		mkswap /mnt/swapfile &> /dev/null | dialog --title " erstelle Swap " --infobox "\nBitte warten" 0 0
-		swapon /mnt/swapfile
+		mkswap /mnt/swapfile 2>> monty.log
+		swapon /mnt/swapfile 2>> monty.log
 	fi
 	#Mirror?
-	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
-	pacman-key --init
-	pacman-key --populate archlinux
-	pacman -Sy
+	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist 2>> monty.log
+	pacman-key --init 2>> monty.log
+	pacman-key --populate archlinux 2>> monty.log
+	pacman -Sy 2>> monty.log
 	_base
 }
 _base() {
@@ -226,34 +226,34 @@ ins_graphics_card() {
 	fi
 }
 	#BASE
-	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector --needed --noconfirm
-	genfstab -Up /mnt > /mnt/etc/fstab
-	echo "${HOSTNAME}" > /mnt/etc/hostname
+	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector --needed --noconfirm 2>> monty.log
+	genfstab -Up /mnt > /mnt/etc/fstab 2>> monty.log
+	echo "${HOSTNAME}" > /mnt/etc/hostname 2>> monty.log
 #	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf 2>> monty.log
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf 2>> monty.log
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf 2>> monty.log
 	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-	echo KEYMAP=sg > /mnt/etc/vconsole.conf
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
-	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
+	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf 2>> monty.log
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf 2>> monty.log
+	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen 2>> monty.log
 	arch_chroot "locale-gen"
 	arch_chroot "mkinitcpio -p linux"
 	arch_chroot "passwd root" < /tmp/.passwd
 
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools --needed --noconfirm
-		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+		pacstrap /mnt grub dosfstools --needed --noconfirm 2>> monty.log
+		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE" 2>> monty.log
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>> monty.log
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg 2>> monty.log
+		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg" 2>> monty.log
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr dosfstools grub --needed --noconfirm
+		pacstrap /mnt efibootmgr dosfstools grub --needed --noconfirm 2>> monty.log
 		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
-		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub 2>> monty.log
+		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg 2>> monty.log
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	fi
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
@@ -262,29 +262,29 @@ ins_graphics_card() {
 	#Einstellungen
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
-	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers 2>> monty.log
+	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers 2>> monty.log
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
+		/Include/s/#//g}' /mnt/etc/pacman.conf 2>> monty.log
 	fi
 	arch_chroot "pacman -Sy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 
 	#Pakete
-	pacstrap /mnt acpid dbus avahi cups cronie --needed --noconfirm
+	pacstrap /mnt acpid dbus avahi cups cronie --needed --noconfirm 2>> monty.log
 	arch_chroot "systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
-	pacstrap /mnt xorg-server xorg-xinit --needed --noconfirm
+	pacstrap /mnt xorg-server xorg-xinit --needed --noconfirm 2>> monty.log
 
 	#Grafikkarte
-	ins_graphics_card | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
+	ins_graphics_card 2>> monty.log
 
 	#Autologin
-	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
-	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
+	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/ 2>> monty.log
+	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf 2>> monty.log
+	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf 2>> monty.log
 	cat > /mnt/home/$USERNAME/.bash_profile << EOF
 if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
@@ -311,7 +311,7 @@ EOF
 	#audio
 #	pacstrap /mnt alsa-utils --needed --noconfirm
 	#Fenster
-	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm
+	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm 2>> monty.log
 	#Internet
 #	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de --needed --noconfirm
 	#Medien
@@ -339,10 +339,10 @@ EOF
 
 	#pamac
 	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
-	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
-	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
-	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
-	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf 2>> monty.log
+	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf 2>> monty.log
+	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf 2>> monty.log
+	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf 2>> monty.log
 
 	#Treiber
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
@@ -362,7 +362,7 @@ EOF
 
 	#JDownloader
 	mkdir -p /mnt/opt/JDownloader/
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar 2>> monty.log
 	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
 	arch_chroot "chmod -R 0775 /opt/JDownloader/"
 	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
@@ -383,13 +383,13 @@ EOF
 #	arch_chroot "systemctl enable teamviewerd"
 
 	#Filebot
-	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm
+	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm 2>> monty.log
 	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
 	sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
 	sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
 
 	#plexupload
-	echo '#!/bin/sh' >> /mnt/bin/plexup
+	echo '#!/bin/sh' >> /mnt/bin/plexup 2>> monty.log
 	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
 	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
 	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
@@ -397,7 +397,7 @@ EOF
 	arch_chroot "chmod +x /bin/plexup"
 
 	#myup
-	echo '#!/bin/sh' >> /mnt/bin/myup
+	echo '#!/bin/sh' >> /mnt/bin/myup 2>> monty.log
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
 	echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
 	echo "sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)" >> /mnt/bin/myup
@@ -409,10 +409,21 @@ EOF
 #	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
 #	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
-	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
+	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers 2>> monty.log
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
+
+	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "error") != "" ]]; then
+		dialog --title " Error " --msgbox "$(cat monty.log)" 0 0
+	fi
+	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "fehler") != "" ]]; then
+		dialog --title " Fehler " --msgbox "$(cat monty.log)" 0 0
+	fi
+	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "warning") != "" ]]; then
+		dialog --title " Fehler " --msgbox "$(cat monty.log)" 0 0
+	fi
+	cp -f monty.log /mnt/home/$USERNAME/error.log
 
 	#Ende 
 	swapoff -a
