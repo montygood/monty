@@ -234,7 +234,7 @@ ins_graphics_card() {
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
 	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
 	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-	echo KEYMAP=sg > /mnt/etc/vconsole.conf
+	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 	arch_chroot "locale-gen"
@@ -251,7 +251,7 @@ ins_graphics_card() {
 	fi
 	arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
 	sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-y	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 
@@ -301,33 +301,8 @@ exec cinnamon-session
 EOF
 
 	#Pakete
-#	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
-
-#	pacstrap /mnt ttf-liberation ttf-dejavu --needed --noconfirm
-	#audio
-#	pacstrap /mnt alsa-utils --needed --noconfirm
-	#Fenster
-	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm
-	#Internet
-#	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de --needed --noconfirm
-	#Medien
-#	pacstrap /mnt vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins --needed --noconfirm
-	#Office
-#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed --noconfirm
-	#Dienste
-
-#	#Pakete
-#	libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
-#	gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-screenshot eog gnome-calculator
-#	pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk nss-mdns
-#	shotwell simple-scan deluge picard gparted gthumb filezilla icedtea-web 
-#	rsync mlocate pkgstats ntp gamin gnome-keyring gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler 
-#	python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
-#	Xorg-apps xorg-xkill
-#	system-config-printer hplip cups-pdf gtk3-print-backends ghostscript gsfonts gutenprint foomatic-db foomatic-db-engine foomatic-db-nonfree splix
-
+	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
 	#Service
-#	arch_chroot "systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
 	arch_chroot "systemctl enable NetworkManager"
 
 	#trizen
@@ -372,11 +347,11 @@ EOF
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 
 	#Mintstick
-#	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 
 	#Teamviewer
-#	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-#	arch_chroot "systemctl enable teamviewerd"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+	arch_chroot "systemctl enable teamviewerd"
 
 	#Filebot
 	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm
@@ -402,8 +377,9 @@ EOF
 	arch_chroot "chmod +x /bin/myup"
 
 	#update
-#	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
-#	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
