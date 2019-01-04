@@ -285,9 +285,10 @@ ins_graphics_card() {
 	pacstrap /mnt ttf-liberation ttf-dejavu 
 #	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 
-	arch_chroot "cp /usr/lib/systemd/system/getty@.service /etc/systemd/system/getty@tty1.service"
+#	arch_chroot "cp /usr/lib/systemd/system/getty@.service /etc/systemd/system/getty@tty1.service"
 #	arch_chroot "systemctl enable getty@tty1"
 
+	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 
