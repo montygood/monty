@@ -408,21 +408,12 @@ EOF
 	#update
 #	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
 #	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers 2>> monty.log
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
-
-	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "error") != "" ]]; then
-		dialog --title " Error " --msgbox "$(cat monty.log)" 0 0
-	fi
-	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "fehler") != "" ]]; then
-		dialog --title " Fehler " --msgbox "$(cat monty.log)" 0 0
-	fi
-	if [[ $? -eq 0 ]] && [[ $(cat monty.log | grep -i "warning") != "" ]]; then
-		dialog --title " Fehler " --msgbox "$(cat monty.log)" 0 0
-	fi
 	cp -f monty.log /mnt/home/$USERNAME/error.log
 
 	#Ende 
