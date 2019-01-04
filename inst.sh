@@ -243,6 +243,7 @@ ins_graphics_card() {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
+	arch_chroot "pacman -Syy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#GRUB
 	arch_chroot "mkinitcpio -p linux"
@@ -283,11 +284,6 @@ ins_graphics_card() {
 #	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"${XKBMAP}"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	#Schrift
 	pacstrap /mnt ttf-liberation ttf-dejavu 
-#	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
-
-#	arch_chroot "cp /usr/lib/systemd/system/getty@.service /etc/systemd/system/getty@tty1.service"
-#	arch_chroot "systemctl enable getty@tty1"
-
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -297,7 +293,19 @@ if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
 fi
 EOF
-
+	cat > /mnt/home/$USERNAME/.xinitrc << EOF
+#!/bin/sh
+if [ -d /etc/X11/xinit/xinitrc.d ]; then
+    for f in /etc/X11/xinit/xinitrc.d/*.sh; do
+        [ -x "$f" ] && . "$f"
+    done
+fi
+[ -f /etc/X11/xinit/.Xmodmap ] && xmodmap /etc/X11/xinit/.Xmodmap
+[ -f ~/.Xmodmap ] && xmodmap ~/.Xmodmap
+[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
+[ -f ~/.xprofile ] && . ~/.xprofile
+exec cinnamon-session
+EOF
 	#audio
 	pacstrap /mnt alsa-utils
 	#Fenster
