@@ -113,11 +113,10 @@ _select() {
 		swapon /mnt/swapfile
 	fi
 	#Mirror?
-	pacman -Sy reflector --needed --noconfirm
 	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 	pacman-key --init
 	pacman-key --populate archlinux
-	pacman -Syy
+	pacman -Sy
 	_base
 }
 _base() {
@@ -228,32 +227,27 @@ ins_graphics_card() {
 }
 	#BASE
 	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector --needed --noconfirm
-	#Einstellungen
+	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
+#	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
-	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
-	sed -i "s/#en_EN.UTF-8/en_US.UTF-8/" /mnt/etc/locale.gen
-	arch_chroot "locale-gen"
-	echo -e "KEYMAP=sg-latin1" > /mnt/etc/vconsole.conf
-	echo FONT="lat9w-16" >> /mnt/etc/vconsole.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
 	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
-	arch_chroot "pacman -Sy"
-	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-	#GRUB
+	echo KEYMAP=sg > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
+	arch_chroot "locale-gen"
 	arch_chroot "mkinitcpio -p linux"
+	arch_chroot "passwd root" < /tmp/.passwd
+
+	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pacstrap /mnt grub dosfstools --needed --noconfirm
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -Up /mnt > /mnt/etc/fstab
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pacstrap /mnt efibootmgr dosfstools grub --needed --noconfirm
@@ -261,29 +255,36 @@ ins_graphics_card() {
 		sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 		sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 		arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-		genfstab -Up /mnt > /mnt/etc/fstab
 	fi
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-	#Benutzer
-	arch_chroot "passwd root" < /tmp/.passwd
+
+	#Einstellungen
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+	arch_chroot "pacman -Sy"
+	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+
 	#Pakete
 	pacstrap /mnt acpid dbus avahi cups cronie --needed --noconfirm
 	arch_chroot "systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
-	arch_chroot "hwclock -w"
 	pacstrap /mnt xorg-server xorg-xinit --needed --noconfirm
+
 	#Grafikkarte
 	ins_graphics_card | dialog --title " Grafikkarte " --infobox "\nBitte warten" 0 0
+
 	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-
 	cat > /mnt/home/$USERNAME/.bash_profile << EOF
 if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
@@ -302,26 +303,28 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 exec cinnamon-session
 EOF
-	#Schrift
-	pacstrap /mnt ttf-liberation ttf-dejavu --needed --noconfirm
+
+	#Pakete
+#	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
+
+#	pacstrap /mnt ttf-liberation ttf-dejavu --needed --noconfirm
 	#audio
-	pacstrap /mnt alsa-utils --needed --noconfirm
+#	pacstrap /mnt alsa-utils --needed --noconfirm
 	#Fenster
 	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm
 	#Internet
-	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de --needed --noconfirm
+#	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de --needed --noconfirm
 	#Medien
-	pacstrap /mnt vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins --needed --noconfirm
+#	pacstrap /mnt vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins --needed --noconfirm
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed --noconfirm
+#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de --needed --noconfirm
 	#Dienste
-	arch_chroot "systemctl enable NetworkManager"
 
 #	#Pakete
 #	libquicktime cdrdao libaacs libdvdcss libdvdnav libdvdread gtk-engine-murrine
 #	gst-plugins-base gst-plugins-base-libs gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav gnome-screenshot eog gnome-calculator
 #	pulseaudio pulseaudio-alsa pavucontrol alsa-plugins nfs-utils jre7-openjdk nss-mdns
-#	shotwell simple-scan deluge picard gparted gthumb filezilla
+#	shotwell simple-scan deluge picard gparted gthumb filezilla icedtea-web 
 #	rsync mlocate pkgstats ntp gamin gnome-keyring gvfs-mtp ifuse gvfs-afc gvfs-gphoto2 gvfs-nfs gvfs-smb polkit poppler 
 #	python2-xdg ntfs-3g f2fs-tools fuse fuse-exfat mtpfs xdg-user-dirs xdg-utils autofs unrar p7zip lzop cpio zip arj unace unzip
 #	Xorg-apps xorg-xkill
@@ -329,6 +332,7 @@ EOF
 
 	#Service
 #	arch_chroot "systemctl enable rpcbind && systemctl enable nfs-client.target && systemctl enable remote-fs.target"
+	arch_chroot "systemctl enable NetworkManager"
 
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
@@ -344,7 +348,7 @@ EOF
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt rp-pppoe wireless_tools wpa_actiond --needed --noconfirm
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman --needed --noconfirm&& arch_chroot "systemctl enable bluetooth" && rm /mnt/etc/polkit-1/rules.d/50-default.rules && mv 50-default.rules /mnt/etc/polkit-1/rules.d/
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman --needed --noconfirm && arch_chroot "systemctl enable bluetooth"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed --noconfirm
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed --noconfirm
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
@@ -372,11 +376,11 @@ EOF
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 
 	#Mintstick
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
+#	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 
 	#Teamviewer
-	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-	arch_chroot "systemctl enable teamviewerd"
+#	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+#	arch_chroot "systemctl enable teamviewerd"
 
 	#Filebot
 	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm
