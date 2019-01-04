@@ -1,14 +1,11 @@
 #!/bin/bash
-
 #kein schwarzes Bild
 case $(tty) in /dev/tty[0-9]*)
     setterm -blank 0 -powersave off ;;
 esac
-
 # default
 loadkeys de_CH-latin1
 timedatectl set-local-rtc 0
-
 #Prozesse
 arch_chroot() {
 	arch-chroot /mnt /bin/bash -c "$1"
@@ -229,7 +226,6 @@ ins_graphics_card() {
 	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector grub dosfstools --needed --noconfirm
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
-#	echo -e "#<ip-address>\t<hostname.domain.org>\t<hostname>\n127.0.0.1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}\n::1\tlocalhost.localdomain\tlocalhost\t${HOSTNAME}" > /mnt/etc/hosts
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
 	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
@@ -240,7 +236,6 @@ ins_graphics_card() {
 	arch_chroot "locale-gen"
 	arch_chroot "mkinitcpio -p linux"
 	arch_chroot "passwd root" < /tmp/.passwd
-
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
@@ -254,7 +249,6 @@ ins_graphics_card() {
 	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-
 	#Einstellungen
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
@@ -268,15 +262,12 @@ ins_graphics_card() {
 	fi
 	arch_chroot "pacman -Sy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-
 	#Pakete
 	pacstrap /mnt acpid dbus avahi cups cronie --needed --noconfirm
 	arch_chroot "systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
 	pacstrap /mnt xorg-server xorg-xinit --needed --noconfirm
-
 	#Grafikkarte
 	ins_graphics_card
-
 	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -299,27 +290,21 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 exec cinnamon-session
 EOF
-
 	#Pakete
 	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
 	#Service
 	arch_chroot "systemctl enable NetworkManager"
-
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-
 	#pamac
 	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 	sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-
 	#Treiber
 	[[ $WINE == "YES" ]] && arch_chroot "pacman -S wine wine_gecko wine-mono winetricks lib32-libxcomposite --needed --noconfirm"
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
-	[[ $(lspci | grep -i "Network Controller") != "" ]] && pacstrap /mnt rp-pppoe wireless_tools wpa_actiond --needed --noconfirm
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueman --needed --noconfirm && arch_chroot "systemctl enable bluetooth"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics --needed --noconfirm
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom --needed --noconfirm
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
@@ -330,7 +315,6 @@ EOF
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
-
 	#JDownloader
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -345,20 +329,16 @@ EOF
 	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
-
 	#Mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
-
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 	arch_chroot "systemctl enable teamviewerd"
-
 	#Filebot
 	pacstrap /mnt java-openjfx libmediainfo --needed --noconfirm
 	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
 	sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
 	sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
-
 	#plexupload
 	echo '#!/bin/sh' >> /mnt/bin/plexup
 	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
@@ -366,7 +346,6 @@ EOF
 	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
 	echo "sudo umount /storage" >> /mnt/bin/plexup
 	arch_chroot "chmod +x /bin/plexup"
-
 	#myup
 	echo '#!/bin/sh' >> /mnt/bin/myup
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
@@ -375,7 +354,6 @@ EOF
 	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
 	arch_chroot "chmod +x /bin/myup"
-
 	#update
 	mv monty-1-1-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U monty-1-1-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/monty-1-1-any.pkg.tar.xz
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
@@ -385,7 +363,6 @@ EOF
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
-
 	#Ende 
 	swapoff -a
 	umount -R /mnt
