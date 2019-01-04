@@ -309,7 +309,7 @@ EOF
 	#Fenster
 	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager gnome-terminal bash-completion xf86-input-keyboard xf86-input-mouse --needed --noconfirm
 	#Internet
-	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de --needed --noconfirm
+	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de --needed --noconfirm
 	#Medien
 	pacstrap /mnt vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins --needed --noconfirm
 	#Office
