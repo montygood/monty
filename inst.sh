@@ -287,9 +287,7 @@ ins_graphics_card() {
 
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	cat > /mnt/home/$USERNAME/.bash_profile << EOF
-if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
-    exec startx -- vt1 >/dev/null 2>&1
-fi
+[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && exec startx
 EOF
 
 	#audio
