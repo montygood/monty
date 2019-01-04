@@ -285,9 +285,16 @@ ins_graphics_card() {
 	pacstrap /mnt ttf-liberation ttf-dejavu 
 #	cp -f /mnt/etc/X11/xinit/xinitrc /mnt/home/$USERNAME/.xinitrc
 
+	arch_chroot "cp /usr/lib/systemd/system/getty@.service /etc/systemd/system/getty@tty1.service"
+#	arch_chroot "systemctl enable getty@tty1"
+
+	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
+
 	cat > /mnt/home/$USERNAME/.bash_profile << EOF
-[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && exec startx
+if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
+    exec startx -- vt1 >/dev/null 2>&1
+fi
 EOF
 
 	#audio
@@ -295,11 +302,11 @@ EOF
 	#Fenster
 	pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller nemo-preview networkmanager
 	#Internet
-	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
+#	pacstrap /mnt firefox firefox-i18n-de flashplugin icedtea-web thunderbird thunderbird-i18n-de
 	#Medien
-	pacstrap /mnt vlc handbrake mkvtoolnix-gui
+#	pacstrap /mnt vlc handbrake mkvtoolnix-gui
 	#Office
-	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
+#	pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 	#Dienste
 	arch_chroot "systemctl enable NetworkManager"
 
