@@ -332,6 +332,8 @@ EOF
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 	#Mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
+	#Sudo dbus
+	arch_chroot "su - ${USERNAME} -c 'trizen -S dbus-x11 --noconfirm'"
 	#Teamviewer
 	arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 	arch_chroot "systemctl enable teamviewerd"
