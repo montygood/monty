@@ -5,6 +5,7 @@ case $(tty) in /dev/tty[0-9]*)
 esac
 # default
 loadkeys de_CH-latin1
+export LANG=de_CH.UTF-8
 timedatectl set-local-rtc 0
 #Prozesse
 arch_chroot() {
