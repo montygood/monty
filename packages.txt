@@ -35,6 +35,7 @@ thunderbird-i18n-de
 filezilla
 ##############################
 #Tools
+parlore
 vlc
 handbrake
 mkvtoolnix-gui
@@ -57,7 +58,6 @@ tumbler
 ffmpegthumbnailer
 ffmpegthumbs
 libopenraw
-feh
 galculator
 gtk-engine-murrine
 meld
