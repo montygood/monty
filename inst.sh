@@ -356,7 +356,7 @@ EOF
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
 	arch_chroot "chmod +x /bin/myup"
 	#update
-	unzip -o monty.zip -d /mnt/
+	mv monty.tar.xz /mnt/ && arch_chroot "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
 	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
