@@ -291,6 +291,8 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 exec cinnamon-session
 EOF
+	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
+	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
 	#Pakete
 	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
 	#Service
@@ -362,8 +364,6 @@ EOF
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
-	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
 	arch_chroot "pacman -Syu --noconfirm"
 	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#Ende 
