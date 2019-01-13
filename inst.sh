@@ -291,8 +291,8 @@ fi
 [ -f ~/.xprofile ] && . ~/.xprofile
 exec cinnamon-session
 EOF
-	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
-	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
+#	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
+#	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
 	#Pakete
 	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
 	#Service
