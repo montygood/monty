@@ -271,7 +271,7 @@ ins_graphics_card() {
 	arch_chroot "pacman -Sy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#Pakete
-	pacstrap /mnt acpid dbus avahi cups cronie networkmanager
+	pacstrap /mnt acpid dbus avahi cups cronie networkmanager network-manager-applet xfce4-notifyd
 	arch_chroot "systemctl enable NetworkManager && systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
 	pacstrap /mnt xorg-server xorg-xinit
 	#Grafikkarte
