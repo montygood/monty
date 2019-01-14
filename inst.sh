@@ -278,17 +278,12 @@ if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
 fi
 EOF
-	cat > /mnt/home/$USERNAME/.xinitrc2 << EOF
+	cat > /mnt/home/$USERNAME/.xinitrc << EOF
 #!/bin/sh
-if [ -d /etc/X11/xinit/xinitrc.d ]; then
-    for f in /etc/X11/xinit/xinitrc.d/*.sh; do
-        [ -x "$f" ] && . "$f"
-    done
-fi
-exec startxfce4
+exec cinnamon-session
 EOF
-#	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
-#	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
+	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
+	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
 	#Pakete
 	pacstrap /mnt $(grep -hv '^#' packages.txt) --needed --noconfirm
 	#Service
@@ -354,8 +349,8 @@ EOF
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
 	arch_chroot "chmod +x /bin/myup"
 	#update
-#	mv monty.tar.xz /mnt/ && arch_chroot "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
-#	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	mv monty.tar.xz /mnt/ && arch_chroot "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
+	arch_chroot "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
