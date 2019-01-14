@@ -278,7 +278,7 @@ if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
 fi
 EOF
-	cat > /mnt/home/$USERNAME/.xinitrc << EOF
+	cat > /mnt/home/$USERNAME/.xinitrc2 << EOF
 #!/bin/sh
 if [ -d /etc/X11/xinit/xinitrc.d ]; then
     for f in /etc/X11/xinit/xinitrc.d/*.sh; do
