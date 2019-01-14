@@ -285,11 +285,7 @@ if [ -d /etc/X11/xinit/xinitrc.d ]; then
         [ -x "$f" ] && . "$f"
     done
 fi
-[ -f /etc/X11/xinit/.Xmodmap ] && xmodmap /etc/X11/xinit/.Xmodmap
-[ -f ~/.Xmodmap ] && xmodmap ~/.Xmodmap
-[ -f ~/.Xresources ] && xrdb -merge ~/.Xresources
-[ -f ~/.xprofile ] && . ~/.xprofile
-exec cinnamon-session
+exec startxfce4
 EOF
 #	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
 #	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
