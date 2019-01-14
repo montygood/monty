@@ -273,7 +273,8 @@ ins_graphics_card() {
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-	cat > /mnt/home/$USERNAME/.bash_profile1 << EOF
+
+cat > /mnt/home/$USERNAME/.bash_profile << EOF
 if [ -z "\$DISPLAY" ] && [ \$XDG_VTNR -eq 1 ]; then
     exec startx -- vt1 >/dev/null 2>&1
 fi
@@ -282,10 +283,8 @@ EOF
 #!/bin/sh
 exec startxfce4
 EOF
-#	sed -i 's/#IgnorePkg   =/IgnorePkg = dbus/' /mnt/etc/pacman.conf
-#	mv dbus-1.12.12-1-x86_64.pkg.tar.xz /mnt/ && arch_chroot "pacman -U dbus-1.12.12-1-x86_64.pkg.tar.xz --needed --noconfirm" && rm /mnt/dbus-1.12.12-1-x86_64.pkg.tar.xz
 	#Pakete
-	pacstrap /mnt xfce4 xfce4-goodies ttf-liberation ttf-dejavu alsa-firmware alsa-utils gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly libdvdcss pavucontrol networkmanager gnome-system-monitor bash-completion xf86-input-keyboard xf86-input-mouse firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de filezilla parlore vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs udiskie xdg-user-dirs tumbler ffmpegthumbnailer ffmpegthumbs libopenraw galculator gtk-engine-murrine meld libquicktime dconf-editor gthumb picard gparted laptop-detect nfs-utils libdvdnav libdvdread libdvdcss shotwell simple-scan deluge rsync ifuse ntfs-3g fuse-exfat unrar wget python2-dbus libmtp cups-pdf cups-pk-helper gutenprint splix system-config-printer python-pip python-reportlab libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de blueberry bluez bluez-firmware pulseaudio-bluetooth autofs p7zip --needed --noconfirm
+	pacstrap /mnt xfce4 xfce4-goodies ttf-liberation ttf-dejavu alsa-firmware alsa-utils gst-libav gst-plugins-bad gst-plugins-base gst-plugins-good gst-plugins-ugly libdvdcss pavucontrol networkmanager gnome-system-monitor bash-completion xf86-input-keyboard xf86-input-mouse firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de filezilla palore vlc handbrake mkvtoolnix-gui gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur geany geany-plugins gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs udiskie xdg-user-dirs tumbler ffmpegthumbnailer ffmpegthumbs libopenraw galculator gtk-engine-murrine meld libquicktime dconf-editor gthumb picard gparted laptop-detect nfs-utils libdvdnav libdvdread libdvdcss shotwell simple-scan deluge rsync ifuse ntfs-3g fuse-exfat unrar wget python2-dbus libmtp cups-pdf cups-pk-helper gutenprint splix system-config-printer python-pip python-reportlab libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de blueberry bluez bluez-firmware pulseaudio-bluetooth autofs p7zip --needed --noconfirm
 	#Service
 	arch_chroot "systemctl enable NetworkManager"
 	#trizen
