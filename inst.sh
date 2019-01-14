@@ -213,7 +213,7 @@ ins_graphics_card() {
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse --needed --noconfirm
+		pacstrap /mnt xf86-video-vmware xf86-input-vmmouse
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
 		pacstrap /mnt xf86-video-fbdev
