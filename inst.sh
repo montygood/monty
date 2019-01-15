@@ -83,14 +83,22 @@ _select() {
 	sel_hostname
 	sel_hdd
 	#Programme Installieren
-	dialog --title " Soll Gimp das Grafikprogramm installiert werden? " --yesno "\nGimp installieren" 0 0
-	if [[ $? -eq 0 ]]; then GIMP="YES" ; fi
-	dialog --title " Soll LibreOffice das Office Programm installiert werden? " --yesno "\nLibreOffice installieren" 0 0
-	if [[ $? -eq 0 ]]; then OFFICE="YES" ; fi
-	dialog --title " Soll TeamViewer installiert werden? " --yesno "\nTeamViewer installieren" 0 0
-	if [[ $? -eq 0 ]]; then TEAM="YES" ; fi
-	dialog --title " Soll Wine für Windows Spiele & Programme installiert werden? " --yesno "\nWine installieren" 0 0
-	if [[ $? -eq 0 ]]; then WINE="YES" ; fi
+	cmd=(dialog --title " Programme auch installieren? " --separate-output --checklist "Auswahl:" 22 76 16)
+	options=(1 "Gimp das Grafikprogramm installieren?" off
+		 2 "LibreOffice das Office Programm installieren?" off
+		 3 "TeamViewer installieren?" off
+		 4 "Wine für Windows Spiele & Programme installieren?" off)
+	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
+	clear
+	for choice in $choices
+	do
+	    case $choice in
+		1) GIMP=YES ;;
+		2) OFFICE=YES ;;
+		3) TEAM=YES ;;
+		4) WINE=YES ;;
+	    esac
+	done
 	#HD bereinigen
 	sgdisk --zap-all ${DEVICE} &> /dev/null
 	wipefs -a ${DEVICE} &> /dev/null
