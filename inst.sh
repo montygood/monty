@@ -279,20 +279,14 @@ ins_graphics_card() {
 	arch_chroot "pacman -Sy"
 	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#Pakete
-	pacstrap /mnt acpid dbus avahi cups cronie networkmanager network-manager-applet xfce4-notifyd
-	arch_chroot "systemctl enable NetworkManager && systemctl enable acpid && systemctl enable avahi-daemon && systemctl enable org.cups.cupsd.service && systemctl enable --now systemd-timesyncd.service"
-	pacstrap /mnt xorg-server xorg-xinit
+	pacstrap /mnt xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager network-manager-applet bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect
+	arch_chroot "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
 	#Grafikkarte
 	ins_graphics_card
 	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-cat > /mnt/home/$USERNAME/.bash_profile << EOF
-if [ "$(tty)" = "/dev/tty1" ]; then
-  startxfce4
-fi
-EOF
 	sed '/^$/d' /etc/X11/xinit/xinitrc > /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^twm &/#twm &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^xclock -geometry 50x50-1+1 &/#xclock -geometry 50x50-1+1 &/g' /mnt/home/$USERNAME/.xinitrc
@@ -300,10 +294,15 @@ EOF
 	sed -i 's/^xterm -geometry 80x20+494-0 &/#xterm -geometry 80x20+494-0 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^exec xterm -geometry 80x66+0+0 -name login/#exec xterm -geometry 80x66+0+0 -name login/g' /mnt/home/$USERNAME/.xinitrc
 	echo "exec startxfce4" >> /mnt/home/$USERNAME/.xinitrc
+cat > /mnt/home/$USERNAME/.bash_profile << EOF
+if [ "$(tty)" = "/dev/tty1" ]; then
+  startxfce4
+fi
+EOF
 	#Pakete
-	pacstrap /mnt xfce4 xfce4-goodies bash-completion gnome-system-monitor xf86-input-keyboard xf86-input-mouse
-	pacstrap /mnt firefox firefox-i18n-de flashplugin thunderbird thunderbird-i18n-de filezilla
-	pacstrap /mnt palore vlc handbrake mkvtoolnix-gui meld gthumb shotwell simple-scan geany geany-plugins
+	pacstrap /mnt xfce4 xfce4-goodies alsa-tools alsa-utils pulseaudio-alsa pavucontrol picard system-config-printer
+	pacstrap /mnt palore vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts gtk-engine-murrine
+	pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
@@ -315,17 +314,17 @@ EOF
 	#Zusatz
 	[[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 	[[ $OFFICE == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
-	[[ $WINE == "YES" ]] && pacstrap /mnt wine wine_gecko wine-mono winetricks lib32-libxcomposite
+	[[ $WINE == "YES" ]] && pacstrap /mnt wine wine_gecko wine-mono winetricks lib32-libxcomposite lib32-alsa-plugins lib32-libpulse
 	if [[ $TEAM == "YES" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 		arch_chroot "systemctl enable teamviewerd"
 	fi
 	#Treiber
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
-	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-synaptics
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth
+	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
-	[[ ${ARCHI} == x86_64 ]] && pacstrap /mnt lib32-alsa-plugins lib32-libpulse
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
