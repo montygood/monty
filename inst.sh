@@ -88,7 +88,7 @@ _select() {
 		 2 "LibreOffice das Office Programm - installieren?" on
 		 3 "TeamViewer - installieren?" on
 		 4 "Wine für Windows Spiele & Programme - installieren?" on
-		 5 "FileBot zum Benennen von Mediafiles - installieren?" on)
+		 5 "FileBot zum Benennen von Mediafiles - installieren?" on
 		 6 "JDownloader zum Dateien herunterladen - installieren?" on)
 	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 	clear
