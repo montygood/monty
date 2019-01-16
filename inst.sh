@@ -298,7 +298,7 @@ ins_graphics_card() {
 	sed -i 's/^exec xterm -geometry 80x66+0+0 -name login/#exec xterm -geometry 80x66+0+0 -name login/g' /mnt/home/$USERNAME/.xinitrc
 	echo "exec cinnamon-session" >> /mnt/home/$USERNAME/.xinitrc
 	#Pakete
-	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller palore vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
+	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
