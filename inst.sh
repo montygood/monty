@@ -84,11 +84,12 @@ _select() {
 	sel_hdd
 	#Programme Installieren
 	cmd=(dialog --title " Programme auch installieren? " --separate-output --checklist "Auswahl:" 22 76 16)
-	options=(1 "Gimp das Grafikprogramm installieren?" on
-		 2 "LibreOffice das Office Programm installieren?" on
-		 3 "TeamViewer installieren?" on
-		 4 "Wine für Windows Spiele & Programme installieren?" on
-		 5 "FileBot zum Benennen von Mediafiles installieren?" on)
+	options=(1 "Gimp das Grafikprogramm - installieren?" on
+		 2 "LibreOffice das Office Programm - installieren?" on
+		 3 "TeamViewer - installieren?" on
+		 4 "Wine für Windows Spiele & Programme - installieren?" on
+		 5 "FileBot zum Benennen von Mediafiles - installieren?" on)
+		 6 "JDownloader zum Dateien herunterladen - installieren?" on)
 	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 	clear
 	for choice in $choices
@@ -99,6 +100,7 @@ _select() {
 		3) TEAM=YES ;;
 		4) WINE=YES ;;
 		5) FBOT=YES ;;
+		6) JDOW=YES ;;
 	    esac
 	done
 	#HD bereinigen
@@ -303,9 +305,10 @@ if [ "$(tty)" = "/dev/tty1" ]; then
 fi
 EOF
 	#Pakete
-	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
+	pacstrap /mnt cinnamon cinnamon-translations
+	#alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
-	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
+	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz && arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#pamac
 	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
@@ -332,6 +335,21 @@ EOF
 		echo "sudo umount /storage" >> /mnt/bin/plexup
 		arch_chroot "chmod +x /bin/plexup"
 	fi
+	if [[ $JDOW == "YES" ]]; then		
+		mkdir -p /mnt/opt/JDownloader/
+		wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
+		arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
+		arch_chroot "chmod -R 0775 /opt/JDownloader/"
+		echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
+		echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
+		echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
+	fi
 	#Treiber
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch_chroot "systemctl enable bluetooth.service"
@@ -344,20 +362,6 @@ EOF
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
-	#JDownloader
-	mkdir -p /mnt/opt/JDownloader/
-	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
-	arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
-	arch_chroot "chmod -R 0775 /opt/JDownloader/"
-	echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
-	echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Exec=java -jar /opt/JDownloader/JDownloader.jar" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Icon=/opt/JDownloader/themes/standard/org/jdownloader/images/logo/jd_logo_64_64.png" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Terminal=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Type=Application" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
-	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 	#Mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
 	#myup
@@ -374,8 +378,7 @@ EOF
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-	arch_chroot "pacman -Syu --noconfirm"
-	arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
+	arch_chroot "myup"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
