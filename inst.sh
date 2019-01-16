@@ -87,7 +87,8 @@ _select() {
 	options=(1 "Gimp das Grafikprogramm installieren?" on
 		 2 "LibreOffice das Office Programm installieren?" on
 		 3 "TeamViewer installieren?" on
-		 4 "Wine für Windows Spiele & Programme installieren?" on)
+		 4 "Wine für Windows Spiele & Programme installieren?" on
+		 5 "FileBot zum Benennen von Mediafiles installieren?" on)
 	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 	clear
 	for choice in $choices
@@ -97,6 +98,7 @@ _select() {
 		2) OFFICE=YES ;;
 		3) TEAM=YES ;;
 		4) WINE=YES ;;
+		5) FBOT=YES ;;
 	    esac
 	done
 	#HD bereinigen
@@ -133,6 +135,52 @@ _select() {
 	_base
 }
 _base() {
+	#BASE
+	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector
+	genfstab -Up /mnt > /mnt/etc/fstab
+	echo "${HOSTNAME}" > /mnt/etc/hostname
+	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
+	echo LC_COLLATE=C >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
+	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
+	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
+	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
+	arch_chroot "locale-gen"
+	arch_chroot "mkinitcpio -p linux"
+	arch_chroot "passwd root" < /tmp/.passwd
+	#GRUB
+	if [[ $SYSTEM == "BIOS" ]]; then		
+		pacstrap /mnt grub dosfstools
+		arch_chroot "grub-install $DEVICE"
+	fi
+	if [[ $SYSTEM == "UEFI" ]]; then		
+		pacstrap /mnt grub dosfstools efibootmgr
+		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
+	fi
+	arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+	sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
+	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
+	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
+	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
+	#Einstellungen
+	arch_chroot "groupadd -r autologin -f"
+	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
+	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
+	if [ $(uname -m) == x86_64 ]; then
+		sed -i '/\[multilib]$/ {
+		N
+		/Include/s/#//g}' /mnt/etc/pacman.conf
+	fi
+	arch_chroot "pacman -Sy"
+	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+	#Pakete
+	pacstrap /mnt xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect
+	arch_chroot "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
+	#Grafikkarte
+	ins_graphics_card
 ins_graphics_card() {
 	ins_intel(){
 		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
@@ -238,51 +286,6 @@ ins_graphics_card() {
 		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
 	fi
 }
-	#BASE
-	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector grub dosfstools
-	genfstab -Up /mnt > /mnt/etc/fstab
-	echo "${HOSTNAME}" > /mnt/etc/hostname
-	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
-	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
-	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
-	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
-	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
-	arch_chroot "locale-gen"
-	arch_chroot "mkinitcpio -p linux"
-	arch_chroot "passwd root" < /tmp/.passwd
-	#GRUB
-	if [[ $SYSTEM == "BIOS" ]]; then		
-		arch_chroot "grub-install --target=i386-pc --recheck $DEVICE"
-	fi
-	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt efibootmgr
-		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
-	fi
-	arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
-	sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
-	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-	#Einstellungen
-	arch_chroot "groupadd -r autologin -f"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
-	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
-	if [ $(uname -m) == x86_64 ]; then
-		sed -i '/\[multilib]$/ {
-		N
-		/Include/s/#//g}' /mnt/etc/pacman.conf
-	fi
-	arch_chroot "pacman -Sy"
-	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-	#Pakete
-	pacstrap /mnt xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager network-manager-applet bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect
-	arch_chroot "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
-	#Grafikkarte
-	ins_graphics_card
 	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -293,16 +296,9 @@ ins_graphics_card() {
 	sed -i 's/^xterm -geometry 80x50+494+51 &/#xterm -geometry 80x50+494+51 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^xterm -geometry 80x20+494-0 &/#xterm -geometry 80x20+494-0 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^exec xterm -geometry 80x66+0+0 -name login/#exec xterm -geometry 80x66+0+0 -name login/g' /mnt/home/$USERNAME/.xinitrc
-	echo "exec startxfce4" >> /mnt/home/$USERNAME/.xinitrc
-cat > /mnt/home/$USERNAME/.bash_profile << EOF
-if [ "$(tty)" = "/dev/tty1" ]; then
-  startxfce4
-fi
-EOF
+	echo "exec cinnamon-session" >> /mnt/home/$USERNAME/.xinitrc
 	#Pakete
-	pacstrap /mnt xfce4 xfce4-goodies alsa-tools alsa-utils pulseaudio-alsa pavucontrol picard system-config-printer
-	pacstrap /mnt palore vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts gtk-engine-murrine
-	pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
+	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller palore vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
@@ -319,9 +315,21 @@ EOF
 		arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 		arch_chroot "systemctl enable teamviewerd"
 	fi
+	if [[ $FBOT == "YES" ]]; then		
+		pacstrap /mnt java-openjfx libmediainfo
+		arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
+		sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
+		sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
+		echo '#!/bin/sh' >> /mnt/bin/plexup
+		echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
+		echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
+		echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
+		echo "sudo umount /storage" >> /mnt/bin/plexup
+		arch_chroot "chmod +x /bin/plexup"
+	fi
 	#Treiber
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch_chroot "systemctl enable bluetooth.service"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
@@ -347,18 +355,6 @@ EOF
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 	#Mintstick
 	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
-	#Filebot
-	pacstrap /mnt java-openjfx libmediainfo
-	arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
-	sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
-	sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
-	#plexupload
-	echo '#!/bin/sh' >> /mnt/bin/plexup
-	echo "sudo mount -t nfs 192.168.1.121:/multimedia /storage" >> /mnt/bin/plexup
-	echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
-	echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
-	echo "sudo umount /storage" >> /mnt/bin/plexup
-	arch_chroot "chmod +x /bin/plexup"
 	#myup
 	echo '#!/bin/sh' >> /mnt/bin/myup
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
