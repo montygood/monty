@@ -290,18 +290,13 @@ ins_graphics_card() {
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
 	sed -i "s/root/$USERNAME/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-	sed '/^$/d' /etc/X11/xinit/xinitrc > /mnt/home/$USERNAME/.xinitrc
+	sed '/^$/d' /mnt/etc/X11/xinit/xinitrc > /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^twm &/#twm &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^xclock -geometry 50x50-1+1 &/#xclock -geometry 50x50-1+1 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^xterm -geometry 80x50+494+51 &/#xterm -geometry 80x50+494+51 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^xterm -geometry 80x20+494-0 &/#xterm -geometry 80x20+494-0 &/g' /mnt/home/$USERNAME/.xinitrc
 	sed -i 's/^exec xterm -geometry 80x66+0+0 -name login/#exec xterm -geometry 80x66+0+0 -name login/g' /mnt/home/$USERNAME/.xinitrc
 	echo "exec cinnamon-session" >> /mnt/home/$USERNAME/.xinitrc
-cat > /mnt/home/$USERNAME/.bash_profile << EOF
-if [ "$(tty)" = "/dev/tty1" ]; then
-  startx
-fi
-EOF
 	#Pakete
 	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
