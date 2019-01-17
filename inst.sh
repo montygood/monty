@@ -169,7 +169,7 @@ _base() {
 	arch_chroot "groupadd -r autologin -f"
 	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+#	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
@@ -310,7 +310,7 @@ EOF
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz && arch_chroot "su - ${USERNAME} -c 'trizen -Syu --noconfirm'"
 	#pamac
-	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm' < /tmp/.passwd"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
@@ -320,12 +320,12 @@ EOF
 	[[ $OFFICE == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 	[[ $WINE == "YES" ]] && pacstrap /mnt wine wine_gecko wine-mono winetricks lib32-libxcomposite lib32-alsa-plugins lib32-libpulse
 	if [[ $TEAM == "YES" ]]; then		
-		arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+		arch_chroot "su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm' < /tmp/.passwd"
 		arch_chroot "systemctl enable teamviewerd"
 	fi
 	if [[ $FBOT == "YES" ]]; then		
 		pacstrap /mnt java-openjfx libmediainfo
-		arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
+		arch_chroot "su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm' < /tmp/.passwd"
 		sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
 		sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
 		echo '#!/bin/sh' >> /mnt/bin/plexup
@@ -351,19 +351,19 @@ EOF
 		echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 	fi
 	#Treiber
-	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm'"
+	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch_chroot "su - ${USERNAME} -c 'trizen -S broadcom-wl --noconfirm' < /tmp/.passwd"
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch_chroot "systemctl enable bluetooth.service"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
 	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
+		arch_chroot "su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm' < /tmp/.passwd"
 		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
 	#Mintstick
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm'"
+	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick-git --noconfirm' < /tmp/.passwd"
 	#myup
 	echo '#!/bin/sh' >> /mnt/bin/myup
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
@@ -374,11 +374,11 @@ EOF
 	arch_chroot "chmod +x /bin/myup"
 	#update
 	mv monty.tar.xz /mnt/ && arch_chroot "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
-	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
+#	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
-	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
+#	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/g' /mnt/etc/sudoers
 	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-	arch_chroot "myup"
+	arch_chroot "su - ${USERNAME} -c 'myup' < /tmp/.passwd"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
