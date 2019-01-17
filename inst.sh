@@ -6,6 +6,7 @@ esac
 # default
 loadkeys de_CH-latin1
 export LANG=de_CH.UTF-8
+export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
 arch_chroot() {
