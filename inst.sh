@@ -9,9 +9,6 @@ export LANG=de_CH.UTF-8
 export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
-arch_chroot() {
-	arch-chroot /mnt /bin/bash -c "$1"
-}
 _sys() {
  	#intel?
  	if ! grep 'GenuineIntel' /proc/cpuinfo; then
@@ -145,43 +142,43 @@ _base() {
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
 	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
-	arch_chroot "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
+	arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
-	arch_chroot "locale-gen"
-	arch_chroot "mkinitcpio -p linux"
-	arch_chroot "passwd root" < /tmp/.passwd
+	arch-chroot /mnt /bin/bash -c "locale-gen"
+	arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux"
+	arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
 		pacstrap /mnt grub dosfstools
-		arch_chroot "grub-install $DEVICE"
+		arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
 		pacstrap /mnt grub dosfstools efibootmgr
-		arch_chroot "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
+		arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 	fi
-	arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+	arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 	sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 	echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 	[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 	#Einstellungen
-	arch_chroot "groupadd -r autologin -f"
-	arch_chroot "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
+	arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
+	arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys -s /bin/bash"																 
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 	sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-	arch_chroot "passwd ${USERNAME}" < /tmp/.passwd
+	arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
 	if [ $(uname -m) == x86_64 ]; then
 		sed -i '/\[multilib]$/ {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	arch_chroot "pacman -Sy"
-	arch_chroot "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+	arch-chroot /mnt /bin/bash -c "pacman -Sy"
+	arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#Pakete
 	pacstrap /mnt xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect
-	arch_chroot "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
+	arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
 	#Grafikkarte
 	ins_graphics_card
 ins_graphics_card() {
@@ -189,7 +186,7 @@ ins_graphics_card() {
 		pacstrap /mnt xf86-video-intel libva-intel-driver intel-ucode
 		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
 		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
-			arch_chroot "grub-mkconfig -o /boot/grub/grub.cfg"
+			arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 		fi
 		# Systemd-boot
 		if [[ -e /mnt/boot/loader/loader.conf ]]; then
@@ -235,7 +232,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings
@@ -243,7 +240,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings
@@ -251,7 +248,7 @@ ins_graphics_card() {
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
 		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch_chroot "pacman -Rdds --noconfirm mesa-libgl mesa"
+		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
 		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
 		pacstrap /mnt ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings
@@ -267,8 +264,8 @@ ins_graphics_card() {
 		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
 		pacstrap /mnt virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD
 		umount -l /mnt/dev
-		arch_chroot "modprobe -a vboxguest vboxsf vboxvideo"
-		arch_chroot "systemctl enable vboxservice"
+		arch-chroot /mnt /bin/bash -c "modprobe -a vboxguest vboxsf vboxvideo"
+		arch-chroot /mnt /bin/bash -c "systemctl enable vboxservice"
 		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
 	fi
 	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
@@ -308,9 +305,9 @@ EOF
 	#Pakete
 	pacstrap /mnt cinnamon cinnamon-translations alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller nemo-fileroller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
 	#trizen
-	mv trizen-any.pkg.tar.xz /mnt/ && arch_chroot "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
+	mv trizen-any.pkg.tar.xz /mnt/ && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
-	arch_chroot "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
+	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 	sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 	sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 	sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
@@ -320,12 +317,12 @@ EOF
 	[[ $OFFICE == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 	[[ $WINE == "YES" ]] && pacstrap /mnt wine wine_gecko wine-mono winetricks lib32-libxcomposite lib32-alsa-plugins lib32-libpulse
 	if [[ $TEAM == "YES" ]]; then		
-		arch_chroot "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-		arch_chroot "systemctl enable teamviewerd"
+		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
+		arch-chroot /mnt /bin/bash -c "systemctl enable teamviewerd"
 	fi
 	if [[ $FBOT == "YES" ]]; then		
 		pacstrap /mnt java-openjfx libmediainfo
-		arch_chroot "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
+		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
 		sed -i 's/^export LANG="en_US.UTF-8"/export LANG="de_CH.UTF-8"/g' /mnt/bin/filebot
 		sed -i 's/^export LC_ALL="en_US.UTF-8"/export LC_ALL="de_CH.UTF-8"/g' /mnt/bin/filebot
 		echo '#!/bin/sh' >> /mnt/bin/plexup
@@ -333,13 +330,13 @@ EOF
 		echo 'filebot -script fn:renall "/home/monty/Downloads" --format "/storage/{plex}" --lang de -non-strict' >> /mnt/bin/plexup
 		echo 'filebot -script fn:cleaner "/home/monty/Downloads"' >> /mnt/bin/plexup
 		echo "sudo umount /storage" >> /mnt/bin/plexup
-		arch_chroot "chmod +x /bin/plexup"
+		arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 	fi
 	if [[ $JDOW == "YES" ]]; then		
 		mkdir -p /mnt/opt/JDownloader/
 		wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
-		arch_chroot "chown -R 1000:1000 /opt/JDownloader/"
-		arch_chroot "chmod -R 0775 /opt/JDownloader/"
+		arch-chroot /mnt /bin/bash -c "chown -R 1000:1000 /opt/JDownloader/"
+		arch-chroot /mnt /bin/bash -c "chmod -R 0775 /opt/JDownloader/"
 		echo "[Desktop Entry]" > /mnt/usr/share/applications/JDownloader.desktop
 		echo "Name=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
 		echo "Comment=JDownloader" >> /mnt/usr/share/applications/JDownloader.desktop
@@ -352,18 +349,18 @@ EOF
 	fi
 	#Treiber
 	[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && pacstrap /mnt broadcom-wl
-	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch_chroot "systemctl enable bluetooth.service"
+	[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 	[[ $(dmesg | egrep Tablet) != "" ]] && pacstrap /mnt xf86-input-wacom
-	[[ $HD_SD == "SSD" ]] && arch_chroot "systemctl enable fstrim && systemctl enable fstrim.timer"
+	[[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
 	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-		arch_chroot "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
-		arch_chroot "usermod -a -G plugdev,scanner ${USERNAME}"
+		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
+		arch-chroot /mnt /bin/bash -c "usermod -a -G plugdev,scanner ${USERNAME}"
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 		if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 	fi
 	#Mintstick
-	arch_chroot "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
+	arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
 	#myup
 	echo '#!/bin/sh' >> /mnt/bin/myup
 	echo "sudo pacman -Syu --noconfirm" >> /mnt/bin/myup
@@ -371,14 +368,14 @@ EOF
 	echo "sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)" >> /mnt/bin/myup
 	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
-	arch_chroot "chmod +x /bin/myup"
+	arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
 	#update
-	mv monty.tar.xz /mnt/ && arch_chroot "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
+	mv monty.tar.xz /mnt/ && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-	arch_chroot "localectl set-x11-keymap ch nodeadkeys"
+	arch-chroot /mnt /bin/bash -c "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
-	arch_chroot "chown -R ${USERNAME}:users /home/${USERNAME}"
-	arch_chroot "echo $RPASSWD | su - ${USERNAME} -c 'myup'"
+	arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
+	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'myup'"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
