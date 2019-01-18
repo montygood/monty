@@ -303,7 +303,10 @@ if [ "$(tty)" = "/dev/tty1" ]; then
 fi
 EOF
 	#Pakete
-	pacstrap /mnt cinnamon cinnamon-translations gnome-terminal xdg-user-dirs-gtk alsa-utils pulseaudio-alsa picard alsa-tools unace unrar zip unzip sharutils uudeview arj cabextract file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent
+	pacstrap /mnt cinnamon cinnamon-translations 
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gnome-terminal xdg-user-dirs-gtk alsa-utils picard zip unzip pulseaudio-alsa alsa-tools unace unrar sharutils uudeview arj cabextract file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins" 
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab p7zip autofs ifuse shotwell ffmpegthumbs palore ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
