@@ -379,6 +379,7 @@ EOF
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 	arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
+	arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
