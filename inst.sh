@@ -375,12 +375,28 @@ EOF
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
 	#update
 	mv monty.tar.xz /mnt/ && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.xz" && rm /mnt/monty.tar.xz
+	arch-chroot /mnt /bin/bash -c "chown -R root:users /usr/"
 	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'myup'"
 	echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 	arch-chroot /mnt /bin/bash -c "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
-	arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
-#	arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.wm.preferences theme 'McOS'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface gtk-theme 'McOS'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface icon-theme 'McOS'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface cursor-theme 'McOS'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.theme name 'McOS'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.background picture-uri 'file:///usr/share/backgrounds/monty/linuxblau.png'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-ac-action 'nothing'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-battery-action 'nothing'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power button-power 'interactive'"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-display-ac 0"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-display-battery 0"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-inactive-ac-timeout 0"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-inactive-battery-timeout 0"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.screensaver lock-enabled false"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon panels-enabled "['1:0:top']""
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon panel-scale-text-icons true"
+	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.xsettings menus-have-icons true"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
