@@ -6,7 +6,6 @@ esac
 # default
 loadkeys de_CH-latin1
 export LANG=de_CH.UTF-8
-export LC_ALL=de_CH.UTF-8
 export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
@@ -141,7 +140,6 @@ _base() {
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
-	echo LC_ALL=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
 	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
 	arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
