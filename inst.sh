@@ -174,7 +174,7 @@ _base() {
 		N
 		/Include/s/#//g}' /mnt/etc/pacman.conf
 	fi
-	arch-chroot /mnt /bin/bash -c "pacman -Sy"
+	arch-chroot /mnt /bin/bash -c "pacman -Syy"
 	arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#Pakete
 	pacstrap /mnt xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect
