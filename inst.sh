@@ -82,12 +82,12 @@ _select() {
 	sel_hdd
 	#Programme Installieren
 	cmd=(dialog --title " Programme auch installieren? " --separate-output --checklist "Auswahl:" 22 76 16)
-	options=(1 "Gimp das Grafikprogramm - installieren?" on
-		 2 "LibreOffice das Office Programm - installieren?" on
+	options=(1 "Gimp - Grafikprogramm - installieren?" on
+		 2 "LibreOffice - Office - installieren?" on
 		 3 "TeamViewer - installieren?" on
-		 4 "Wine für Windows Spiele & Programme - installieren?" on
-		 5 "FileBot zum Benennen von Mediafiles - installieren?" on
-		 6 "JDownloader zum Dateien herunterladen - installieren?" on)
+		 4 "Wine - Windows Spiele & Programme - installieren?" on
+		 5 "FileBot - Mediafiles Manager - installieren?" on
+		 6 "JDownloader2 - Dateien herunterladen - installieren?" on)
 	choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 	clear
 	for choice in $choices
