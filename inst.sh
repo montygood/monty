@@ -318,7 +318,7 @@ EOF
 	#Zusatz
 	[[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 	[[ $OFFICE == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
-	[[ $WINE == "YES" ]] && pacstrap /mnt wine wine_gecko wine-mono winetricks lib32-libxcomposite
+	[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine_gecko wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
 	if [[ $TEAM == "YES" ]]; then		
 		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
 		arch-chroot /mnt /bin/bash -c "systemctl enable teamviewerd"
@@ -379,23 +379,6 @@ EOF
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 	arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
 	arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.wm.preferences theme 'McOS'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface gtk-theme 'McOS'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface icon-theme 'McOS'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface cursor-theme 'McOS'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.theme name 'McOS'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.background picture-uri 'file:///usr/share/backgrounds/monty/linuxblau.png'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-ac-action 'nothing'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power lid-close-battery-action 'nothing'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power button-power 'interactive'"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-display-ac 0"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-display-battery 0"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-inactive-ac-timeout 0"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.power sleep-inactive-battery-timeout 0"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.screensaver lock-enabled false"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon panels-enabled "['1:0:top']""
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon panel-scale-text-icons true"
-	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.settings-daemon.plugins.xsettings menus-have-icons true"
 	#Ende 
 	swapoff -a
 	umount -R /mnt
