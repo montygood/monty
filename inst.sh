@@ -378,6 +378,7 @@ EOF
 	arch-chroot /mnt /bin/bash -c "localectl set-x11-keymap ch nodeadkeys"
 	sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 	arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
+	arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.wm.preferences theme 'McOS'"
 	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface gtk-theme 'McOS'"
 	arch-chroot /mnt /bin/bash -c "gsettings set org.cinnamon.desktop.interface icon-theme 'McOS'"
