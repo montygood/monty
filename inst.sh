@@ -151,11 +151,11 @@ _base() {
 	arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		pacstrap /mnt grub dosfstools
+		arch-chroot /mnt /bin/bash -c "grub dosfstools"
 		arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		pacstrap /mnt grub dosfstools efibootmgr
+		arch-chroot /mnt /bin/bash -c "grub dosfstools efibootmgr"
 		arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 	fi
 	arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
