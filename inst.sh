@@ -11,20 +11,20 @@ export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
 _sys() {
- 	#intel?
- 	if ! grep 'GenuineIntel' /proc/cpuinfo; then
-        UCODE="intel-ucode"
-    elif ! grep 'AuthenticAMD' /proc/cpuinfo; then
-        UCODE="amd-ucode"
-    else
-        UCODE=""
-    fi
-  	# Apple?
-    if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
-        modprobe -r -q efivars
-    else
-        modprobe -q efivarfs
-    fi
+	#intel?
+	if ! grep 'GenuineIntel' /proc/cpuinfo; then
+		UCODE="intel-ucode"
+	elif ! grep 'AuthenticAMD' /proc/cpuinfo; then
+		UCODE="amd-ucode"
+	else
+		UCODE=""
+	fi
+	# Apple?
+	if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
+		modprobe -r -q efivars
+	else
+		modprobe -q efivarfs
+	fi
 	# UEFI?
 	if [[ -d "/sys/firmware/efi/" ]]; then
 		if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
@@ -130,10 +130,9 @@ _select() {
 		swapon /mnt/swapfile
 	fi
 	#Mirror?
-#	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
+	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 	pacman-key --init
 	pacman-key --populate archlinux
-	pacman -Sy
 	_base
 }
 _base() {
