@@ -11,12 +11,13 @@ export LC_CTYPE=de_CH.UTF-8
 export LC_ALL=de_CH.UTF-8
 export EDITOR=nano
 timedatectl set-local-rtc 0
+UCODE="intel-ucode"
 #Prozesse
 _sys() {
 	#intel?
-	if ! grep 'GenuineIntel' /proc/cpuinfo; then
+	if grep 'GenuineIntel' /proc/cpuinfo; then
 		UCODE="intel-ucode"
-	elif ! grep 'AuthenticAMD' /proc/cpuinfo; then
+	elif grep 'AuthenticAMD' /proc/cpuinfo; then
 		UCODE="amd-ucode"
 	else
 		UCODE=""
