@@ -137,7 +137,7 @@ _select() {
 }
 _base() {
 	#BASE
-	pacstrap /mnt base $UCODE base-devel wpa_supplicant dialog reflector
+	pacstrap /mnt base $UCODE base-devel wpa_supplicant wireless-regdb dialog reflector
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
@@ -147,6 +147,7 @@ _base() {
 	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
+	sed -i "s/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base systemd autodetect modconf block filesystems keyboard sd-vconsole fsck)/" /mnt/etc/mkinitcpio.conf
 	arch-chroot /mnt /bin/bash -c "locale-gen"
 	arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux"
 	arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
@@ -304,10 +305,15 @@ if [ "$(tty)" = "/dev/tty1" ]; then
 fi
 EOF
 	#Pakete
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller"
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gnome-terminal xdg-user-dirs-gtk alsa-utils picard zip unzip pulseaudio-alsa alsa-tools unace unrar sharutils uudeview arj cabextract file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins" 
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab p7zip autofs ifuse shotwell ffmpegthumbs palore ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard zip unzip pulseaudio-alsa alsa-tools unace unrar sharutils uudeview"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj cabextract file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins" 
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab p7zip"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs palore ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 	#trizen
 	mv trizen-any.pkg.tar.xz /mnt/ && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 	#pamac
