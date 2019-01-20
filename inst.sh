@@ -85,7 +85,7 @@ _select() {
 	cmd=(dialog --title " Programme auch installieren? " --separate-output --checklist "Auswahl:" 22 76 16)
 	options=(1 "Gimp - Grafikprogramm - installieren?" on
 		 2 "LibreOffice - Office - installieren?" on
-		 3 "TeamViewer - installieren?" on
+		 3 "AnyDesk - Remotehilfe - installieren?" on
 		 4 "Wine - Windows Spiele & Programme - installieren?" on
 		 5 "FileBot - Mediafiles Manager - installieren?" on
 		 6 "JDownloader2 - Dateien herunterladen - installieren?" on)
@@ -320,10 +320,7 @@ EOF
 	[[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
 	[[ $OFFICE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
 	[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine_gecko wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
-	if [[ $TEAM == "YES" ]]; then		
-		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S teamviewer --noconfirm'"
-		arch-chroot /mnt /bin/bash -c "systemctl enable teamviewerd"
-	fi
+	[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
 	if [[ $FBOT == "YES" ]]; then		
 		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
 		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S filebot47 --noconfirm'"
