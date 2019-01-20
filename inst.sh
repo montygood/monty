@@ -6,6 +6,7 @@ esac
 # default
 loadkeys de_CH-latin1
 export LANG=de_CH.UTF-8
+export LANGUAGE=de_CH:de_DE:en
 export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
@@ -102,6 +103,7 @@ _select() {
 	    esac
 	done
 	#HD bereinigen
+	echo Bereite Harddisk vor ....
 	sgdisk --zap-all ${DEVICE} &> /dev/null
 	wipefs -a ${DEVICE} &> /dev/null
 	#BIOS Part?
@@ -128,7 +130,7 @@ _select() {
 		swapon /mnt/swapfile
 	fi
 	#Mirror?
-	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
+#	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 	pacman-key --init
 	pacman-key --populate archlinux
 	pacman -Sy
@@ -141,7 +143,7 @@ _base() {
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
-	echo LANGUAGE=de_DE >> /mnt/etc/locale.conf
+	echo LANGUAGE=de_CH:de_DE:en >> /mnt/etc/locale.conf
 	arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 	echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 	echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
@@ -151,11 +153,11 @@ _base() {
 	arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
-		arch-chroot /mnt /bin/bash -c "grub dosfstools"
+		pacstrap /mnt grub dosfstools
 		arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 	fi
 	if [[ $SYSTEM == "UEFI" ]]; then		
-		arch-chroot /mnt /bin/bash -c "grub dosfstools efibootmgr"
+		pacstrap /mnt grub dosfstools efibootmgr
 		arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 	fi
 	arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
