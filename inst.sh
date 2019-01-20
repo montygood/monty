@@ -13,6 +13,14 @@ export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
 _sys() {
+	#intel?
+	if ! grep 'GenuineIntel' /proc/cpuinfo; then
+		UCODE="intel-ucode"
+	elif ! grep 'AuthenticAMD' /proc/cpuinfo; then
+		UCODE="amd-ucode"
+	else
+		UCODE=""
+	fi
 	# Apple?
 	if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 		modprobe -r -q efivars
@@ -123,15 +131,11 @@ _select() {
 		mkswap /mnt/swapfile &> /dev/null
 		swapon /mnt/swapfile
 	fi
-	#Mirror?
-	reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
-	pacman-key --init
-	pacman-key --populate archlinux
 	_base
 }
 _base() {
 	#BASE
-	pacstrap /mnt base base-devel wpa_supplicant wireless-regdb dialog reflector
+	pacstrap /mnt base base-devel wpa_supplicant wireless-regdb dialog reflector $UCODE
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LC_CTYPE=de_CH.UTF-8 > /mnt/etc/locale.conf
@@ -156,6 +160,12 @@ _base() {
 		pacstrap /mnt grub dosfstools efibootmgr
 		arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 	fi
+	if [[ -e /mnt/boot/loader/loader.conf ]]; then
+		upgate=$(ls /mnt/boot/loader/entries/*.conf)
+		for i in ${upgate}; do
+			sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
+		done
+	fi			 
 	arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 	sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 	sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
@@ -175,115 +185,22 @@ _base() {
 	arch-chroot /mnt /bin/bash -c "pacman -Syy"
 	arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 	#Pakete
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit dbus cups acpid avahi cronie networkmanager bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xterm dbus cups acpid avahi cronie networkmanager bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect"
 	arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd.service cronie systemd-timesyncd.service"
 	#Grafikkarte
-	ins_graphics_card
-ins_graphics_card() {
-	ins_intel(){
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver intel-ucode"
-		sed -i 's/MODULES=""/MODULES="i915"/' /mnt/etc/mkinitcpio.conf
-		if [[ -e /mnt/boot/grub/grub.cfg ]]; then
-			arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
-		fi
-		# Systemd-boot
-		if [[ -e /mnt/boot/loader/loader.conf ]]; then
-			update=$(ls /mnt/boot/loader/entries/*.conf)
-			for i in ${upgate}; do
-				sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
-			done
-		fi			 
-	}
-	ins_ati(){
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-ati"
-		sed -i 's/MODULES=""/MODULES="radeon"/' /mnt/etc/mkinitcpio.conf
-	}
-	NVIDIA=""
-	VB_MOD=""
-	GRAPHIC_CARD=""
-	INTEGRATED_GC="N/A"
-	GRAPHIC_CARD=$(lspci | grep -i "vga" | sed 's/.*://' | sed 's/(.*//' | sed 's/^[ \t]*//')
-	if [[ $(echo $GRAPHIC_CARD | grep -i "nvidia") != "" ]]; then
-		[[ $(lscpu | grep -i "intel\|lenovo") != "" ]] && INTEGRATED_GC="Intel" || INTEGRATED_GC="ATI"
-		if [[ $(dmesg | grep -i 'chipset' | grep -i 'nvc\|nvd\|nve') != "" ]]; then HIGHLIGHT_SUB_GC=4
-		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nva\|nv5\|nv8\|nv9'?) != "" ]]; then HIGHLIGHT_SUB_GC=5
-		elif [[ $(dmesg | grep -i 'chipset' | grep -i 'nv4\|nv6') != "" ]]; then HIGHLIGHT_SUB_GC=6
-		else HIGHLIGHT_SUB_GC=3
-		fi	
-	elif [[ $(echo $GRAPHIC_CARD | grep -i 'intel\|lenovo') != "" ]]; then HIGHLIGHT_SUB_GC=2
-	elif [[ $(echo $GRAPHIC_CARD | grep -i 'ati') != "" ]]; then HIGHLIGHT_SUB_GC=1
-	elif [[ $(echo $GRAPHIC_CARD | grep -i 'via') != "" ]]; then HIGHLIGHT_SUB_GC=7
-	elif [[ $(echo $GRAPHIC_CARD | grep -i 'virtualbox') != "" ]]; then HIGHLIGHT_SUB_GC=8
-	elif [[ $(echo $GRAPHIC_CARD | grep -i 'vmware') != "" ]]; then HIGHLIGHT_SUB_GC=9
-	else HIGHLIGHT_SUB_GC=10
-	fi	
-	if [[ $HIGHLIGHT_SUB_GC == 1 ]] ; then
-		ins_ati
+	if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
+		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
+		sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 	fi
-	if [[ $HIGHLIGHT_SUB_GC == 2 ]] ; then
-		ins_intel
+	if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ati") != "" ]]; then		
+		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
+		sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 	fi
-	if [[ $HIGHLIGHT_SUB_GC == 3 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-nouveau"
-		sed -i 's/MODULES=""/MODULES="nouveau"/' /mnt/etc/mkinitcpio.conf
+	if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
+		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia nvidia-utils libglvnd"
+		sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 	fi
-	if [[ $HIGHLIGHT_SUB_GC == 4 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
-		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia"
-		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-lts"
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm ${NVIDIA} nvidia-libgl nvidia-utils pangox-compat nvidia-settings"
-		NVIDIA_INST=1
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 5 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
-		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-340xx"
-		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-340xx-lts"
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm ${NVIDIA} nvidia-340xx-libgl nvidia-340xx-utils nvidia-settings"
-		NVIDIA_INST=1
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 6 ]] ; then
-		[[ $INTEGRATED_GC == "ATI" ]] && ins_ati || ins_intel
-		arch-chroot /mnt /bin/bash -c "pacman -Rdds --noconfirm mesa-libgl mesa"
-		([[ -e /mnt/boot/initramfs-linux.img ]] || [[ -e /mnt/boot/initramfs-linux-grsec.img ]] || [[ -e /mnt/boot/initramfs-linux-zen.img ]]) && NVIDIA="nvidia-304xx"
-		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && NVIDIA="$NVIDIA nvidia-304xx-lts"
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm ${NVIDIA} nvidia-304xx-libgl nvidia-304xx-utils nvidia-settings"
-		NVIDIA_INST=1
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 7 ]] ; then
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-openchrome"
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 8 ]] ; then
-		[[ -e /mnt/boot/initramfs-linux.img ]] && VB_MOD="linux-headers"
-		[[ -e /mnt/boot/initramfs-linux-grsec.img ]] && VB_MOD="$VB_MOD linux-grsec-headers"
-		[[ -e /mnt/boot/initramfs-linux-zen.img ]] && VB_MOD="$VB_MOD linux-zen-headers"
-		[[ -e /mnt/boot/initramfs-linux-lts.img ]] && VB_MOD="$VB_MOD linux-lts-headers"
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm virtualbox-guest-utils virtualbox-guest-dkms $VB_MOD"
-		umount -l /mnt/dev
-		arch-chroot /mnt /bin/bash -c "modprobe -a vboxguest vboxsf vboxvideo"
-		arch-chroot /mnt /bin/bash -c "systemctl enable vboxservice"
-		echo -e "vboxguest\nvboxsf\nvboxvideo" > /mnt/etc/modules-load.d/virtualbox.conf
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 9 ]] ; then
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vmware xf86-input-vmmouse"
-	fi
-	if [[ $HIGHLIGHT_SUB_GC == 10 ]] ; then
-		arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-fbdev"
-	fi
-	if [[ $NVIDIA_INST == 1 ]] && [[ ! -e /mnt/etc/X11/xorg.conf.d/20-nvidia.conf ]]; then
-		echo "Section "\"Device"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        Identifier "\"Nvidia Card"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        Driver "\"nvidia"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        VendorName "\"NVIDIA Corporation"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        Option "\"NoLogo"\" "\"true"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        #Option "\"UseEDID"\" "\"false"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        #Option "\"ConnectedMonitor"\" "\"DFP"\"" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "        # ..." >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-		echo "EndSection" >> /mnt/etc/X11/xorg.conf.d/20-nvidia.conf
-	fi
-}
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
 	#Autologin
 	mkdir /mnt/etc/systemd/system/getty@tty1.service.d/
 	cp -f /etc/systemd/system/getty@tty1.service.d/autologin.conf /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
