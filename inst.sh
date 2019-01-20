@@ -13,14 +13,6 @@ export EDITOR=nano
 timedatectl set-local-rtc 0
 #Prozesse
 _sys() {
-	#intel?
-	if ! grep 'GenuineIntel' /proc/cpuinfo; then
-		UCODE="intel-ucode"
-	elif ! grep 'AuthenticAMD' /proc/cpuinfo; then
-		UCODE="amd-ucode"
-	else
-		UCODE=""
-	fi
 	# Apple?
 	if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 		modprobe -r -q efivars
@@ -139,7 +131,7 @@ _select() {
 }
 _base() {
 	#BASE
-	pacstrap /mnt base $UCODE base-devel wpa_supplicant wireless-regdb dialog reflector
+	pacstrap /mnt base base-devel wpa_supplicant wireless-regdb dialog reflector
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LC_CTYPE=de_CH.UTF-8 > /mnt/etc/locale.conf
