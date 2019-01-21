@@ -24,8 +24,6 @@ _sys() {
 	# Apple?
 	if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 		modprobe -r -q efivars
-	else
-		modprobe -q efivarfs
 	fi
 	# UEFI?
 	if [[ -d "/sys/firmware/efi/" ]]; then
