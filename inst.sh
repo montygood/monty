@@ -8,7 +8,6 @@ loadkeys de_CH-latin1
 export LANG=de_CH.UTF-8
 export LANGUAGE=de_CH:de_DE:en
 export LC_CTYPE=de_CH.UTF-8
-export LC_ALL=de_CH.UTF-8
 export EDITOR=nano
 timedatectl set-local-rtc 0
 UCODE="intel-ucode"
@@ -140,7 +139,6 @@ _base() {
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LC_CTYPE=de_CH.UTF-8 > /mnt/etc/locale.conf
-	echo LC_ALL=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 	echo LC_COLLATE=C >> /mnt/etc/locale.conf
 	echo LANGUAGE=de_CH:de_DE:en >> /mnt/etc/locale.conf
