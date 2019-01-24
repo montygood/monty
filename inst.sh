@@ -215,7 +215,7 @@ if [ "$(tty)" = "/dev/tty1" ]; then
 fi
 EOF
 	#Pakete
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard zip unzip pulseaudio-alsa alsa-tools unace unrar sharutils uudeview"
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj cabextract file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins" 
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends"
