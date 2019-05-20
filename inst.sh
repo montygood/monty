@@ -285,6 +285,7 @@ EOF
 	echo "sudo pacman -Scc --noconfirm" >> /mnt/bin/myup
 	echo "sudo fstrim -v /" >> /mnt/bin/myup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
+	arch-chroot /mnt /bin/bash -c "chmod 644 /etc/netconfig"
 	#update
 	mv monty.tar.gz /mnt/ && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
 	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'myup'"
