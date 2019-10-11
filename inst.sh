@@ -269,7 +269,7 @@ EOF
 	[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
 	[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
 	[[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
-	if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
+	if [[ $(lsusb | grep Fingerprint22) != "" ]]; then		
 		arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
 		arch-chroot /mnt /bin/bash -c "usermod -a -G plugdev,scanner ${USERNAME}"
 		if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
