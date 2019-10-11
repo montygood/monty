@@ -134,7 +134,6 @@ _select() {
 _base() {
 	#BASE
 	pacman -Sy
-	pacstrap /mnt $(pacman -Sy)
 	pacstrap /mnt $(pacman -Sqg base base-devel nano wpa_supplicant wireless-regdb dialog reflector haveged $UCODE | sed 's/^linux$/&-lts/')
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
@@ -148,7 +147,7 @@ _base() {
 	sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 	sed -i "s/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base systemd autodetect modconf block filesystems keyboard sd-vconsole fsck)/" /mnt/etc/mkinitcpio.conf
 	arch-chroot /mnt /bin/bash -c "locale-gen"
-	arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux"
+	arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux-lts"
 	arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
 	#GRUB
 	if [[ $SYSTEM == "BIOS" ]]; then		
