@@ -133,7 +133,7 @@ _select() {
 }
 _base() {
 	#BASE
-	pacstrap /mnt base base-devel wpa_supplicant wireless-regdb dialog reflector $UCODE
+	pacstrap /mnt $(pacman -Sqg base base-devel nano wpa_supplicant wireless-regdb dialog reflector haveged $UCODE | sed 's/^linux$/&-lts/')
 	genfstab -Up /mnt > /mnt/etc/fstab
 	echo "${HOSTNAME}" > /mnt/etc/hostname
 	echo LC_CTYPE=de_CH.UTF-8 > /mnt/etc/locale.conf
