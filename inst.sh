@@ -114,25 +114,19 @@ if [[ $HD_SD == "HDD" ]]; then
 fi
 #BASE
 pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged $UCODE
-read -p "Press enter to continue"
 genfstab -Up /mnt > /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman-key --init"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
-read -p "Press enter to continue"
 if [ $(uname -m) == x86_64 ]; then
 	sed -i '/\[multilib]$/ {
 	N
 	/Include/s/#//g}' /mnt/etc/pacman.conf
 fi
 arch-chroot /mnt /bin/bash -c "pacman -Syy"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-arch-chroot /mnt /bin/bash -c "timedatectl set-ntp true"
+#arch-chroot /mnt /bin/bash -c "timedatectl set-ntp true"
 arch-chroot /mnt /bin/bash -c "hwclock --systohc --utc"
 echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
@@ -145,7 +139,6 @@ EOF
 sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 arch-chroot /mnt /bin/bash -c "locale-gen"
 arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
-read -p "Press enter to continue"
 #GRUB
 if [[ $SYSTEM == "BIOS" ]]; then		
 	pacstrap /mnt dosfstools
@@ -160,19 +153,15 @@ sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 [[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 [[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-read -p "Press enter to continue"
 #Einstellungen
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill -s /bin/bash"
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
-read -p "Press enter to continue"
 #Pakete
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit dbus cups acpid avahi cronie bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
-read -p "Press enter to continue"
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
@@ -189,52 +178,34 @@ fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
 fi
-read -p "Press enter to continue"
 #Pakete
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
-read -p "Press enter to continue"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard zip unzip pulseaudio pulseaudio-alsa alsa-tools unrar sharutils uudeview p7zip"
-read -p "Press enter to continue"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
-read -p "Press enter to continue"
 #Autologin
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm"
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i 's/'#autologin-session='/'autologin-session=cinnamon'/g' /mnt/etc/lightdm/lightdm.conf
-read -p "Press enter to continue"
 #trizen
 mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-read -p "Press enter to continue"
 #pamac
 arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
-read -p "Press enter to continue"
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-read -p "Press enter to continue"
 #Zusatz
 [[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
-read -p "Press enter to continue"
 [[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
-read -p "Press enter to continue"
-[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine gecko wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
-read -p "Press enter to continue"
+[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
-read -p "Press enter to continue"
 if [[ $FBOT == "YES" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
@@ -252,7 +223,6 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-read -p "Press enter to continue"
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -268,16 +238,11 @@ if [[ $JDOW == "YES" ]]; then
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
-read -p "Press enter to continue"
 #Treiber
 [[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
-read -p "Press enter to continue"
 [[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-read -p "Press enter to continue"
 [[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
-read -p "Press enter to continue"
 [[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
-read -p "Press enter to continue"
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
 #		https://aur.archlinux.org/cgit/aur.git/snapshot/fprintd-vfs_proprietary.tar.gz
@@ -287,15 +252,13 @@ if [[ $(lsusb | grep Fingerprint) != "" ]]; then
 fi
 #Mintstick
 arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
-read -p "Press enter to continue"
 #myup
-echo '#!/bin/sh' >> /mnt/bin/myup
+echo '#!/bin/sh' > /mnt/bin/myup
 echo "sudo pacman -Syu --noconfirm --needed" >> /mnt/bin/myup
 echo "trizen -Syu --noconfirm --needed" >> /mnt/bin/myup
 echo "sudo pacman -Rns --noconfirm --needed $(sudo pacman -Qtdq --noconfirm --needed)" >> /mnt/bin/myup
 echo "sudo pacman -Scc --noconfirm --needed" >> /mnt/bin/myup
 arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
-read -p "Press enter to continue"
 #Autoupdate
 cat > /mnt/etc/systemd/system/autoupdate.service << EOF
 [Unit]
@@ -324,23 +287,17 @@ Unit=autoupdate.service
 [Install]
 WantedBy=multi-user.target
 EOF
-read -p "Press enter to continue"
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
-read -p "Press enter to continue"
 #finish
 mv monty.tar.gz /mnt && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
-read -p "Press enter to continue"
 echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
-read -p "Press enter to continue"
-arch-chroot /mnt /bin/bash -c "localectl set-x11-keymap ch nodeadkeys"
+arch-chroot /mnt /bin/bash -c "localectl --no-convert set-x11-keymap ch nodeadkeys"
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-read -p "Press enter to continue"
 #Ende 
 swapoff -a
 umount -R /mnt
-read -p "Press enter zum Neustart"
 reboot	
