@@ -113,8 +113,7 @@ if [[ $HD_SD == "HDD" ]]; then
 	swapon /mnt/swapfile
 fi
 #BASE
-pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged xorg-server xorg-xinit dbus cups acpid avahi cronie bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect $UCODE cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince alsa-utils picard zip unzip pulseaudio pulseaudio-alsa alsa-tools unrar sharutils uudeview p7zip arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
-
+pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged $UCODE
 genfstab -Up /mnt > /mnt/etc/fstab
 #arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 #arch-chroot /mnt /bin/bash -c "pacman-key --init"
@@ -127,6 +126,7 @@ genfstab -Up /mnt > /mnt/etc/fstab
 #	fi
 #arch-chroot /mnt /bin/bash -c "pacman -Syy"
 arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
+arch-chroot /mnt /bin/bash -c "timedatectl set-ntp true"
 arch-chroot /mnt /bin/bash -c "hwclock --systohc --utc"
 echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
 echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
@@ -138,7 +138,7 @@ cat > /mnt/etc/hosts <<- EOF
 EOF
 sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 arch-chroot /mnt /bin/bash -c "locale-gen"
-arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux-lts"
+#arch-chroot /mnt /bin/bash -c "mkinitcpio -p linux-lts"
 arch-chroot /mnt /bin/bash -c "passwd root" < /tmp/.passwd
 #GRUB
 if [[ $SYSTEM == "BIOS" ]]; then		
@@ -152,7 +152,7 @@ fi
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
+[[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 [[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 
 #Einstellungen
@@ -162,7 +162,7 @@ sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
 #Pakete
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit dbus cups acpid avahi cronie bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit dbus cups acpid avahi cronie bash-completion xf86-input-keyboard xf86-input-mouse laptop-detect"
 arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
@@ -181,7 +181,17 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
 fi
 #Pakete
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard zip unzip pulseaudio pulseaudio-alsa alsa-tools unrar sharutils uudeview p7zip"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf ghostscript gsfonts gutenprint gtk3-print-backends"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 #Autologin
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm"
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i 's/'#autologin-session='/'autologin-session=cinnamon'/g' /mnt/etc/lightdm/lightdm.conf
@@ -289,8 +299,7 @@ sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/
 arch-chroot /mnt /bin/bash -c "chown -R ${USERNAME}:users /home/${USERNAME}"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'myup'"
 #Ende 
 swapoff -a
 umount -R /mnt
-#reboot	
+reboot	
