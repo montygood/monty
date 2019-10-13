@@ -1,9 +1,5 @@
 #!/usr/bin/bash
 
-VER="2.0.6"      # version
-DIST="ArchLabs"  # distributor
-MNT="/mnt"       # mountpoint
-
 _WelTitle="Welcome to the"
 _WelBody="\nThis will help you get $DIST setup on your system.\nHaving GNU/Linux experience is an asset, however we try our best to keep things simple.\n\nIf you are unsure about an option, a default will be listed or\nthe first selected option will be the default (excluding language and timezone).\n\n\nMenu Navigation:\n\n - Select items with the arrow keys or the option number.\n - Use [Space] to toggle options and [Enter] to confirm.\n - Switch between buttons using [Tab] or the arrow keys.\n - Use [Page Up] and [Page Down] to jump whole pages\n - Press the highlighted key of an option to select it.\n"
 
@@ -115,6 +111,20 @@ _ErrTitle="Installation Error"
 _ExtErrBody="\nCannot mount partition due to a problem with the mountpoint.\n\nEnsure it begins with a slash (/) followed by atleast one character.\n"
 _PartErrBody="\nYou need create the partiton(s) first.\n\n\nBIOS systems require at least one partition (ROOT).\n\nUEFI systems require at least two (ROOT and EFI).\n"
 
+#!/usr/bin/bash
+
+# vim:fdm=marker:fmr={,}
+# shellcheck disable=2154
+
+# This program is free software, provided under the GNU GPL
+# Written by Nathaniel Maia for use in Archlabs
+# Some ideas and code reworked from other resources
+# AIF, Cnichi, Calamares, Arch Wiki.. Credit where credit is due
+
+VER="2.0.6"      # version
+DIST="ArchLabs"  # distributor
+MNT="/mnt"       # mountpoint
+
 # bulk default values {
 
 ROOT_PART=""      # root partition
@@ -131,7 +141,7 @@ ROOT_PASS=""      # root password
 LOGIN_WM=""       # default login session
 LOGIN_TYPE=""     # login manager can be lightdm or xinit
 INSTALL_WMS=""    # space separated list of chosen wm/de
-KERNEL=""         # can be linux, linux-lts
+KERNEL=""         # can be linux, linux-lts, linux-zen, or linux-hardened
 MYSHELL=""        # login shell for root and the primary user
 LOGINRC=""        # login shell rc file
 PACKAGES=""       # list of all packages to install including WM_PKGS
@@ -140,6 +150,17 @@ WM_PKGS=""        # full list of packages added during wm/de choice
 HOOKS="shutdown"  # list of additional HOOKS to add in /etc/mkinitcpio.conf
 FONT="ter-i16n"   # font used in the linux console
 UCODE=""          # cpu manufacturer microcode filename (if any)
+
+LUKS=""           # empty when not using luks encryption
+LUKS_DEV=""       # boot parameter string for LUKS
+LUKS_PART=""      # partition used for encryption
+LUKS_PASS=""      # encryption password
+LUKS_UUID=""      # encrypted partition UUID
+LUKS_NAME=""      # name used for encryption
+
+LVM=""            # empty when not using lvm
+VGROUP_MB=0       # available space in volume group
+LVM_PARTS=()      # partitions used for volume group
 
 WARN=false        # issued mounting/partitioning warning
 SEP_BOOT=false    # separate boot partition for BIOS
@@ -153,7 +174,8 @@ AUTO_BOOT_PART="" # boot value from auto partition
 FORMATTED=""      # partitions we formatted and should allow skipping
 
 # baseline
-BASE_PKGS="base-devel xorg xorg-drivers sudo git gvfs gtk3 gtk-engines gtk-engine-murrine pavucontrol tumbler "
+BASE_PKGS="archlabs-scripts archlabs-skel-base archlabs-themes archlabs-dARK archlabs-icons archlabs-wallpapers "
+BASE_PKGS+="base-devel xorg xorg-drivers sudo git gvfs gtk3 gtk-engines gtk-engine-murrine pavucontrol tumbler "
 BASE_PKGS+="playerctl ffmpeg gstreamer libmad libmatroska gst-libav gst-plugins-base gst-plugins-good"
 
 # extras for window managers
@@ -168,6 +190,8 @@ BT="$DIST Installer - v$VER"          # backtitle used for dialogs
 VM="$(dmesg | grep -i "hypervisor")"  # is the system a vm
 
 # }
+
+# giant ugly container :P {
 
 # amount of RAM in the system in Mb
 SYS_MEM="$(awk '/MemTotal/ {
@@ -206,7 +230,26 @@ declare -A BCMDS=(
 
 # match the wm name with the actual session name used for xinit
 declare -A WM_SESSIONS=(
+[dwm]='dwm'
+[i3-gaps]='i3'
+[bspwm]='bspwm'
+[plasma]='startkde'
+[xfce4]='startxfce4'
+[gnome]='gnome-session'
+[fluxbox]='startfluxbox'
+[openbox]='openbox-session'
 [cinnamon]='cinnamon-session'
+)
+
+# additional packages installed for each wm/de
+declare -A WM_EXT=(
+[gnome]=""
+[fluxbox]="menumaker"
+[plasma]="kdebase-meta"
+[bspwm]="sxhkd archlabs-skel-bspwm rofi archlabs-polybar"
+[i3-gaps]="i3status perl-anyevent-i3 archlabs-skel-i3-gaps rofi archlabs-polybar"
+[openbox]="obconf archlabs-skel-openbox jgmenu archlabs-polybar tint2 conky rofi lxmenu-data"
+[xfce4]="xfce4-goodies xfce4-pulseaudio-plugin network-manager-applet volumeicon rofi archlabs-skel-xfce4"
 )
 
 # files the user can edit during the final stage of install
@@ -225,6 +268,9 @@ declare -A EDIT_FILES=(
 )
 
 # PKG_EXT: if you add a package to $PACKAGES in any dialog
+#          and it uses/requires some additional packages,
+#          you can add them here to keep it simple: [package]="extra"
+#          duplicates are removed with `uniq` before install
 declare -A PKG_EXT=(
 [vlc]="qt4"
 [mpd]="mpc"
@@ -242,14 +288,30 @@ declare -A PKG_EXT=(
 
 # mkfs command to format a partition as a given file system
 declare -A FS_CMDS=(
+[f2fs]="mkfs.f2fs"
+[jfs]="mkfs.jfs -q"
+[xfs]="mkfs.xfs -f"
+[ntfs]="mkfs.ntfs -q"
+[ext2]="mkfs.ext2 -q"
+[ext3]="mkfs.ext3 -q"
 [ext4]="mkfs.ext4 -q"
 [vfat]="mkfs.vfat -F32"
+[nilfs2]="mkfs.nilfs2 -q"
+[reiserfs]="mkfs.reiserfs -q"
 )
 
 # mount options for a given file system
 declare -A FS_OPTS=(
 [vfat]=""
+[ntfs]=""
+[ext2]=""
+[ext3]=""
+[jfs]="discard - off errors=continue - off errors=panic - off nointegrity - off"
+[reiserfs]="acl - off nolog - off notail - off replayonly - off user_xattr - off"
 [ext4]="discard - off dealloc - off nofail - off noacl - off relatime - off noatime - off nobarrier - off nodelalloc - off"
+[xfs]="discard - off filestreams - off ikeep - off largeio - off noalign - off nobarrier - off norecovery - off noquota - off wsync - off"
+[nilfs2]="discard - off nobarrier - off errors=continue - off errors=panic - off order=relaxed - off order=strict - off norecovery - off"
+[f2fs]="data_flush - off disable_roll_forward - off disable_ext_identify - off discard - off fastboot - off flush_merge - off inline_xattr - off inline_data - off inline_dentry - off no_heap - off noacl - off nobarrier - off noextent_cache - off noinline_data - off norecovery - off"
 )
 # }
 
@@ -264,30 +326,99 @@ main()
         --cancel-label 'Exit' --menu "$_PrepBody" 0 0 0 \
         "1"  "$_PrepShow" \
         "2"  "$_PrepPart" \
+        "3"  "$_PrepLUKS" \
+        "4"  "$_PrepLVM" \
         "5"  "$_PrepMnt" \
         "6"  "$_PrepUser" \
         "7"  "$_PrepConf" \
         "8"  "$_PrepWM" \
         "9"  "$_PrepPkg" \
-        "10" "$_Install")
+        "10" "$_PrepChk" \
+        "11" "$_Install")
 
     [[ $WARN != true && $SEL =~ (2|5) ]] && { WARN=true; msgbox "Prepare" "$_WarnMount"; }
 
     case $SEL in
         1) dev_tree ;;
         2) part_menu || (( SEL-- )) ;;
+        3) luks_menu || (( SEL-- )) ;;
+        4) lvm_menu || (( SEL-- )) ;;
         5) mount_menu || (( SEL-- )) ;;
         6) prechecks 0 && { select_mkuser || (( SEL-- )); } ;;
         7) prechecks 1 && { select_config || (( SEL-- )); } ;;
         8) prechecks 2 && { select_sessions || (( SEL-- )); } ;;
         9) prechecks 2 && { select_packages || (( SEL-- )); } ;;
-        10) prechecks 2 && install_main ;;
+        10) prechecks 2 && show_cfg ;;
+        11) prechecks 2 && install_main ;;
         *) yesno "Exit" "\nUnmount partitions (if any) and exit the installer?\n" && die
     esac
 }
 
 ###############################################################################
 # selection menus
+
+show_cfg()
+{
+    local cmd="${BCMDS[$BOOTLDR]}"
+    [[ $BOOT_PART ]] && local mnt="/boot" || local mnt="none"
+    local pkgs="${USER_PKGS# }"
+    pkgs="${pkgs% }"
+    pkgs="${pkgs% } ${PACKAGES# }"
+    pkgs="${pkgs//  / }"
+    pkgs="${pkgs//  / }"
+    [[ $INSTALL_WMS == *dwm* ]] && pkgs="dwm st dmenu ${pkgs# }"
+    pkgs="${pkgs# }"
+    pkgs="${pkgs% }"
+    pkgs="${pkgs//  / }"
+    msgbox "Show Configuration" "
+
+---------- PARTITION CONFIGURATION ------------
+
+  Root:  ${ROOT_PART:-none}
+  Boot:  ${BOOT_PART:-${BOOT_DEV:-none}}
+
+  Swap:  ${SWAP_PART:-none}
+  Size:  ${SWAP_SIZE:-none}
+
+  LVM:   ${LVM:-none}
+  LUKS:  ${LUKS:-none}
+
+  Extra: ${EXMNTS:-${EXMNT:-none}}
+  Hooks: ${HOOKS:-none}
+
+
+---------- BOOTLOADER CONFIGURATION -----------
+
+  Bootloader: ${BOOTLDR:-none}
+  Mountpoint: ${mnt:-none}
+  Command:    ${cmd:-none}
+
+
+------------ SYSTEM CONFIGURATION -------------
+
+  Locale:   ${LOCALE:-none}
+  Keymap:   ${KEYMAP:-none}
+  Hostname: ${HOSTNAME:-none}
+  Timezone: ${ZONE:-none}/${SUBZONE:-none}
+
+
+------------ USER CONFIGURATION --------------
+
+  User:         ${NEWUSER:-none}
+  Shell:        ${MYSHELL:-none}
+  Session:      ${LOGIN_WM:-none}
+  Autologin:    ${AUTOLOGIN:-none}
+  Login Method: ${LOGIN_TYPE:-none}
+
+
+------------ PACKAGES AND MIRRORS -------------
+
+  Kernel:   ${KERNEL:-none}
+  Sessions: ${INSTALL_WMS:-none}
+  Mirrors:  ${MIRROR_CMD:-none}
+  Packages: $(print4 "${pkgs:-none}")
+"
+}
 
 select_login()
 {
@@ -324,10 +455,12 @@ select_config()
 {
     tput civis
     MYSHELL="$(menubox "Shell" "\nChoose a shell for the new user and root." \
-        '/bin/bash')"
+        '/usr/bin/zsh' '-' '/bin/bash' '-' '/usr/bin/mksh' '-')"
 
     case $MYSHELL in
         "/bin/bash") LOGINRC=".bash_profile" ;;
+        "/usr/bin/mksh") LOGINRC=".profile" ;;
+        "/usr/bin/zsh") LOGINRC=".zprofile" ;;
         *) return 1 ;;
     esac
 
@@ -340,7 +473,9 @@ select_config()
     select_timezone || return 1
     KERNEL="$(menubox "Kernel" "\nSelect a kernel to use for the install." \
         'linux' 'Vanilla Linux kernel and modules, with a few patches applied.' \
-        'linux-lts' 'Long-term support (LTS) Linux kernel and modules.')"
+        'linux-lts' 'Long-term support (LTS) Linux kernel and modules.' \
+        'linux-zen' 'A collaborative effort of kernel hackers to provide the best Linux kernel for everyday systems' \
+        'linux-hardened' 'A security-focused Linux kernel with hardening patches to mitigate kernel and userspace exploits')"
 
     [[ $KERNEL ]] || return 1
     select_mirrorcmd || return 1
@@ -401,7 +536,27 @@ select_keymap()
     tput civis
     KEYMAP="$(dialog --cr-wrap --stdout --backtitle "$BT" \
         --title " Keyboard Layout " --menu "$_XMapBody" 0 0 $SHL \
-        'us' 'English'    'ch' 'Schweiz')"
+        'us' 'English'    'cm'    'English'     'gb' 'English'    'au' 'English'    'gh' 'English' \
+        'za' 'English'    'ng'    'English'     'ca' 'French'     'cd' 'French'     'gn' 'French' \
+        'tg' 'French'     'fr'    'French'      'de' 'German'     'at' 'German'     'ch' 'German' \
+        'es' 'Spanish'    'latam' 'Spanish'     'br' 'Portuguese' 'pt' 'Portuguese' 'ma' 'Arabic' \
+        'sy' 'Arabic'     'ara'   'Arabic'      'ua' 'Ukrainian'  'cz' 'Czech'      'ru' 'Russian' \
+        'sk' 'Slovak'     'nl'    'Dutch'       'it' 'Italian'    'hu' 'Hungarian'  'cn' 'Chinese' \
+        'tw' 'Taiwanese'  'vn'    'Vietnamese'  'kr' 'Korean'     'jp' 'Japanese'   'th' 'Thai' \
+        'la' 'Lao'        'pl'    'Polish'      'se' 'Swedish'    'is' 'Icelandic'  'fi' 'Finnish' \
+        'dk' 'Danish'     'be'    'Belgian'     'in' 'Indian'     'al' 'Albanian'   'am' 'Armenian' \
+        'bd' 'Bangla'     'ba'    'Bosnian'     'bg' 'Bulgarian'  'dz' 'Berber'     'mm' 'Burmese' \
+        'hr' 'Croatian'   'gr'    'Greek'       'il' 'Hebrew'     'ir' 'Persian'    'iq' 'Iraqi' \
+        'af' 'Afghani'    'fo'    'Faroese'     'ge' 'Georgian'   'ee' 'Estonian'   'kg' 'Kyrgyz' \
+        'kz' 'Kazakh'     'lt'    'Lithuanian'  'mt' 'Maltese'    'mn' 'Mongolian'  'ro' 'Romanian' \
+        'no' 'Norwegian'  'rs'    'Serbian'     'si' 'Slovenian'  'tj' 'Tajik'      'lk' 'Sinhala' \
+        'tr' 'Turkish'    'uz'    'Uzbek'       'ie' 'Irish'      'pk' 'Urdu'       'mv' 'Dhivehi' \
+        'np' 'Nepali'     'et'    'Amharic'     'sn' 'Wolof'      'ml' 'Bambara'    'tz' 'Swahili' \
+        'ke' 'Swahili'    'bw'    'Tswana'      'ph' 'Filipino'   'my' 'Malay'      'tm' 'Turkmen' \
+        'id' 'Indonesian' 'bt'    'Dzongkha'    'lv' 'Latvian'    'md' 'Moldavian' 'mao' 'Maori' \
+        'by' 'Belarusian' 'az'    'Azerbaijani' 'mk' 'Macedonian' 'kh' 'Khmer'     'epo' 'Esperanto' \
+        'me' 'Montenegrin')"
+
     [[ $KEYMAP ]] || return 1
     if [[ $CMAPS == *"$KEYMAP"* ]]; then
         CMAP="$KEYMAP"
@@ -452,8 +607,15 @@ select_sessions()
     tput civis
     INSTALL_WMS="$(dialog --cr-wrap --no-cancel --stdout --backtitle "$BT" \
         --title " Sessions " --checklist "$_WMChoiceBody\n" 0 0 0 \
+        "i3-gaps"  "A fork of i3wm with more features including gaps" off \
+        "openbox"  "A lightweight, powerful, and highly configurable stacking wm" off \
+        "bspwm"    "A tiling wm that represents windows as the leaves of a binary tree" off \
+        "dwm"      "A fork of dwm, with more layouts and features" off \
+        "fluxbox"  "A lightweight and highly-configurable window manager" off \
         "gnome"    "A desktop environment that aims to be simple and easy to use" off \
-        "cinnamon" "A desktop environment combining traditional desktop with modern effects" off)"
+        "cinnamon" "A desktop environment combining traditional desktop with modern effects" off \
+        "plasma"   "A kde software project currently comprising a full desktop environment" off \
+        "xfce4"    "A lightweight and modular desktop environment based on gtk+2/3" off)"
 
     [[ $INSTALL_WMS ]] || return 1
 
@@ -629,7 +791,8 @@ pkg_terms()
         "terminator"     "Terminal emulator that supports tabs and grids" $(ofn 'terminator') \
         "sakura"         "A terminal emulator based on GTK and VTE" $(ofn 'sakura') \
         "tilix"          "A tiling terminal emulator for Linux using GTK+ 3" $(ofn 'tilix') \
-        "tilda"          "A Gtk based drop down terminal for Linux and Unix" $(ofn 'tilda'))"
+        "tilda"          "A Gtk based drop down terminal for Linux and Unix" $(ofn 'tilda') \
+        "xfce4-terminal" "A terminal emulator based in the Xfce Desktop Environment" $(ofn 'xfce-terminal'))"
     printf "%s" "$pkgs"
 }
 
@@ -837,10 +1000,10 @@ dev_tree()
     local msg
     if [[ $IGNORE_DEV != "" ]]; then
         msg="$(lsblk -o NAME,MODEL,SIZE,TYPE,FSTYPE,MOUNTPOINT |
-            awk "!/$IGNORE_DEV/"' && /disk|part|crypt|NAME/')"
+            awk "!/$IGNORE_DEV/"' && /disk|part|lvm|crypt|NAME/')"
     else
         msg="$(lsblk -o NAME,MODEL,SIZE,TYPE,FSTYPE,MOUNTPOINT |
-            awk '/disk|part|crypt|NAME/')"
+            awk '/disk|part|lvm|crypt|NAME/')"
     fi
     msgbox "Device Tree" "\n\n$msg\n\n"
 }
@@ -891,6 +1054,49 @@ confirm_mount()
         return 1
     fi
     return 0
+}
+
+check_cryptlvm()
+{
+    local dev devs part="$1"
+    devs="$(lsblk -lno NAME,FSTYPE,TYPE)"
+
+    # Identify if $part is LUKS+LVM, LVM+LUKS, LVM alone, or LUKS alone
+    if [[ $(lsblk -lno TYPE "$part") =~ 'crypt' ]]; then
+        LUKS='encrypted'
+        LUKS_NAME="${part#/dev/mapper/}"
+        for dev in $(awk '/lvm/ && /crypto_LUKS/ {print "/dev/mapper/"$1}' <<< "$devs" | uniq); do
+            if grep -q "$LUKS_NAME" <<< "$(lsblk -lno NAME "$dev")"; then
+                LUKS_DEV="$LUKS_DEV cryptdevice=$dev:$LUKS_NAME"
+                LVM='logical volume'
+                break
+            fi
+        done
+        for dev in $(awk '/part/ && /crypto_LUKS/ {print "/dev/"$1}' <<< "$devs" | uniq); do
+            if grep -q "$LUKS_NAME" <<< "$(lsblk -lno NAME "$dev")"; then
+                LUKS_UUID="$(lsblk -lno UUID,TYPE,FSTYPE "$dev" | awk '/part/ && /crypto_LUKS/ {print $1}')"
+                LUKS_DEV="$LUKS_DEV cryptdevice=UUID=$LUKS_UUID:$LUKS_NAME"
+                break
+            fi
+        done
+    elif [[ $(lsblk -lno TYPE "$part") =~ 'lvm' ]]; then
+        LVM='logical volume'
+        VOLUME_NAME="${part#/dev/mapper/}"
+        for dev in $(awk '/crypt/ && /lvm2_member/ {print "/dev/mapper/"$1}' <<< "$devs" | uniq); do
+            if grep -q "$VOLUME_NAME" <<< "$(lsblk -lno NAME "$dev")"; then
+                LUKS_NAME="$(sed 's~/dev/mapper/~~g' <<< "$dev")"
+                break
+            fi
+        done
+        for dev in $(awk '/part/ && /crypto_LUKS/ {print "/dev/"$1}' <<< "$devs" | uniq); do
+            if grep -q "$LUKS_NAME" <<< "$(lsblk -lno NAME "$dev")"; then
+                LUKS_UUID="$(lsblk -lno UUID,TYPE,FSTYPE "$dev" | awk '/part/ && /crypto_LUKS/ {print $1}')"
+                LUKS_DEV="$LUKS_DEV cryptdevice=UUID=$LUKS_UUID:$LUKS_NAME"
+                LUKS='encrypted'
+                break
+            fi
+        done
+    fi
 }
 
 auto_partition()
@@ -953,6 +1159,7 @@ mount_partition()
     fi
 
     confirm_mount $part "$mountp" || return 1
+    check_cryptlvm "$part"
 
     return 0
 }
@@ -966,12 +1173,14 @@ find_partitions()
         PARTS="$(lsblk -lno TYPE,NAME,SIZE |
             awk "/$str/"' && !'"/$IGNORE_DEV/"' {
                 sub(/^part/, "/dev/");
+                sub(/^lvm|^crypt/, "/dev/mapper/")
                 print $1$2 " " $3
             }')"
     else
         PARTS="$(lsblk -lno TYPE,NAME,SIZE |
             awk "/$str/"' {
                 sub(/^part/, "/dev/")
+                sub(/^lvm|^crypt/, "/dev/mapper/")
                 print $1$2 " " $3
             }')"
     fi
@@ -982,6 +1191,13 @@ find_partitions()
     else
         COUNT=0
     fi
+
+    # ensure we have enough partitions for the system and action type
+    case "$str" in
+        'part|lvm|crypt') [[ $COUNT -lt 1 || ($SYS == 'UEFI' && $COUNT -lt 2) ]] && err="$_PartErrBody" ;;
+        'part|crypt') (( COUNT < 1 )) && err="$_LvmPartErrBody" ;;
+        'part|lvm') (( COUNT < 2 )) && err="$_LuksPartErrBody" ;;
+    esac
 
     # if there aren't enough partitions show the relevant error message
     [[ $err ]] && { msgbox "Not Enough Partitions" "$err"; return 1; }
@@ -1007,8 +1223,12 @@ setup_boot_device()
 
 mount_menu()
 {
+    lvm_detect
     umount_dir $MNT
-    find_partitions 'part|crypt' || { SEL=2; return 1; }
+    find_partitions 'part|lvm|crypt' || { SEL=2; return 1; }
+
+    [[ $LUKS_PART ]] && decr_pcount $LUKS_PART
+    [[ $LVM_PARTS ]] && decr_pcount $LVM_PARTS
 
     select_root_partition || return 1
 
@@ -1101,7 +1321,7 @@ select_filesystem()
 {
     local part="$1" fs="" cur_fs="" err=0
     cur_fs="$(lsblk -lno FSTYPE "$part" 2>/dev/null)"
-    [[ $part == "$ROOT_PART" && $ROOT_PART == "$AUTO_ROOT_PART" ]] && return 0
+    [[ $part == "$ROOT_PART" && $ROOT_PART == "$AUTO_ROOT_PART" && ! $LUKS && ! $LVM ]] && return 0
 
     while true; do
         tput civis
@@ -1110,12 +1330,28 @@ select_filesystem()
                 "\nSelect which filesystem to use for: $part\n\nCurrent:  ${cur_fs:-none}\nDefault:  ext4" \
                 "skip"     "do not format this partition" \
                 "ext4"     "${FS_CMDS[ext4]}" \
-                "vfat"     "${FS_CMDS[vfat]}")"
+                "ext3"     "${FS_CMDS[ext3]}" \
+                "ext2"     "${FS_CMDS[ext2]}" \
+                "vfat"     "${FS_CMDS[vfat]}" \
+                "ntfs"     "${FS_CMDS[ntfs]}" \
+                "f2fs"     "${FS_CMDS[f2fs]}" \
+                "jfs"      "${FS_CMDS[jfs]}" \
+                "xfs"      "${FS_CMDS[xfs]}"\
+                "nilfs2"   "${FS_CMDS[nilfs2]}" \
+                "reiserfs" "${FS_CMDS[reiserfs]}")"
 
             [[ $fs == "skip" ]] && break
         else
             fs="$(menubox "Filesystem" "\nSelect which filesystem to use for: $part\n\nDefault:  ext4" \
-                "ext4"     "${FS_CMDS[ext4]}")"
+                "ext4"     "${FS_CMDS[ext4]}" \
+                "ext3"     "${FS_CMDS[ext3]}" \
+                "ext2"     "${FS_CMDS[ext2]}" \
+                "ntfs"     "${FS_CMDS[ntfs]}" \
+                "f2fs"     "${FS_CMDS[f2fs]}" \
+                "jfs"      "${FS_CMDS[jfs]}" \
+                "xfs"      "${FS_CMDS[xfs]}" \
+                "nilfs2"   "${FS_CMDS[nilfs2]}" \
+                "reiserfs" "${FS_CMDS[reiserfs]}")"
 
         fi
         [[ $fs ]] || { err=1; break; }
@@ -1155,9 +1391,12 @@ select_efi_partition()
 select_boot_partition()
 {
     tput civis
-    if [[ $AUTO_BOOT_PART ]]; then
+    if [[ $AUTO_BOOT_PART && ! $LVM ]]; then
         BOOT_PART="$AUTO_BOOT_PART"
         return 0 # were done here
+    elif [[ $LUKS && ! $LVM ]]; then
+        BOOT_PART="$(menubox "Boot Partition" "$_SelBiosLuksBody" $PARTS)"
+        [[ $BOOT_PART ]] || return 1
     else
         BOOT_PART="$(menubox "Boot Partition" "$_SelBiosBody" "skip" "don't use a separate boot" $PARTS)"
         [[ $BOOT_PART == "" || $BOOT_PART == "skip" ]] && { BOOT_PART=""; return 0; }
@@ -1275,8 +1514,8 @@ install_base()
         errshow 1 "rsync -ahv /run/archiso/sfs/airootfs/ $MNT/"
     else
         install_mirrorlist
-        pacstrap $MNT base $KERNEL $UCODE base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged 2>$ERR
-        errshow 1 "pacstrap $MNT base $KERNEL $UCODE base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged "
+        pacstrap $MNT $KERNEL $UCODE base base-devel linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged  2>$ERR
+        errshow 1 "pacstrap $MNT base $KERNEL $UCODE $packages"
     fi
 
     printf "Removing archiso remains\n"
@@ -1370,6 +1609,13 @@ install_user()
     printf "Setting root password\n"
     chrun "chpasswd <<< 'root:$ROOT_PASS'" 2>$ERR
     errshow 1 "set root password"
+    if [[ $MYSHELL != *zsh ]]; then
+        chrun "usermod -s $MYSHELL root" 2>$ERR
+        errshow 1 "usermod -s $MYSHELL root"
+        if [[ $MYSHELL == "/usr/bin/mksh" ]]; then
+            cp -fv $MNT/etc/skel/.mkshrc /root/.mkshrc
+        fi
+    fi
 
     local groups='audio,autologin,floppy,log,network,rfkill,scanner,storage,optical,power,wheel'
 
@@ -1387,6 +1633,31 @@ install_user()
         cp -rfv $MNT/home/$NEWUSER/.vim/colors $MNT/home/$NEWUSER/.config/nvim/colors
     fi
 
+    if [[ $MYSHELL == '/usr/bin/mksh' ]]; then
+        cat >> $MNT/home/$NEWUSER/.mkshrc << EOF
+# colors in less (manpager)
+export LESS_TERMCAP_mb=$'\e[01;31m'
+export LESS_TERMCAP_md=$'\e[01;31m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;44;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[01;32m'
+
+export EDITOR=$([[ $USER_PKGS == *neovim* ]] && printf "n")vim
+
+# source shell configs
+for f in "\$HOME/.mksh/"*?.sh; do
+    . "\$f"
+done
+
+al-info
+EOF
+    fi
+
+    [[ $INSTALL_WMS == *dwm* ]] && install_suckless
+    [[ $LOGIN_WM =~ (startkde|gnome-session) ]] && sed -i '/super/d' $HOME/.xprofile /root/.xprofile
+
     return 0
 }
 
@@ -1394,6 +1665,19 @@ install_login()
 {
     printf "Setting up $LOGIN_TYPE\n"
     SERVICE="$MNT/etc/systemd/system/getty@tty1.service.d"
+
+    # remove welcome message
+    sed -i '/printf/d' $MNT/root/.zshrc
+
+    # remove unneeded shell files from installation
+    case $MYSHELL in
+        "/bin/bash")
+            rm -rf $MNT/home/$NEWUSER/.{zsh,mksh}* $MNT/root/.{zsh,mksh}* ;;
+        "/usr/bin/mksh")
+            rm -rf $MNT/home/$NEWUSER/.{zsh,bash}* $MNT/home/$NEWUSER/.inputrc $MNT/root/.{zsh,bash}* $MNT/root/.inputrc ;;
+        "/usr/bin/zsh")
+            rm -rf $MNT/home/$NEWUSER/.{bash,mksh}* $MNT/home/$NEWUSER/.inputrc $MNT/root/.{bash,mksh}* $MNT/root/.inputrc ;;
+    esac
 
     install_${LOGIN_TYPE:-xinit}
 }
@@ -1420,14 +1704,14 @@ install_xinit()
 EOF
     else
         rm -rf $SERVICE
-        rm -rf $MNT/home/$NEWUSER/.{profile,bash_profile}
+        rm -rf $MNT/home/$NEWUSER/.{profile,zprofile,bash_profile}
     fi
 }
 
 install_lightdm()
 {
     rm -rf $SERVICE
-    rm -rf $MNT/home/$NEWUSER/.{xinitrc,profile,bash_profile}
+    rm -rf $MNT/home/$NEWUSER/.{xinitrc,profile,zprofile,bash_profile}
     chrun 'systemctl set-default graphical.target && systemctl enable lightdm.service' 2>$ERR
     errshow 1 "systemctl set-default graphical.target && systemctl enable lightdm.service"
     cat > $MNT/etc/lightdm/lightdm-gtk-greeter.conf << EOF
@@ -1453,17 +1737,23 @@ install_packages()
 
     if [[ $KERNEL == 'linux-lts' ]]; then
         inpkg+=" linux-lts"; rmpkg+=" linux"
+    elif [[ $KERNEL == 'linux-zen' ]]; then
+        inpkg+=" linux-zen"; rmpkg+=" linux"
+    elif [[ $KERNEL == 'linux-hardened' ]]; then
+        inpkg+=" linux-hardened"; rmpkg+=" linux"
     fi
 
     [[ $BOOTLDR == 'grub' ]] || rmpkg+=" grub os-prober"
     [[ $BOOTLDR == 'refind-efi' ]] || rmpkg+=" refind-efi"
 
-    if ! [[ $inpkg =~ (term|urxvt|tilix|alacritty|sakura|tilda|gnome|xfce|cinnamon) ]] && [[ $INSTALL_WMS != *dwm* ]]
+    if ! [[ $inpkg =~ (term|urxvt|tilix|alacritty|sakura|tilda|gnome|xfce|plasma|cinnamon) ]] && [[ $INSTALL_WMS != *dwm* ]]
     then
         inpkg+=" xterm"
     fi
 
-    [[ $INSTALL_WMS =~ ^(cinnamon)$ ]] || inpkg+=" archlabs-ksuperkey"
+    [[ $MYSHELL == '/usr/bin/zsh' ]] && inpkg+=" zsh-completions zsh-history-substring-search"
+    [[ $INSTALL_WMS =~ (openbox|bspwm|i3-gaps|dwm) ]] && inpkg+=" $WM_BASE_PKGS"
+    [[ $INSTALL_WMS =~ ^(plasma|gnome|cinnamon)$ ]] || inpkg+=" archlabs-ksuperkey"
 
     chrun "pacman -Syyu --noconfirm" 2>/dev/null
     chrun "pacman -Rns $rmpkg --noconfirm" 2>/dev/null
@@ -1472,6 +1762,27 @@ install_packages()
 
     sed -i "s/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/g" $MNT/etc/sudoers
     return 0
+}
+
+install_suckless()
+{
+    # install and setup dwm
+    printf "Installing and setting up dwm\n"
+    mkdir -pv $MNT/home/$NEWUSER/suckless
+
+    for i in dwm dmenu st; do
+        if chrun "git clone https://bitbucket.org/natemaia/$i /home/$NEWUSER/suckless/$i"; then
+            chrun "cd /home/$NEWUSER/suckless/$i; rm -f config.h; make clean install; make clean"
+        else
+            printf "failed to clone $i repo\n"
+        fi
+    done
+
+    if [[ -d $MNT/home/$NEWUSER/suckless/dwm && -x $MNT/usr/bin/dwm ]]; then
+        printf "To configure dwm edit /home/$NEWUSER/suckless/dwm/config.h\n"
+        printf "You can then recompile it with 'sudo make clean install'\n"
+        sleep 2
+    fi
 }
 
 install_mirrorlist()
@@ -1489,6 +1800,9 @@ install_mirrorlist()
 install_mkinitcpio()
 {
     local add=""
+    [[ $LUKS && $LUKS_PASS && $SYS == 'UEFI' && $BOOTLDR == 'grub' ]] && luks_keyfile
+    [[ $LUKS ]] && add="encrypt"
+    [[ $LVM ]] && { [[ $add ]] && add+=" lvm2" || add+="lvm2"; }
     sed -i "s/block filesystems/block ${add} filesystems ${HOOKS}/g" $MNT/etc/mkinitcpio.conf
     chrun "mkinitcpio -p $KERNEL" 2>$ERR
     errshow 1 "mkinitcpio -p $KERNEL"
@@ -1530,10 +1844,14 @@ install_boot()
 
     if [[ -d $MNT/hostrun ]]; then
         umount $MNT/hostrun/udev >/dev/null 2>&1
+        umount $MNT/hostrun/lvm >/dev/null 2>&1
         rm -rf $MNT/hostrun >/dev/null 2>&1
     fi
 
     if [[ $SYS == 'UEFI' ]]; then
+        # some UEFI firmware require a generic esp/BOOT/BOOTX64.EFI
+        # see:  https://wiki.archlinux.org/index.php/GRUB#UEFI
+        # also: https://wiki.archlinux.org/index.php/syslinux#UEFI_Systems
         mkdir -pv $MNT/boot/EFI/BOOT
         if [[ $BOOTLDR == 'grub' ]]; then
             cp -fv $MNT/boot/EFI/$DIST/grubx64.efi $MNT/boot/EFI/BOOT/BOOTX64.EFI
@@ -1541,7 +1859,7 @@ install_boot()
             cp -rf $MNT/boot/EFI/syslinux/* $MNT/boot/EFI/BOOT/
             cp -f $MNT/boot/EFI/syslinux/syslinux.efi $MNT/boot/EFI/BOOT/BOOTX64.EFI
         elif [[ $BOOTLDR == 'refind-efi' ]]; then
-            sed -i '/#extra_kernel_version_strings/ c extra_kernel_version_strings linux-lts,linux' $MNT/boot/EFI/refind/refind.conf
+            sed -i '/#extra_kernel_version_strings/ c extra_kernel_version_strings linux-hardened,linux-zen,linux-lts,linux' $MNT/boot/EFI/refind/refind.conf
             cp -fv $MNT/boot/EFI/refind/refind_x64.efi $MNT/boot/EFI/BOOT/BOOTX64.EFI
         fi
     fi
@@ -1582,17 +1900,21 @@ setup_grub()
         [[ $BOOT_DEV ]] || { select_device 1 || return 1; }
         BCMDS[grub]="grub-install --recheck --force --target=i386-pc $BOOT_DEV"
     else
+        if [[ $ROOT_PART == */dev/mapper/* && ! $LVM && ! $LUKS_PASS ]]; then
+            luks_pass "$_LuksOpen" 1 || return 1
+        fi
         BCMDS[grub]="mount -t efivarfs efivarfs /sys/firmware/efi/efivars || true &&
               grub-install --recheck --force --target=x86_64-efi --efi-directory=/boot --bootloader-id=$DIST"
 
         grep -q /sys/firmware/efi/efivars <<< "$(mount)" || mount -t efivarfs efivarfs /sys/firmware/efi/efivars
     fi
 
-    BCMDS[grub]="mkdir -p /run/udev &&
+    BCMDS[grub]="mkdir -p /run/udev /run/lvm &&
               mount --bind /hostrun/udev /run/udev &&
+              mount --bind /hostrun/lvm /run/lvm &&
               ${BCMDS[grub]} &&
               grub-mkconfig -o /boot/grub/grub.cfg &&
-              sleep 1 && umount /run/udev"
+              sleep 1 && umount /run/udev /run/lvm"
 
     return 0
 }
@@ -1624,10 +1946,23 @@ prerun_grub()
 {
     sed -i "s/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR=\"${DIST}\"/g;
     s/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT=\"\"/g" $MNT/etc/default/grub
+    if [[ $LUKS_DEV ]]; then
+        sed -i "s~#GRUB_ENABLE_CRYPTODISK~GRUB_ENABLE_CRYPTODISK~g;
+        s~GRUB_CMDLINE_LINUX=.*~GRUB_CMDLINE_LINUX=\"${LUKS_DEV}\"~g" $MNT/etc/default/grub 2>$ERR
+        errshow 1 "sed -i 's~#GRUB_ENABLE_CRYPTODISK~GRUB_ENABLE_CRYPTODISK~g;
+        s~GRUB_CMDLINE_LINUX=.*~GRUB_CMDLINE_LINUX=\"${LUKS_DEV}\"~g' $MNT/etc/default/grub"
+    fi
+    if [[ $SYS == 'BIOS' && $LVM && $SEP_BOOT == false ]]; then
+        sed -i "s/GRUB_PRELOAD_MODULES=.*/GRUB_PRELOAD_MODULES=\"lvm\"/g" $MNT/etc/default/grub 2>$ERR
+        errshow 1 "sed -i 's/GRUB_PRELOAD_MODULES=.*/GRUB_PRELOAD_MODULES=\"lvm\"/g' $MNT/etc/default/grub"
+    fi
 
     # setup for os-prober module
+    mkdir -p /run/lvm
     mkdir -p /run/udev
+    mkdir -p $MNT/hostrun/lvm
     mkdir -p $MNT/hostrun/udev
+    mount --bind /run/lvm $MNT/hostrun/lvm
     mount --bind /run/udev $MNT/hostrun/udev
 
     return 0
@@ -1755,6 +2090,405 @@ EOF
 }
 
 ###############################################################################
+# lvm functions
+
+lvm_menu()
+{
+    lvm_detect
+    tput civis
+
+    local choice
+    choice="$(dialog --cr-wrap --stdout --backtitle "$BT" \
+        --title " Logical Volume Management " --menu "$_LvmMenu" 0 0 0 \
+        "$_LvmNew"    "vgcreate -f, lvcreate -L -n" \
+        "$_LvmDel"    "vgremove -f" \
+        "$_LvmDelAll" "lvrmeove, vgremove, pvremove -f" \
+        "back"        "return to the main menu")"
+
+    case $choice in
+        "$_LvmNew") lvm_create || return 1 ;;
+        "$_LvmDelVG")
+            if lvm_show_vg && yesno "$_LvmDelVG" "$_LvmDelQ"; then
+                vgremove -f "$DEL_VG" >/dev/null 2>&1
+            fi
+            lvm_menu
+            ;;
+        "$_LvMDelAll") lvm_del_all ;;
+    esac
+
+    return 0
+}
+
+lvm_detect()
+{
+    PHYSICAL_VOLUMES="$(pvs -o pv_name --noheading 2>/dev/null)"
+    VOLUME_GROUP="$(vgs -o vg_name --noheading 2>/dev/null)"
+    VOLUMES="$(lvs -o vg_name,lv_name --noheading --separator - 2>/dev/null)"
+
+    if [[ $VOLUMES && $VOLUME_GROUP && $PHYSICAL_VOLUMES ]]; then
+        infobox "Logical Volume Management" "$_LvmDetBody" 1
+        modprobe dm-mod >/dev/null 2>$ERR
+        errshow 'modprobe dm-mod'
+        vgscan >/dev/null 2>&1
+        vgchange -ay >/dev/null 2>&1
+    fi
+}
+
+lvm_show_vg()
+{
+    DEL_VG=""
+    VOL_GROUP_LIST=""
+    for i in $(lvs --noheadings | awk '{print $2}' | uniq); do
+        VOL_GROUP_LIST="$VOL_GROUP_LIST $i $(vgdisplay "$i" | awk '/VG Size/ {print $3$4}')"
+    done
+    [[ $VOL_GROUP_LIST == "" ]] && { msgbox "$_ErrTitle" "$_LvmVGErr"; return 1; }
+    tput civis
+    DEL_VG="$(menubox "Logical Volume Management" "$_LvmSelVGBody" $VOL_GROUP_LIST)"
+    [[ $DEL_VG ]]
+}
+
+get_lv_size()
+{
+    tput cnorm
+    local ttl=" $_LvmNew (LV:$VOL_COUNT) "
+    local msg="${VOLUME_GROUP}: ${GROUP_SIZE}$GROUP_SIZE_TYPE (${VGROUP_MB}MB $_LvmLvSizeBody1).$_LvmLvSizeBody2"
+    VOLUME_SIZE="$(getinput "$ttl" "$msg" "")"
+    [[ $VOLUME_SIZE ]] || return 1
+    ERR_SIZE=0
+    (( ${#VOLUME_SIZE} == 0 || ${VOLUME_SIZE:0:1} == 0 )) && ERR_SIZE=1
+
+    if (( ERR_SIZE == 0 )); then
+        local lv="$((${#VOLUME_SIZE} - 1))"
+        for (( i=0; i<lv; i++ )); do
+            [[ ${VOLUME_SIZE:$i:1} != [0-9] ]] && { ERR_SIZE=1; break; }
+        done
+        if (( ERR_SIZE == 0 )); then
+            case ${VOLUME_SIZE:$lv:1} in
+                [mMgG]) ERR_SIZE=0 ;;
+                *) ERR_SIZE=1
+            esac
+            if (( ERR_SIZE == 0 )); then
+                local s=${VOLUME_SIZE:0:$lv}
+                local m=$((s * 1000))
+                case ${VOLUME_SIZE:$lv:1} in
+                    [Gg]) (( m >= VGROUP_MB )) && ERR_SIZE=1 || VGROUP_MB=$((VGROUP_MB - m)) ;;
+                    [Mm]) (( ${VOLUME_SIZE:0:$lv} >= VGROUP_MB )) && ERR_SIZE=1 || VGROUP_MB=$((VGROUP_MB - s)) ;;
+                    *) ERR_SIZE=1
+                esac
+            fi
+        fi
+    fi
+
+    if (( ERR_SIZE == 1 )); then
+        msgbox "LVM Size Error" "$_LvmLvSizeErrBody"
+        get_lv_size || return 1
+    fi
+
+    return 0
+}
+
+lvm_volume_name()
+{
+    local msg="$1" default="mainvolume" name="" err=0
+    (( VOL_COUNT > 1 )) && default="extravolume$VOL_COUNT"
+
+    while true; do
+        tput cnorm
+        name="$(getinput "$_LvmNew (LV:$VOL_COUNT)" "\n$msg" "$default" nolimit)"
+        [[ $name ]] || { err=1; break; }
+        if [[ ${name:0:1} == "/" || ${#name} -eq 0 || $name =~ \ |\' ]] || grep -q "$name" <<< "$(lsblk)"; then
+            msgbox "$_ErrTitle" "$_LvmLvNameErrBody"
+        else
+            VOLUME_NAME="$name"
+            break
+        fi
+    done
+
+    return $err
+}
+
+lvm_group_name()
+{
+    local group="" err=0
+
+    while true; do
+        tput cnorm
+        group="$(getinput "$_LvmNew" "$_LvmNameVgBody" "VolGroup" nolimit)"
+        [[ $group ]] || { err=1; break; }
+        if [[ ${group:0:1} == "/" || ${#group} -eq 0 || $group =~ \ |\' ]] || grep -q "$group" <<< "$(lsblk)"; then
+            msgbox "$_ErrTitle" "$_LvmNameVgErr"
+        else
+            VOLUME_GROUP="$group"
+            break
+        fi
+    done
+
+    return $err
+}
+
+lvm_extra_lvs()
+{
+    local err=0
+
+    while (( VOL_COUNT > 1 )); do
+        lvm_volume_name "$_LvmLvNameBody1" && get_lv_size || { err=1; break; }
+        lvcreate -L "$VOLUME_SIZE" "$VOLUME_GROUP" -n "$VOLUME_NAME" >/dev/null 2>$ERR
+        errshow "lvcreate -L $VOLUME_SIZE $VOLUME_GROUP -n $VOLUME_NAME" || { err=1; break; }
+        msgbox "$_LvmNew (LV:$VOL_COUNT)" "\nDone, logical volume (LV) $VOLUME_NAME ($VOLUME_SIZE) has been created.\n"
+        (( VOL_COUNT-- ))
+    done
+
+    return $err
+}
+
+lvm_partitions()
+{
+    find_partitions 'part|crypt' || return 1
+    PARTS="$(awk 'NF > 0 {print $0 " off"}' <<< "$PARTS")"
+
+    tput civis
+    LVM_PARTS=($(dialog --cr-wrap --no-cancel --stdout --backtitle "$BT" \
+        --title " $_LvmNew " --checklist "$_LvmPvSelBody" 0 0 0 $PARTS))
+
+    (( ${#LVM_PARTS[@]} >= 1 ))
+}
+
+lvm_mkgroup()
+{
+    lvm_group_name || return 1
+
+    local msg="$_LvmPvConfBody1 $VOLUME_GROUP\n\n$_LvmPvConfBody2"
+    while ! yesno "$_LvmNew" "$msg ${LVM_PARTS[*]}\n"; do
+        lvm_partitions || { break; return 1; }
+        lvm_group_name || { break; return 1; }
+    done
+
+    vgcreate -f "$VOLUME_GROUP" "${LVM_PARTS[@]}" >/dev/null 2>$ERR
+    errshow "vgcreate -f $VOLUME_GROUP ${LVM_PARTS[*]}" || return 1
+
+    GROUP_SIZE=$(vgdisplay "$VOLUME_GROUP" | awk '/VG Size/ {
+        gsub(/[^0-9.]/, "")
+        print int($0)
+    }')
+
+    GROUP_SIZE_TYPE="$(vgdisplay "$VOLUME_GROUP" | awk '/VG Size/ {
+        print substr($NF, 0, 1)
+    }')"
+
+    if [[ $GROUP_SIZE_TYPE == 'G' ]]; then
+        VGROUP_MB=$((GROUP_SIZE * 1000))
+    else
+        VGROUP_MB=$GROUP_SIZE
+    fi
+    msgbox "$_LvmNew" "\nVolume group: $VOLUME_GROUP ($GROUP_SIZE $GROUP_SIZE_TYPE) has been created\n"
+}
+
+lvm_create()
+{
+    VOLUME_GROUP=""; LVM_PARTS=(); VGROUP_MB=0
+    umount_dir $MNT
+    lvm_partitions || return 1
+    lvm_mkgroup || return 1
+    VOL_COUNT=$(menubox "$_LvmNew" "$_LvmLvNumBody1 $VOLUME_GROUP\n$_LvmLvNumBody2" 0 0 0 \
+        "1" "-" "2" "-" "3" "-" "4" "-" "5" "-" "6" "-" "7" "-" "8" "-" "9" "-")
+
+    [[ $VOL_COUNT ]] || return 1
+
+    lvm_extra_lvs || return 1
+    lvm_volume_name "$_LvmLvNameBody1 $_LvmLvNameBody2 (${VGROUP_MB}MB)" || return 1
+    lvcreate -l +100%FREE "$VOLUME_GROUP" -n "$VOLUME_NAME" >/dev/null 2>$ERR
+    errshow "lvcreate -l +100%FREE $VOLUME_GROUP -n $VOLUME_NAME" || return 1
+    LVM='logical volume'; tput civis; sleep 0.5
+    local msg="\nDone, volume: $VOLUME_GROUP-$VOLUME_NAME (${VOLUME_SIZE:-${VGROUP_MB}MB}) has been created.\n"
+    msgbox "$_LvmNew (LV:$VOL_COUNT)" "$msg\n$(lsblk -o NAME,MODEL,TYPE,FSTYPE,SIZE "${LVM_PARTS[@]}")\n"
+}
+
+lvm_del_all()
+{
+    PHYSICAL_VOLUMES="$(pvs -o pv_name --noheading 2>/dev/null)"
+    VOLUME_GROUP="$(vgs -o vg_name --noheading 2>/dev/null)"
+    VOLUMES="$(lvs -o vg_name,lv_name --noheading --separator - 2>/dev/null)"
+
+    if yesno "$_LvmDelAll" "$_LvmDelQ"; then
+        for i in $VOLUMES; do
+            lvremove -f "/dev/mapper/$i" >/dev/null 2>&1
+        done
+        for i in $VOLUME_GROUP; do
+            vgremove -f "$i" >/dev/null 2>&1
+        done
+        for i in $PHYSICAL_VOLUMES; do
+            pvremove -f "$i" >/dev/null 2>&1
+        done
+        LVM=''
+    fi
+}
+
+###############################################################################
+# luks functions
+
+luks_menu()
+{
+    tput civis
+    local choice
+    choice="$(dialog --cr-wrap --stdout --backtitle "$BT" --title " LUKS Encryption " \
+        --menu "${_LuksMenuBody}${_LuksMenuBody2}${_LuksMenuBody3}" 0 0 0 \
+        "$_LuksEncrypt"    "cryptsetup -q luksFormat" \
+        "$_LuksOpen"       "cryptsetup open --type luks" \
+        "$_LuksEncryptAdv" "cryptsetup -q -s -c luksFormat" \
+        "back"             "Return to the main menu")"
+
+    case $choice in
+        "$_LuksEncrypt")    luks_basic || return 1 ;;
+        "$_LuksOpen")       luks_open || return 1 ;;
+        "$_LuksEncryptAdv") luks_advanced || return 1 ;;
+    esac
+
+    return 0
+}
+
+luks_open()
+{
+    modprobe -a dm-mod dm_crypt
+    umount_dir $MNT
+    find_partitions 'part|crypt|lvm' || return 1
+    tput civis
+
+    if (( COUNT == 1 )); then
+        LUKS_PART="$(awk 'NF > 0 {print $1}' <<< "$PARTS")"
+    else
+        LUKS_PART="$(menubox "$_LuksOpen" "$_LuksMenuBody" $PARTS)"
+    fi
+    [[ $LUKS_PART ]] || return 1
+
+    luks_pass "$_LuksOpen" || return 1
+    infobox "$_LuksOpen" "$_LuksOpenWaitBody $LUKS_NAME $_LuksWaitBody2 $LUKS_PART\n" 0
+    cryptsetup open --type luks $LUKS_PART "$LUKS_NAME" <<< "$LUKS_PASS" 2>$ERR
+    errshow "cryptsetup open --type luks $LUKS_PART $LUKS_NAME" || return 1
+    LUKS='encrypted'; luks_show
+    return 0
+}
+
+luks_pass()
+{
+    local t="$1" op="$2" v="" p="" p2="" err=0
+
+    while true; do
+        tput cnorm
+        if [[ $op ]]; then
+            v="$(dialog --stdout --no-cancel --separator ';:~:;' \
+                --ok-label "Submit" --backtitle "$BT" --title " $title " --insecure --mixedform \
+                "\nEnter the password to decrypt $ROOT_PART.\n\nThis is needed to create a keyfile." 0 0 0 \
+                "Password:"  1 1 "" 1 11 $COLUMNS 0 1 \
+                "Password2:" 2 1 "" 2 12 $COLUMNS 0 1)"
+
+        else
+            v="$(dialog --stdout --no-cancel --separator ';:~:;' \
+                --ok-label "Submit" --backtitle "$BT" --title " $title " \
+                --insecure --mixedform "$_LuksOpenBody" 0 0 0 \
+                "Name:"      1 1 "${LUKS_NAME:-cryptroot}" 1 7 $COLUMNS 0 0 \
+                "Password:"  2 1 ""                        2 11 $COLUMNS 0 1 \
+                "Password2:" 3 1 ""                        3 12 $COLUMNS 0 1)"
+
+        fi
+
+        err=$?
+        (( err == 0 )) || break
+
+        if [[ $onlypass ]]; then
+            p="$(awk -F';:~:;' '{print $1}' <<< "$v")"
+            p2="$(awk -F';:~:;' '{print $2}' <<< "$v")"
+        else
+            n="$(awk -F';:~:;' '{print $1}' <<< "$v")"
+            p="$(awk -F';:~:;' '{print $2}' <<< "$v")"
+            p2="$(awk -F';:~:;' '{print $3}' <<< "$v")"
+        fi
+
+        if [[ ! $op && $n == "" ]]; then
+            infobox "Name Empty" "\nEncrypted device name cannot be empty.\n\nPlease try again.\n"
+        elif [[ $p == "" || "$p" != "$p2" ]]; then
+            [[ $op ]] || LUKS_NAME="$n"
+            infobox "Password Mismatch" "\nThe passwords entered do not match.\n\nPlease try again.\n"
+        else
+            [[ $op ]] || LUKS_NAME="$n"
+            LUKS_PASS="$p"
+            break
+        fi
+    done
+
+    return $err
+}
+
+luks_setup()
+{
+    modprobe -a dm-mod dm_crypt
+    umount_dir $MNT
+    find_partitions 'part|lvm' || return 1
+    tput civis
+
+    if (( COUNT == 1 )); then
+        LUKS_PART="$(awk 'NF > 0 {print $1}' <<< "$PARTS")"
+    else
+        LUKS_PART="$(menubox "$_LuksEncrypt" "$_LuksEncryptBody" $PARTS)"
+    fi
+
+    [[ $LUKS_PART ]] || return 1
+    luks_pass "$_LuksEncrypt"
+}
+
+luks_basic()
+{
+    luks_setup || return 1
+    infobox "$_LuksEncrypt" "$_LuksCreateWaitBody $LUKS_NAME $_LuksWaitBody2 $LUKS_PART\n" 0
+    cryptsetup -q luksFormat $LUKS_PART <<< "$LUKS_PASS" 2>$ERR
+    errshow "cryptsetup -q luksFormat $LUKS_PART" || return 1
+    cryptsetup open $LUKS_PART "$LUKS_NAME" <<< "$LUKS_PASS" 2>$ERR
+    errshow "cryptsetup open $LUKS_PART $LUKS_NAME" || return 1
+    LUKS='encrypted'; luks_show
+    return 0
+}
+
+luks_advanced()
+{
+    if luks_setup; then
+        tput cnorm
+        local cipher
+        cipher="$(getinput "LUKS Encryption" "$_LuksCipherKey" "-s 512 -c aes-xts-plain64" nolimit)"
+        [[ $cipher ]] || return 1
+        infobox "$_LuksEncryptAdv" "$_LuksCreateWaitBody $LUKS_NAME $_LuksWaitBody2 $LUKS_PART\n" 0
+        cryptsetup -q $cipher luksFormat $LUKS_PART <<< "$LUKS_PASS" 2>$ERR
+        errshow "cryptsetup -q $cipher luksFormat $LUKS_PART" || return 1
+        cryptsetup open $LUKS_PART "$LUKS_NAME" <<< "$LUKS_PASS" 2>$ERR
+        errshow "cryptsetup open $LUKS_PART $LUKS_NAME" || return 1
+        luks_show
+        return 0
+    fi
+    return 1
+}
+
+luks_show()
+{
+    tput civis
+    sleep 0.5
+    msgbox "$_LuksEncrypt" "${_LuksEncryptSucc}\n\n$(lsblk $LUKS_PART -o NAME,MODEL,SIZE,TYPE,FSTYPE)\n\n"
+}
+
+luks_keyfile()
+{
+    if [[ ! -e $MNT/crypto_keyfile.bin && $LUKS_PASS && $LUKS_UUID ]]; then
+        printf "Creating LUKS keyfile /crypto_keyfile.bin\n"
+        local n
+        n="$(lsblk -lno NAME,UUID,TYPE | awk "/$LUKS_UUID/"' && /part|crypt|lvm/ {print $1}')"
+        local mkkey="dd bs=512 count=8 if=/dev/urandom of=/crypto_keyfile.bin"
+        mkkey="$mkkey && chmod 000 /crypto_keyfile.bin"
+        mkkey="$mkkey && cryptsetup luksAddKey /dev/$n /crypto_keyfile.bin <<< '$LUKS_PASS'"
+        chrun "$mkkey"
+        sed -i 's/FILES=()/FILES=(\/crypto_keyfile.bin)/g' $MNT/etc/mkinitcpio.conf 2>$ERR
+    fi
+
+    return 0
+}
+
+###############################################################################
 # helper functions
 
 ofn()
@@ -1775,6 +2509,13 @@ json()
 is_ssd()
 {
     local i dev=$1
+
+    # check for LVM and or LUKS for their origin devices
+    if [[ $LUKS && ! $LVM && $dev =~ $LUKS_NAME ]]; then
+        dev="${LUKS_PART}"
+    elif [[ $LVM && ! $LUKS && ${#LVM_PARTS[@]} -eq 1 && ${LVM_PARTS[*]} =~ $dev ]]; then
+        dev="${LVM_PARTS[*]}"
+    fi
 
     dev=${dev#/dev/}
     [[ $dev =~ nvme ]] && dev=${dev%p[0-9]*} || dev=${dev%[0-9]*}
