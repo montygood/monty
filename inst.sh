@@ -2160,7 +2160,7 @@ live()
 		rm -rf "/var/cache/pacman/pkg/"*
 		cp -rfT /etc/skel /root || die 1
 		sed -i "/exec/ c exec ${WM_SESSIONS[$ses]}" /root/.xinitrc
-		printf "\n%s has been set as the login session in /root/.xinitrc, to start the session simply run\n\n\tstartx\n\n" "${WM_SESSIONS[$ses]}"
+#		printf "\n%s has been set as the login session in /root/.xinitrc, to start the session simply run\n\n\tstartx\n\n" "${WM_SESSIONS[$ses]}"
 		die 0
 	fi
 }
