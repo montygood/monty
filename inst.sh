@@ -1,7 +1,6 @@
 #!/bin/bash
 #CPU?
 loadkeys de_CH-latin1
-timedatectl set-ntp true
 if grep 'GenuineIntel' /proc/cpuinfo; then
 	UCODE="intel-ucode"
 elif grep 'AuthenticAMD' /proc/cpuinfo; then
@@ -88,6 +87,7 @@ do
 	esac
 done
 #HD bereinigen
+timedatectl set-ntp true
 echo Bereite Harddisk vor ....
 sgdisk --zap-all ${DEVICE} &> /dev/null
 wipefs -a ${DEVICE} &> /dev/null
@@ -116,11 +116,7 @@ if [[ $HD_SD == "HDD" ]]; then
 fi
 #BASE
 reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
-pacstrap /mnt base base-devel linux-lts linux-firmware nano reflector $UCODE #networkmanager grub wpa_supplicant wireless-regdb dialog 
-#arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-#arch-chroot /mnt /bin/bash -c "pacman-key --init"
-#arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-#arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
+pacstrap /mnt base base-devel linux-lts linux-firmware nano reflector $UCODE
 arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
 arch-chroot /mnt /bin/bash -c "hwclock --systohc"
 sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
@@ -130,7 +126,7 @@ echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 echo "${HOSTNAME}" > /mnt/etc/hostname
 cat > /mnt/etc/hosts <<- EOF
 127.0.0.1	localhost
-::1			localhost
+::1		localhost
 127.0.0.1	${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm networkmanager bash-completion"
@@ -163,11 +159,8 @@ arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users 
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-
 #Pakete
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-apps xorg-xinit xterm xf86-input-keyboard xf86-input-mouse laptop-detect"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit dbus cups acpid avahi cronie xf86-input-keyboard xf86-input-mouse laptop-detect"
-#arch-chroot /mnt /bin/bash -c "systemctl enable acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
@@ -190,8 +183,19 @@ sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/ligh
 sed -i 's/'#autologin-session='/'autologin-session=cinnamon'/g' /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations"
+#Treiber
+[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
+if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
+	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
+#		https://aur.archlinux.org/cgit/aur.git/snapshot/fprintd-vfs_proprietary.tar.gz
+	arch-chroot /mnt /bin/bash -c "usermod -a -G plugdev ${USERNAME}"
+	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
+	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
+fi
 #Pakete
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
+#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm nemo-fileroller gnome-terminal xdg-user-dirs-gtk wireless-regdb dialog evince"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
@@ -200,14 +204,23 @@ arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
-#trizen
+#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dbus cups acpid avahi cronie"
+#arch-chroot /mnt /bin/bash -c "systemctl enable acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
+
 #mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-#pamac
+
 #arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 #sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 #sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 #sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 #sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+
+#arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
+
+#arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+#arch-chroot /mnt /bin/bash -c "pacman-key --init"
+#arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
+#arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
 #Zusatz
 [[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
 [[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
@@ -245,59 +258,39 @@ if [[ $JDOW == "YES" ]]; then
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
-#Treiber
-[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
-[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
-if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
-#		https://aur.archlinux.org/cgit/aur.git/snapshot/fprintd-vfs_proprietary.tar.gz
-	arch-chroot /mnt /bin/bash -c "usermod -a -G plugdev ${USERNAME}"
-	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
-	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
-fi
-#Mintstick
-#arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
-[[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
-
 #myup
+[[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
+cat > /mnt/etc/systemd/system/autoupdate.service << EOF
+[Unit]
+Description=Automatic Update
+After=network-online.target 
+[Service]
+Type=simple
+ExecStart=/usr/bin/pacman -Syuq --noconfirm --needed --noprogressbar 
+TimeoutStopSec=180
+KillMode=process
+KillSignal=SIGINT
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /mnt/etc/systemd/system/autoupdate.timer << EOF
+[Unit]
+Description=Automatische Updates 5 Minuten nach dem Start und danach alle 60 Minuten
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=60min
+Unit=autoupdate.service
+[Install]
+WantedBy=multi-user.target
+EOF
+arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
+arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
 echo '#!/bin/sh' > /mnt/bin/myup
 echo "sudo pacman -Syu --noconfirm --needed" >> /mnt/bin/myup
-echo "trizen -Syu --noconfirm --needed" >> /mnt/bin/myup
+echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
 echo "sudo pacman -Rns --noconfirm --needed $(sudo pacman -Qtdq --noconfirm --needed)" >> /mnt/bin/myup
 echo "sudo pacman -Scc --noconfirm --needed" >> /mnt/bin/myup
 arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
-#Autoupdate
-#cat > /mnt/etc/systemd/system/autoupdate.service << EOF
-#[Unit]
-#Description=Automatic Update
-#After=network-online.target 
-#
-#[Service]
-#Type=simple
-#ExecStart=/usr/bin/pacman -Syuq --noconfirm --needed --noprogressbar 
-#TimeoutStopSec=180
-#KillMode=process
-#KillSignal=SIGINT
-#
-#[Install]
-#WantedBy=multi-user.target
-#EOF
-#cat > /mnt/etc/systemd/system/autoupdate.timer << EOF
-#[Unit]
-#Description=Automatische Updates 5 Minuten nach dem Start und danach alle 60 Minuten
-#
-#[Timer]
-#OnBootSec=5min
-#OnUnitActiveSec=60min
-#Unit=autoupdate.service
-#
-#[Install]
-#WantedBy=multi-user.target
-#EOF
-#arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
-#arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
-#finish
 mv monty.tar.gz /mnt && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
 echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
 arch-chroot /mnt /bin/bash -c "localectl --no-convert set-x11-keymap ch nodeadkeys"
