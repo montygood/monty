@@ -147,13 +147,13 @@ sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 [[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 [[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 genfstab -U /mnt >> /mnt/etc/fstab
+#Einstellungen
 if [ $(uname -m) == x86_64 ]; then
 	sed -i '/\[multilib]$/ {
 	N
 	/Include/s/#//g}' /mnt/etc/pacman.conf
 fi
 arch-chroot /mnt /bin/bash -c "pacman -Syy"
-#Einstellungen
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill -s /bin/bash"
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
@@ -180,7 +180,7 @@ fi
 #Autologin
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
-sed -i 's/'#autologin-session='/'autologin-session=cinnamon'/g' /mnt/etc/lightdm/lightdm.conf
+sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations"
 #Treiber
@@ -195,32 +195,28 @@ if [[ $(lsusb | grep Fingerprint) != "" ]]; then
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
 #Pakete
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm nemo-fileroller gnome-terminal xdg-user-dirs-gtk wireless-regdb dialog evince"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
-#arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dbus cups acpid avahi cronie"
-#arch-chroot /mnt /bin/bash -c "systemctl enable acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
-
-#mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-
-#arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
-#sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
-#sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
-#sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
-#sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-
-#arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
-
-#arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-#arch-chroot /mnt /bin/bash -c "pacman-key --init"
-#arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-#arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm nemo-fileroller gnome-terminal xdg-user-dirs-gtk wireless-regdb dialog evince"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dbus cups acpid avahi cronie"
+arch-chroot /mnt /bin/bash -c "systemctl enable acpid avahi-daemon org.cups.cupsd cronie systemd-timesyncd"
+mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
+arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
+sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
+arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+arch-chroot /mnt /bin/bash -c "pacman-key --init"
+arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
+arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
 #Zusatz
 [[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
 [[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
