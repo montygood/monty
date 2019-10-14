@@ -190,7 +190,6 @@ sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/ligh
 sed -i 's/'#autologin-session='/'autologin-session=cinnamon'/g' /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations"
-
 #Pakete
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
 #arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
@@ -210,11 +209,11 @@ arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-
 #sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 #sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 #Zusatz
-[[ $GIMP == "YES1" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
-[[ $OFFI == "YES1" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
-[[ $WINE == "YES1" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
-[[ $TEAM == "YES1" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
-if [[ $FBOT == "YES1" ]]; then		
+[[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
+[[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
+[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
+[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
+if [[ $FBOT == "YES" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
@@ -231,7 +230,7 @@ if [[ $FBOT == "YES1" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-if [[ $JDOW == "YES1" ]]; then		
+if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
 	arch-chroot /mnt /bin/bash -c "chown -R 1000:1000 /opt/JDownloader/"
@@ -247,10 +246,10 @@ if [[ $JDOW == "YES1" ]]; then
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
 #Treiber
-[[ $(lspci | egrep #Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
-[[ $(dmesg | egrep #Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-[[ $(dmesg | egrep #Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
-if [[ $(lsusb | grep #Fingerprint) != "" ]]; then		
+[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
+if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
 #		https://aur.archlinux.org/cgit/aur.git/snapshot/fprintd-vfs_proprietary.tar.gz
 	arch-chroot /mnt /bin/bash -c "usermod -a -G plugdev ${USERNAME}"
@@ -269,35 +268,35 @@ echo "sudo pacman -Rns --noconfirm --needed $(sudo pacman -Qtdq --noconfirm --ne
 echo "sudo pacman -Scc --noconfirm --needed" >> /mnt/bin/myup
 arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
 #Autoupdate
-cat > /mnt/etc/systemd/system/autoupdate.service << EOF
-[Unit]
-Description=Automatic Update
-After=network-online.target 
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/pacman -Syuq --noconfirm --needed --noprogressbar 
-TimeoutStopSec=180
-KillMode=process
-KillSignal=SIGINT
-
-[Install]
-WantedBy=multi-user.target
-EOF
-cat > /mnt/etc/systemd/system/autoupdate.timer << EOF
-[Unit]
-Description=Automatische Updates 5 Minuten nach dem Start und danach alle 60 Minuten
-
-[Timer]
-OnBootSec=5min
-OnUnitActiveSec=60min
-Unit=autoupdate.service
-
-[Install]
-WantedBy=multi-user.target
-EOF
-arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
-arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
+#cat > /mnt/etc/systemd/system/autoupdate.service << EOF
+#[Unit]
+#Description=Automatic Update
+#After=network-online.target 
+#
+#[Service]
+#Type=simple
+#ExecStart=/usr/bin/pacman -Syuq --noconfirm --needed --noprogressbar 
+#TimeoutStopSec=180
+#KillMode=process
+#KillSignal=SIGINT
+#
+#[Install]
+#WantedBy=multi-user.target
+#EOF
+#cat > /mnt/etc/systemd/system/autoupdate.timer << EOF
+#[Unit]
+#Description=Automatische Updates 5 Minuten nach dem Start und danach alle 60 Minuten
+#
+#[Timer]
+#OnBootSec=5min
+#OnUnitActiveSec=60min
+#Unit=autoupdate.service
+#
+#[Install]
+#WantedBy=multi-user.target
+#EOF
+#arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
+#arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
 #finish
 mv monty.tar.gz /mnt && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
 echo -e "Section "\"InputClass"\"\nIdentifier "\"system-keyboard"\"\nMatchIsKeyboard "\"on"\"\nOption "\"XkbLayout"\" "\"ch"\"\nEndSection" > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf
