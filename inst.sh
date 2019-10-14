@@ -284,7 +284,6 @@ Unit=autoupdate.service
 WantedBy=multi-user.target
 EOF
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
-arch-chroot /mnt /bin/bash -c "systemctl enable paccache.timer"
 echo '#!/bin/sh' > /mnt/bin/myup
 echo "sudo pacman -Syu --noconfirm --needed" >> /mnt/bin/myup
 echo "trizen -Syu --noconfirm" >> /mnt/bin/myup
