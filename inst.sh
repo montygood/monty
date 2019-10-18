@@ -6,23 +6,19 @@ elif grep -q 'AuthenticAMD' /proc/cpuinfo; then
 else
 	UCODE=""
 fi
-echo $UCODE
-echo "eine Taste..." && read 
-
 if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 	modprobe -r -q efivars
 else
 	modprobe -q efivarfs
 fi
-if [[ -d /sys/firmware/efi/efivars ]]; then
-	grep -q /sys/firmware/efi/efivars /proc/mounts || mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+if [[ -d "/sys/firmware/efi/" ]]; then
+	if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
+		mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+	fi
 	SYSTEM="UEFI"
 else
 	SYSTEM="BIOS"
 fi
-echo $SYSTEM
-echo "eine Taste..." && read 
-
 BROADCOM_WL=false
 grep -q 'BCM4352' <<< "$(lspci -vnn -d 14e4:)" && load_bcm
 load_bcm()
@@ -36,9 +32,6 @@ load_bcm()
     depmod -a >/dev/null 2>&1
     BROADCOM_WL=true
 }
-echo $BROADCOM_WL
-echo "eine Taste..." && read 
-
 #Benutzer?
 FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 sel_user() {
@@ -124,6 +117,7 @@ if [[ $SYSTEM == "UEFI" ]]; then
 	mkdir -p /mnt/boot
 	mount ${DEVICE}1 /mnt/boot
 fi		
+echo "eine Taste..." && read 
 #Swap?
 if [[ $HD_SD == "HDD" ]]; then
 	total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
@@ -144,13 +138,11 @@ if [ $(uname -m) == x86_64 ]; then
 	/Include/s/#//g}' /mnt/etc/pacman.conf
 fi
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -Syy"
 #BASE
 pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged bash-completion $UCODE
-genfstab -U /mnt > /mnt/etc/fstab
 echo "eine Taste..." && read 
-
+genfstab -U /mnt > /mnt/etc/fstab
 [[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 [[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
@@ -166,17 +158,16 @@ cat > /mnt/etc/hosts <<- EOF
 ::1		localhost
 127.0.0.1	${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
 arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
+echo "eine Taste..." && read 
 #GRUB
 if [[ $SYSTEM == "BIOS" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dosfstools"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed dosfstools"
 	arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 fi
 if [[ $SYSTEM == "UEFI" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dosfstools efibootmgr"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed dosfstools efibootmgr"
 	arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 fi
 if [[ -e /mnt/boot/loader/loader.conf ]]; then
@@ -186,16 +177,13 @@ if [[ -e /mnt/boot/loader/loader.conf ]]; then
 	done
 fi			 
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 echo "eine Taste..." && read 
-
 #Pakete
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect"
 echo "eine Taste..." && read 
-
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
@@ -213,97 +201,60 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
 fi
 echo "eine Taste..." && read 
-
 #Autologin
-mkdir /mnt/home/$USERNAME
-echo "eine Taste..." && read 
-
 if [[ -e /mnt/home/$USERNAME/.xinitrc ]] && grep -q 'exec' /mnt/home/$USERNAME/.xinitrc; then
 	sed -i "/exec/ c exec cinnamon-session" /mnt/home/$USERNAME/.xinitrc
 else
 	printf "exec cinnamon-session" >> /mnt/home/$USERNAME/.xinitrc
 fi
 echo "eine Taste..." && read 
-
 mkdir /mnt/etc/systemd/system/getty@tty1.service.d
 sed -i "s/root/${USERNAME}/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
+echo "eine Taste..." && read 
 cat > /mnt/home/$USERNAME/.bash_profile << EOF
 [[ ! \$DISPLAY && \$XDG_VTNR -eq 1 ]] && exec startx -- vt1
 EOF
 echo "eine Taste..." && read 
-
 #Pakete
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard zip unzip pulseaudio-alsa alsa-tools unrar sharutils uudeview p7zip"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
 echo "eine Taste..." && read 
-
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libcups hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
 echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 echo "eine Taste..." && read 
-
 #Einstellungen
 sed -i "s/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base systemd shutdown autodetect modconf block filesystems keyboard sd-vconsole fsck)/" /mnt/etc/mkinitcpio.conf
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
-echo "eine Taste..." && read 
-
-arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
-echo "eine Taste..." && read 
-
+#arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
-echo "eine Taste..." && read 
-
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+#sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
 echo "eine Taste..." && read 
-
 #Zusatz
 mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-echo "eine Taste..." && read 
-
 [[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
-echo "eine Taste..." && read 
-
 [[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
-echo "eine Taste..." && read 
-
 [[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
-echo "eine Taste..." && read 
-
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
-echo "eine Taste..." && read 
-
 if [[ $FBOT == "YES" ]]; then		
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
@@ -321,8 +272,6 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-echo "eine Taste..." && read 
-
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -338,34 +287,20 @@ if [[ $JDOW == "YES" ]]; then
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
-echo "eine Taste..." && read 
-
 #Treiber
 if [[ $BROADCOM_WL == true ]]; then
 	echo 'blacklist bcma' >> /mnt/etc/modprobe.d/blacklist.conf
 	rm -f /mnt/etc/modprobe/
 fi
-echo "eine Taste..." && read 
-
 [[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
-echo "eine Taste..." && read 
-
 [[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-echo "eine Taste..." && read 
-
 [[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
-echo "eine Taste..." && read 
-
 [[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
-echo "eine Taste..." && read 
-
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
-echo "eine Taste..." && read 
-
 #myup
 cat > /mnt/etc/systemd/system/autoupdate.service << EOF
 [Unit]
@@ -380,8 +315,6 @@ KillSignal=SIGINT
 [Install]
 WantedBy=multi-user.target
 EOF
-echo "eine Taste..." && read 
-
 cat > /mnt/etc/systemd/system/autoupdate.timer << EOF
 [Unit]
 Description=Automatische Updates 5 Minuten nach dem Start und danach alle 60 Minuten
@@ -392,11 +325,7 @@ Unit=autoupdate.service
 [Install]
 WantedBy=multi-user.target
 EOF
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
-echo "eine Taste..." && read 
-
 cat > /mnt/bin/myup << EOF
 #!/bin/sh
 sudo pacman -Syu --noconfirm
@@ -404,14 +333,8 @@ trizen -Syu --noconfirm
 sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)
 sudo pacman -Scc --noconfirm
 EOF
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
-echo "eine Taste..." && read 
-
 mv monty.tar.gz /mnt && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
-echo "eine Taste..." && read 
-
 cat > /mnt/etc/X11/xorg.conf.d/00-keyboard.conf <<EOF
 Section "InputClass"
     Identifier      "system-keyboard"
@@ -419,8 +342,6 @@ Section "InputClass"
     Option          "XkbLayout" "ch"
 EndSection
 EOF
-echo "eine Taste..." && read 
-
 cat > /mnt/etc/default/keyboard <<EOF
 XKBMODEL=""
 XKBLAYOUT="ch"
@@ -428,36 +349,16 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 EOF
-echo "eine Taste..." && read 
-
 cp -fv /etc/resolv.conf /mnt/etc/
-echo "eine Taste..." && read 
-
 if [[ -e /etc/NetworkManager/system-connections ]]; then
 	cp -rvf /etc/NetworkManager/system-connections /mnt/etc/NetworkManager/
 fi
-echo "eine Taste..." && read 
-
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "chown -Rf ${USERNAME}:users /home/${USERNAME}"
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
-echo "eine Taste..." && read 
-
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-echo "eine Taste..." && read 
-
 #Ende
-swapoff -a
-echo "eine Taste..." && read 
-
-umount -R /mnt
-echo "eine Taste..." && read 
-
+#swapoff -a
+#umount -R /mnt
 #reboot
