@@ -1,4 +1,8 @@
 #!/bin/bash
+pressanykey(){
+  read -n1 -p "eine Taste zum weitergehen"
+}
+
 if grep -q 'GenuineIntel' /proc/cpuinfo; then
 	UCODE="intel-ucode"
 elif grep -q 'AuthenticAMD' /proc/cpuinfo; then
