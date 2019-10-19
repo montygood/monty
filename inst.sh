@@ -1,10 +1,10 @@
 #!/bin/bash
+UCODE=""
+BROADCOM_WL=false
 if grep -q 'GenuineIntel' /proc/cpuinfo; then
 	UCODE="intel-ucode"
 elif grep -q 'AuthenticAMD' /proc/cpuinfo; then
 	UCODE="amd-ucode"
-else
-	UCODE=""
 fi
 if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 	modprobe -r -q efivars
@@ -19,11 +19,10 @@ if [[ -d "/sys/firmware/efi/" ]]; then
 else
 	SYSTEM="BIOS"
 fi
-BROADCOM_WL=false
 grep -q 'BCM4352' <<< "$(lspci -vnn -d 14e4:)" && load_bcm
 load_bcm()
 {
-    infobox "Broadcom Wireless Setup" "\nLoading broadcom wifi kernel modules please wait...\n" 0
+    echo "Broadcom Wireless Setup" "\nLade entsprechende Module...\n" 0
     rmmod wl >/dev/null 2>&1
     rmmod bcma >/dev/null 2>&1
     rmmod b43 >/dev/null 2>&1
@@ -125,9 +124,25 @@ if [[ $HD_SD == "HDD" ]]; then
 	mkswap /mnt/swapfile &> /dev/null
 	swapon /mnt/swapfile
 fi
+#Mirrors
+rank=$(curl -s "https://www.archlinux.org/mirrorlist/?country="CH"&protocol=https&use_mirror_status=on" | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 10 -)
+echo -e "$rank" > /etc/pacman.d/mirrorlist
+pacman -Syy
+
 #BASE
-pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager grub wpa_supplicant wireless-regdb dialog reflector haveged bash-completion $UCODE
-genfstab -U /mnt > /mnt/etc/fstab
+pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager wpa_supplicant wireless-regdb dialog reflector haveged bash-completion $UCODE
+genfstab -p /mnt >> /mnt/etc/fstab
+arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
+arch-chroot /mnt /bin/bash -c "pacman-key --init"
+arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
+arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
+if [ $(uname -m) == x86_64 ]; then
+	echo -e "\n[multilib]" >> /mnt/etc/pacman.conf;echo -e "Include = /etc/pacman.d/mirrorlist\n" >> /mnt/etc/pacman.conf
+fi
+arch-chroot /mnt /bin/bash -c "pacman -Syy"
+if grep -q "/mnt/swapfile" "/mnt/etc/fstab"; then
+	sed -i '/swapfile/d' /mnt/etc/fstab && echo "/swapfile		none	swap	defaults	0	0" >> /mnt/etc/fstab
+fi
 [[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
 [[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
@@ -135,6 +150,7 @@ arch-chroot /mnt /bin/bash -c "hwclock --systohc"
 sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
 arch-chroot /mnt /bin/bash -c "locale-gen"
 echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
+export LANG=de_CH.UTF-8
 echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
 echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
 echo "${HOSTNAME}" > /mnt/etc/hostname
@@ -143,25 +159,15 @@ cat > /mnt/etc/hosts <<- EOF
 ::1		localhost
 127.0.0.1	${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
-arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
-arch-chroot /mnt /bin/bash -c "pacman-key --init"
-arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
-if [ $(uname -m) == x86_64 ]; then
-	sed -i '/\[multilib]$/ {
-	N
-	/Include/s/#//g}' /mnt/etc/pacman.conf
-fi
-arch-chroot /mnt /bin/bash -c "pacman -Syy"
 arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
 arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
 #GRUB
 if [[ $SYSTEM == "BIOS" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dosfstools"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm grub dosfstools"
 	arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 fi
 if [[ $SYSTEM == "UEFI" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm dosfstools efibootmgr"
+	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm grub dosfstools efibootmgr"
 	arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 fi
 if [[ -e /mnt/boot/loader/loader.conf ]]; then
@@ -192,33 +198,43 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then
 	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
 fi
 #Pakete
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm alsa-utils picard alsa-tools unrar sharutils uudeview p7zip"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller parole vlc handbrake mkvtoolnix-gui meld simple-scan geany geany-plugins"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gparted ttf-liberation ttf-dejavu noto-fonts cups-pdf gtk3-print-backends"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm hplip system-config-printer firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb gnome-calculator"
+pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince
+pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla
+pacstrap /mnt parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator
+#Drucker
+pacstrap /mnt ghostscript gsfonts system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
+arch_chroot "systemctl enable org.cups.cupsd.service"
+
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller alsa-utils alsa-tools unrar sharutils uudeview p7zip"
+arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
 arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
+
 #Einstellungen
-sed -i "s/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck)/HOOKS=(base systemd shutdown autodetect modconf block filesystems keyboard sd-vconsole fsck)/" /mnt/etc/mkinitcpio.conf
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
-if [[ -e /mnt/home/$USERNAME/.xinitrc ]] && grep -q 'exec' /mnt/home/$USERNAME/.xinitrc; then
-	sed -i "/exec/ c exec cinnamon-session" /mnt/home/$USERNAME/.xinitrc
-else
-	printf "exec cinnamon-session" > /mnt/home/$USERNAME/.xinitrc
-fi
-mkdir /mnt/etc/systemd/system/getty@tty1.service.d
-sed -i "s/root/${USERNAME}/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-cat > /mnt/home/$USERNAME/.bash_profile << EOF
-[[ ! \$DISPLAY && \$XDG_VTNR -eq 1 ]] && exec startx -- vt1
-EOF
+pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings;arch_chroot "systemctl enable lightdm.service"
+sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
+sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
+
+#if [[ -e /mnt/home/$USERNAME/.xinitrc ]] && grep -q 'exec' /mnt/home/$USERNAME/.xinitrc; then
+#	sed -i "/exec/ c exec cinnamon-session" /mnt/home/$USERNAME/.xinitrc
+#else
+#	printf "exec cinnamon-session" > /mnt/home/$USERNAME/.xinitrc
+#fi
+#mkdir /mnt/etc/systemd/system/getty@tty1.service.d
+#sed -i "s/root/${USERNAME}/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
+#cat > /mnt/home/$USERNAME/.bash_profile << EOF
+#if [[ ! $DISPLAY && $XDG_VTNR -eq 1 ]]; then
+#  exec startx
+#fi
+#EOF
+
 #Zusatz
 mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
 arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
@@ -273,7 +289,7 @@ fi
 [[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
 [[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-	arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S fingerprint-gui --noconfirm'"
+	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
