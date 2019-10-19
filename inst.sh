@@ -1,6 +1,5 @@
 #!/bin/bash
 UCODE=""
-BROADCOM_WL=false
 if grep -q 'GenuineIntel' /proc/cpuinfo; then
 	UCODE="intel-ucode"
 elif grep -q 'AuthenticAMD' /proc/cpuinfo; then
@@ -19,18 +18,6 @@ if [[ -d "/sys/firmware/efi/" ]]; then
 else
 	SYSTEM="BIOS"
 fi
-grep -q 'BCM4352' <<< "$(lspci -vnn -d 14e4:)" && load_bcm
-load_bcm()
-{
-    echo "Broadcom Wireless Setup" "\nLade entsprechende Module...\n" 0
-    rmmod wl >/dev/null 2>&1
-    rmmod bcma >/dev/null 2>&1
-    rmmod b43 >/dev/null 2>&1
-    rmmod ssb >/dev/null 2>&1
-    modprobe wl >/dev/null 2>&1
-    depmod -a >/dev/null 2>&1
-    BROADCOM_WL=true
-}
 #Benutzer?
 FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 sel_user() {
@@ -127,14 +114,13 @@ fi
 #Mirrors
 reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 pacman -Syy
-
 #BASE
-pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager wpa_supplicant wireless-regdb dialog reflector haveged bash-completion $UCODE
+pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager reflector haveged bash-completion $UCODE
 genfstab -p /mnt >> /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 arch-chroot /mnt /bin/bash -c "pacman-key --init"
 arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
+#arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
 if [ $(uname -m) == x86_64 ]; then
 	echo -e "\n[multilib]" >> /mnt/etc/pacman.conf;echo -e "Include = /etc/pacman.d/mirrorlist\n" >> /mnt/etc/pacman.conf
 fi
@@ -162,54 +148,46 @@ arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
 arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
 #GRUB
 if [[ $SYSTEM == "BIOS" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm grub dosfstools"
+	pacstrap /mnt grub dosfstools
 	arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
 fi
 if [[ $SYSTEM == "UEFI" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm grub dosfstools efibootmgr"
+	pacstrap /mnt grub dosfstools efibootmgr
 	arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
 fi
-if [[ -e /mnt/boot/loader/loader.conf ]]; then
-	upgate=$(ls /mnt/boot/loader/entries/*.conf)
-	for i in ${upgate}; do
-		sed -i '/linux \//a initrd \/intel-ucode.img' ${i}
-	done
-fi			 
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
 sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
 #Pakete
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect"
+pacstrap /mnt xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
+	pacstrap /mnt xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ati") != "" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
+	pacstrap /mnt xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia nvidia-utils libglvnd"
+	pacstrap /mnt xf86-video-nouveau nvidia nvidia-utils libglvnd
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-video-vesa xf86-video-fbdev"
+	pacstrap /mnt xf86-video-vesa xf86-video-fbdev
 fi
 #Pakete
 pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince
 pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla
 pacstrap /mnt parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator
+pacstrap /mnt arj file-roller alsa-utils alsa-tools unrar sharutils uudeview p7zip
+pacstrap /mnt qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb
+pacstrap /mnt pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs
+pacstrap /mnt mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab
+pacstrap /mnt autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine
 #Drucker
 pacstrap /mnt ghostscript gsfonts system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
-arch_chroot "systemctl enable org.cups.cupsd.service"
-
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm arj file-roller alsa-utils alsa-tools unrar sharutils uudeview p7zip"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
-arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
-
+arch-chroot /mnt /bin/bash -c "systemctl enable org.cups.cupsd.service"
 #Einstellungen
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
@@ -217,7 +195,7 @@ arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users 
 sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
-pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings;arch_chroot "systemctl enable lightdm.service"
+pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings;arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 
@@ -242,12 +220,12 @@ sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-[[ $GIMP == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
-[[ $OFFI == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
-[[ $WINE == "YES" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
+[[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
+[[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
+[[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
 if [[ $FBOT == "YES" ]]; then		
-	arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
+	pacstrap /mnt java-openjfx libmediainfo
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
 	echo 'cd /mnt/Tools' >> /mnt/bin/filebot
@@ -279,13 +257,9 @@ if [[ $JDOW == "YES" ]]; then
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
 #Treiber
-if [[ $BROADCOM_WL == true ]]; then
-	echo 'blacklist bcma' >> /mnt/etc/modprobe.d/blacklist.conf
-	rm -f /mnt/etc/modprobe/
-fi
-[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm broadcom-wl"
-[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm blueberry bluez bluez-firmware pulseaudio-bluetooth" && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt /bin/bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
+[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && pacstrap /mnt broadcom-wl
+[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 [[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui.pkg.tar.xz
