@@ -125,8 +125,7 @@ if [[ $HD_SD == "HDD" ]]; then
 	swapon /mnt/swapfile
 fi
 #Mirrors
-rank=$(curl -s "https://www.archlinux.org/mirrorlist/?country="CH"&protocol=https&use_mirror_status=on" | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 10 -)
-echo -e "$rank" > /etc/pacman.d/mirrorlist
+reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 pacman -Syy
 
 #BASE
