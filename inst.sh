@@ -225,8 +225,6 @@ do
 	esac
 done
 
-print_heading
-print_one "Starte Installation..."
 exec > >(tee -a $LOG_FILE)
 exec 2> >(tee -a $LOG_FILE >&2)
 set -o xtrace
