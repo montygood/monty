@@ -362,7 +362,8 @@ printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd
 arch-chroot /mnt pacman -Syu --noconfirm  "networkmanager"
 arch-chroot /mnt systemctl enable NetworkManager.service
 
-arch-chroot /mnt groupadd -r autologin plugdev -f
+arch-chroot /mnt groupadd -r autologin -f
+arch-chroot /mnt groupadd -r plugdev -f
 arch-chroot /mnt useradd -c '${FULLNAME}' -m -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash $USER_NAME
 printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
