@@ -25,10 +25,8 @@ CMDLINE_LINUX=""
 DEVICE=""
 DEVICE_TRIM="false"
 
-LOG_FILE="alis.log"
-
 function refind() {
-    arch-chroot /mnt pacman -Syu --noconfirm "refind-efi"
+    pacstrap /mnt refind-efi
     arch-chroot /mnt refind-install
 
     arch-chroot /mnt rm /boot/refind_linux.conf
@@ -225,8 +223,6 @@ do
 	esac
 done
 
-exec > >(tee -a $LOG_FILE)
-exec 2> >(tee -a $LOG_FILE >&2)
 set -o xtrace
 
 if [ -d /sys/firmware/efi ]; then
@@ -391,11 +387,10 @@ fi
 
 arch-chroot /mnt mkinitcpio -P
 
-arch-chroot /mnt pacman -Syu --noconfirm "grub dosfstools"
+pacstrap /mnt grub dosfstools
 arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
 arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
 arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
-arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 arch-chroot /mnt sed -E 's/GRUB_CMDLINE_LINUX_DEFAULT="(.*) quiet"/GRUB_CMDLINE_LINUX_DEFAULT="\1"/' /etc/default/grub
 arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_LINUX'"/' /etc/default/grub
 echo "" >> /mnt/etc/default/grub
@@ -403,7 +398,7 @@ echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
-	arch-chroot /mnt pacman -Syu --noconfirm "efibootmgr"
+	pacstrap /mnt efibootmgr
 	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
 fi
 if [ "$BIOS_TYPE" == "bios" ]; then
@@ -411,6 +406,7 @@ if [ "$BIOS_TYPE" == "bios" ]; then
 fi
 
 arch-chroot /mnt grub-mkconfig -o "$BOOT_DIRECTORY/grub/grub.cfg"
+arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 
 if [ "$VIRTUALBOX" == "true" ]; then
 	echo -n "\EFI\grub\grubx64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
@@ -425,20 +421,21 @@ pacstrap /mnt qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ug
 pacstrap /mnt pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs
 pacstrap /mnt mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab
 pacstrap /mnt autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine
-pacstrap /mnt ghostscript gsfonts system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
+pacstrap /mnt system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
 arch-chroot /mnt systemctl enable org.cups.cupsd.service
-arch-chroot /mnt pacman -Syu --noconfirm "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
+
+pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt systemctl enable lightdm.service
 
-arch-chroot /mnt pacman -Syu --noconfirm "git"
+pacstrap /mnt git
 arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) ALL/%wheel ALL=(ALL) NOPASSWD: ALL/' /etc/sudoers
 arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
 arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 
 if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
-	arch-chroot /mnt pacman -Syu --noconfirm "intel-ucode"
+	pacstrap /mnt intel-ucode
 fi
 CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
 
