@@ -1,39 +1,182 @@
-#!/bin/bash
-UCODE=""
-if grep -q 'GenuineIntel' /proc/cpuinfo; then
-	UCODE="intel-ucode"
-elif grep -q 'AuthenticAMD' /proc/cpuinfo; then
-	UCODE="amd-ucode"
-fi
-if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
-	modprobe -r -q efivars
-else
-	modprobe -q efivarfs
-fi
-if [[ -d "/sys/firmware/efi/" ]]; then
-	if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
-		mount -t efivarfs efivarfs /sys/firmware/efi/efivars
-	fi
-	SYSTEM="UEFI"
-else
-	SYSTEM="BIOS"
-fi
+#!/usr/bin/env bash
+set -e
+
+# Usage:
+# # loadkeys de_CH-latin1
+# # curl -sL https://bit.ly/2F3CATp | bash
+# # nano alis.conf
+# # ./alis.sh
+
+# global variables (no configuration, don't edit)
+BIOS_TYPE=""
+PARTITION_BIOS=""
+PARTITION_BOOT=""
+PARTITION_ROOT=""
+DEVICE_ROOT=""
+BOOT_DIRECTORY=""
+ESP_DIRECTORY=""
+UUID_BOOT=""
+UUID_ROOT=""
+PARTUUID_BOOT=""
+PARTUUID_ROOT=""
+CPU_INTEL=""
+CMDLINE_LINUX_ROOT=""
+CMDLINE_LINUX=""
+DEVICE=""
+DEVICE_TRIM="false"
+
+LOG_FILE="alis.log"
+
+function refind() {
+    arch-chroot /mnt pacman -Syu --noconfirm "refind-efi"
+    arch-chroot /mnt refind-install
+
+    arch-chroot /mnt rm /boot/refind_linux.conf
+    arch-chroot /mnt sed -i 's/^timeout.*/timeout 5/' "$ESP_DIRECTORY/EFI/refind/refind.conf"
+    arch-chroot /mnt sed -i 's/^#scan_all_linux_kernels.*/scan_all_linux_kernels false/' "$ESP_DIRECTORY/EFI/refind/refind.conf"
+
+    #arch-chroot /mnt sed -i 's/^#default_selection "+,bzImage,vmlinuz"/default_selection "+,bzImage,vmlinuz"/' "$ESP_DIRECTORY/EFI/refind/refind.conf"
+
+    REFIND_MICROCODE=""
+
+    if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
+        REFIND_MICROCODE="initrd=/intel-ucode.img"
+    fi
+
+    echo "" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "# alis" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "menuentry \"Arch Linux\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    volume   $PARTUUID_BOOT" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    loader   /vmlinuz-linux" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    initrd   /initramfs-linux.img" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    icon     /EFI/refind/icons/os_arch.png" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    options  \"$REFIND_MICROCODE $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX\"" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    submenuentry \"Boot using fallback initramfs\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "	      initrd /initramfs-linux-fallback.img" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    }" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    submenuentry \"Boot to terminal\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "	      add_options \"systemd.unit=multi-user.target\"" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "    }" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "}" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    echo "" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    if [[ $KERNELS =~ .*linux-lts.* ]]; then
+        echo "menuentry \"Arch Linux (lts)\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    volume   $PARTUUID_BOOT" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    loader   /vmlinuz-linux-lts" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    initrd   /initramfs-linux-lts.img" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    icon     /EFI/refind/icons/os_arch.png" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    options  \"$REFIND_MICROCODE $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX\"" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    submenuentry \"Boot using fallback initramfs\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "	      initrd /initramfs-linux-lts-fallback.img" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    }" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    submenuentry \"Boot to terminal\" {" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "	      add_options \"systemd.unit=multi-user.target\"" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "    }" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "}" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+        echo "" >> "/mnt$ESP_DIRECTORY/EFI/refind/refind.conf"
+    fi
+
+    if [ "$VIRTUALBOX" == "true" ]; then
+        echo -n "\EFI\refind\refind_x64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
+    fi
+}
+
+function systemd() {
+    arch-chroot /mnt bootctl --path="$ESP_DIRECTORY" install
+
+    arch-chroot /mnt mkdir -p "$ESP_DIRECTORY/loader/"
+    arch-chroot /mnt mkdir -p "$ESP_DIRECTORY/loader/entries/"
+
+    echo "# alis" > "/mnt$ESP_DIRECTORY/loader/loader.conf"
+    echo "timeout 5" >> "/mnt$ESP_DIRECTORY/loader/loader.conf"
+    echo "default archlinux" >> "/mnt$ESP_DIRECTORY/loader/loader.conf"
+    echo "editor 0" >> "/mnt$ESP_DIRECTORY/loader/loader.conf"
+
+    arch-chroot /mnt mkdir -p "/etc/pacman.d/hooks/"
+
+    echo "[Trigger]" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "Type = Package" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "Operation = Upgrade" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "Target = systemd" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "[Action]" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "Description = Updating systemd-boot..." >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "When = PostTransaction" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+    echo "Exec = /usr/bin/bootctl update" >> /mnt/etc/pacman.d/hooks/systemd-boot.hook
+
+    SYSTEMD_MICROCODE=""
+    SYSTEMD_OPTIONS=""
+
+    if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
+        SYSTEMD_MICROCODE="/intel-ucode.img"
+    fi
+
+    echo "title Arch Linux" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+    echo "efi /vmlinuz-linux" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+    if [ -n "$SYSTEMD_MICROCODE" ]; then
+        echo "initrd $SYSTEMD_MICROCODE" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+    fi
+    echo "initrd /initramfs-linux.img" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+    echo "options initrd=initramfs-linux.img $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX $SYSTEMD_OPTIONS" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+
+    echo "title Arch Linux (fallback)" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-fallback.conf"
+    echo "efi /vmlinuz-linux" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-fallback.conf"
+    if [ -n "$SYSTEMD_MICROCODE" ]; then
+        echo "initrd $SYSTEMD_MICROCODE" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-fallback.conf"
+    fi
+    echo "initrd /initramfs-linux-fallback.img" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-fallback.conf"
+    echo "options initrd=initramfs-linux-fallback.img $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX $SYSTEMD_OPTIONS" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-fallback.conf"
+
+    if [[ $KERNELS =~ .*linux-lts.* ]]; then
+        echo "title Arch Linux (lts)" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts.conf"
+        echo "efi /vmlinuz-linux-lts" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts.conf"
+        if [ -n "$SYSTEMD_MICROCODE" ]; then
+            echo "initrd $SYSTEMD_MICROCODE" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux.conf"
+        fi
+        echo "initrd /initramfs-linux-lts.img" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts.conf"
+        echo "options initrd=initramfs-linux-lts.img $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX $SYSTEMD_OPTIONS" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts.conf"
+
+        echo "title Arch Linux (lts-fallback)" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts-fallback.conf"
+        echo "efi /vmlinuz-linux-lts" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts-fallback.conf"
+        if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
+            echo "initrd $SYSTEMD_MICROCODE" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts-fallback.conf"
+        fi
+        echo "initrd /initramfs-linux-lts-fallback.img" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts-fallback.conf"
+        echo "options initrd=initramfs-linux-lts-fallback.img $CMDLINE_LINUX_ROOT rw $CMDLINE_LINUX $SYSTEMD_OPTIONS" >> "/mnt$ESP_DIRECTORY/loader/entries/archlinux-lts-fallback.conf"
+    fi
+
+    if [ "$VIRTUALBOX" == "true" ]; then
+        echo -n "\EFI\systemd\systemd-bootx64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
+    fi
+}
+
+function aur_install() {
+    PACKAGES=$1
+    for VARIABLE in {1..5}
+    do
+        arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed $PACKAGES\""
+        if [ $? == 0 ]; then
+            break
+        else
+            sleep 10
+        fi
+    done
+}
+
 #Benutzer?
 FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 sel_user() {
-	USERNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
-	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
+	USER_NAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
+	if [[ $USER_NAME =~ \ |\' ]] || [[ $USER_NAME =~ [^a-z0-9\ ] ]]; then
 		dialog --title " FEHLER " --msgbox "\nUngültiger Benutzername\n alles in Kleinbuchstaben" 0 0
 		sel_user
 	fi
 }
 #PW?
 sel_password() {
-	RPASSWD=$(dialog --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+	ROOT_PASSWORD=$(dialog --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
 	RPASSWD2=$(dialog --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
-	if [[ $RPASSWD == $RPASSWD2 ]]; then 
-		echo -e "${RPASSWD}\n${RPASSWD}" > /tmp/.passwd
-	else
+	if [[ $ROOT_PASSWORD != $RPASSWD2 ]]; then 
 		dialog --title " FEHLER " --msgbox "\nPasswörter stimmen nicht überein" 0 0
 		sel_password
 	fi
@@ -48,15 +191,13 @@ sel_hostname() {
 }
 #HDD?
 sel_hdd() {
-	DEVICE=""
 	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
 	for i in ${devices_list[@]}; do
 		DEVICE="${DEVICE} ${i}"
 	done
 	DEVICE=$(dialog --nocancel --title " Laufwerk " --menu "Worauf soll Installiert werden" 0 0 4 ${DEVICE} 3>&1 1>&2 2>&3)
 	IDEV=`echo $DEVICE | cut -c6-`
-	HD_SD="HDD"
-	if cat /sys/block/$IDEV/queue/rotational | grep 0; then HD_SD="SSD" ; fi
+	if cat /sys/block/$IDEV/queue/rotational | grep 0; then DEVICE_TRIM="true" ; fi
 }
 sel_user
 sel_password
@@ -83,139 +224,232 @@ do
 	6) JDOW=YES ;;
 	esac
 done
-#HD bereinigen
+
+print_heading
+print_one "Starte Installation..."
+exec > >(tee -a $LOG_FILE)
+exec 2> >(tee -a $LOG_FILE >&2)
+set -o xtrace
+
+if [ -d /sys/firmware/efi ]; then
+	if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
+		mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+	fi
+	BIOS_TYPE="uefi"
+else
+	BIOS_TYPE="bios"
+fi
+
+if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
+	modprobe -r -q efivars
+else
+	modprobe -q efivarfs
+fi
+
+if [ -n "$(lscpu | grep GenuineIntel)" ]; then
+	CPU_INTEL="true"
+fi
+
+if [ -n "$(lspci | grep -i virtualbox)" ]; then
+	VIRTUALBOX="true"
+else
+	VIRTUALBOX="false"
+fi
+
 timedatectl set-ntp true
-echo Bereite Harddisk vor ....
-sgdisk --zap-all ${DEVICE} &> /dev/null
-wipefs -a ${DEVICE} &> /dev/null
-#BIOS Part?
-if [[ $SYSTEM == "BIOS" ]]; then
-	echo -e "o\ny\nn\n1\n\n+1M\nEF02\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
-	echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null
-	mount ${DEVICE}2 /mnt
-fi
-#UEFI Part?
-if [[ $SYSTEM == "UEFI" ]]; then
-	echo -e "o\ny\nn\n1\n\n+512M\nEF00\nn\n2\n\n\n\nw\ny" | gdisk ${DEVICE} &> /dev/null
-	echo j | mkfs.vfat -F32 ${DEVICE}1 &> /dev/null
-	echo j | mkfs.ext4 -q -L arch ${DEVICE}2 &> /dev/null
-	mount ${DEVICE}2 /mnt
-	mkdir -p /mnt/boot
-	mount ${DEVICE}1 /mnt/boot
-fi		
-#Swap?
-if [[ $HD_SD == "HDD" ]]; then
-	total_memory=$(grep MemTotal /proc/meminfo | awk '{print $2/1024}' | sed 's/\..*//')
-	fallocate -l ${total_memory}M /mnt/swapfile
-	chmod 600 /mnt/swapfile
-	mkswap /mnt/swapfile &> /dev/null
-	swapon /mnt/swapfile
-fi
-#Mirrors
 reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 pacman -Syy
-#BASE
-pacstrap /mnt base base-devel linux-lts linux-firmware nano networkmanager reflector haveged bash-completion $UCODE
-genfstab -p /mnt >> /mnt/etc/fstab
+
+if [ -d /mnt/boot ]; then
+	umount /mnt/boot
+	umount /mnt
+fi
+
+sgdisk --zap-all $DEVICE
+wipefs -a $DEVICE
+
+if [ "$BIOS_TYPE" == "uefi" ]; then
+	PARTITION_BOOT="${DEVICE}1"
+	PARTITION_ROOT="${DEVICE}2"
+	DEVICE_ROOT="${DEVICE}2"
+	parted -s $DEVICE mklabel gpt mkpart primary fat32 1MiB 512MiB mkpart primary ext4 512MiB 100% set 1 boot on
+	sgdisk -t=1:ef00 $DEVICE
+	wipefs -a $PARTITION_BOOT
+	wipefs -a $DEVICE_ROOT
+	mkfs.fat -n ESP -F32 $PARTITION_BOOT
+	mkfs.ext4 -L root $DEVICE_ROOT
+fi
+
+if [ "$BIOS_TYPE" == "bios" ]; then
+	PARTITION_BIOS="${DEVICE}1"
+	PARTITION_BOOT="${DEVICE}2"
+	PARTITION_ROOT="${DEVICE}3"
+	DEVICE_ROOT="${DEVICE}3"
+	parted -s $DEVICE mklabel gpt mkpart primary fat32 1MiB 128MiB mkpart primary ext4 128MiB 512MiB mkpart primary ext4 512MiB 100% set 1 boot on
+	sgdisk -t=1:ef02 $DEVICE
+	wipefs -a $PARTITION_BIOS
+	wipefs -a $PARTITION_BOOT
+	wipefs -a $DEVICE_ROOT
+	mkfs.fat -n BIOS -F32 $PARTITION_BIOS
+	mkfs.ext4 -L boot $PARTITION_BOOT
+	mkfs.ext4 -L root $DEVICE_ROOT
+fi
+
+PARTITION_OPTIONS=""
+
+if [ "$DEVICE_TRIM" == "true" ]; then
+	PARTITION_OPTIONS="defaults,noatime"
+fi
+
+mount -o "$PARTITION_OPTIONS" "$DEVICE_ROOT" /mnt
+mkdir /mnt/boot
+mount -o "$PARTITION_OPTIONS" "$PARTITION_BOOT" /mnt/boot
+
+fallocate -l 2GiB /mnt/swap
+chmod 600 /mnt/swap
+mkswap /mnt/swap
+
+BOOT_DIRECTORY=/boot
+ESP_DIRECTORY=/boot
+UUID_BOOT=$(blkid -s UUID -o value $PARTITION_BOOT)
+UUID_ROOT=$(blkid -s UUID -o value $PARTITION_ROOT)
+PARTUUID_BOOT=$(blkid -s PARTUUID -o value $PARTITION_BOOT)
+PARTUUID_ROOT=$(blkid -s PARTUUID -o value $PARTITION_ROOT)
+
+sed -i 's/#Color/Color/' /etc/pacman.conf
+sed -i 's/#TotalDownload/TotalDownload/' /etc/pacman.conf
+
+pacstrap /mnt base base-devel linux-lts linux-lts-headers linux-firmware nano reflector haveged bash-completion
 arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 arch-chroot /mnt /bin/bash -c "pacman-key --init"
 arch-chroot /mnt /bin/bash -c "pacman-key --populate archlinux"
-#arch-chroot /mnt /bin/bash -c "pacman-key --refresh-keys"
 if [ $(uname -m) == x86_64 ]; then
 	echo -e "\n[multilib]" >> /mnt/etc/pacman.conf;echo -e "Include = /etc/pacman.d/mirrorlist\n" >> /mnt/etc/pacman.conf
 fi
 arch-chroot /mnt /bin/bash -c "pacman -Syy"
-if grep -q "/mnt/swapfile" "/mnt/etc/fstab"; then
-	sed -i '/swapfile/d' /mnt/etc/fstab && echo "/swapfile		none	swap	defaults	0	0" >> /mnt/etc/fstab
+
+sed -i 's/#Color/Color/' /mnt/etc/pacman.conf
+sed -i 's/#TotalDownload/TotalDownload/' /mnt/etc/pacman.conf
+
+if [ "$DEVICE_TRIM" == "true" ]; then
+	arch-chroot /mnt systemctl enable fstrim.timer
 fi
-[[ $HD_SD == "SSD" ]] && echo 'tmpfs   /tmp         tmpfs   nodev,nosuid,size=2G          0  0' >> /mnt/etc/fstab
-[[ -f /mnt/swapfile ]] && sed -i "s/\\/mnt//" /mnt/etc/fstab
-arch-chroot /mnt /bin/bash -c "ln -sf /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
-arch-chroot /mnt /bin/bash -c "hwclock --systohc"
-sed -i "s/#de_CH.UTF-8/de_CH.UTF-8/" /mnt/etc/locale.gen
-arch-chroot /mnt /bin/bash -c "locale-gen"
-echo LANG=de_CH.UTF-8 > /mnt/etc/locale.conf
-export LANG=de_CH.UTF-8
-echo KEYMAP=de_CH-latin1 > /mnt/etc/vconsole.conf
-echo FONT=lat9w-16 >> /mnt/etc/vconsole.conf
-echo "${HOSTNAME}" > /mnt/etc/hostname
+
+genfstab -U /mnt >> /mnt/etc/fstab
+
+echo "# swap" >> /mnt/etc/fstab
+echo "/swap none swap defaults 0 0" >> /mnt/etc/fstab
+echo "" >> /mnt/etc/fstab
+
+if [ "$DEVICE_TRIM" == "true" ]; then
+	sed -i 's/relatime/noatime/' /mnt/etc/fstab
+fi
+
+arch-chroot /mnt ln -s -f /usr/share/zoneinfo/Europe/Zurich /etc/localtime
+arch-chroot /mnt hwclock --systohc
+sed -i "s/#de_CH.UTF-8 UTF-8/de_CH.UTF-8 UTF-8/" /mnt/etc/locale.gen
+arch-chroot /mnt locale-gen
+echo -e "LANG=de_CH.UTF-8\nLANGUAGE=de_DE:de" > /mnt/etc/locale.conf
+echo -e "KEYMAP=de_CH-latin1\nFont=lat9w-16" > /mnt/etc/vconsole.conf
+echo $HOSTNAME > /mnt/etc/hostname
 cat > /mnt/etc/hosts <<- EOF
 127.0.0.1	localhost
 ::1		localhost
 127.0.0.1	${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
-arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager"
-arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
-#GRUB
-if [[ $SYSTEM == "BIOS" ]]; then		
-	pacstrap /mnt grub dosfstools
-	arch-chroot /mnt /bin/bash -c "grub-install $DEVICE"
+echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
+
+printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd
+
+arch-chroot /mnt pacman -Syu --noconfirm  "networkmanager"
+arch-chroot /mnt systemctl enable NetworkManager.service
+
+if [ "$VIRTUALBOX" == "true" ]; then
+	arch-chroot /mnt pacman -Syu --noconfirm "virtualbox-guest-utils virtualbox-guest-modules-arch"
+	#arch-chroot /mnt pacman -Syu --noconfirm "virtualbox-guest-utils virtualbox-guest-dkms" #linux kernel
 fi
-if [[ $SYSTEM == "UEFI" ]]; then		
-	pacstrap /mnt grub dosfstools efibootmgr
-	arch-chroot /mnt /bin/bash -c "grub-install --efi-directory=/boot --target=x86_64-efi --bootloader-id=boot"
-fi
-arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
-sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /mnt/etc/default/grub
-sed -i "s/timeout=5/timeout=0/" /mnt/boot/grub/grub.cfg
-#Pakete
-pacstrap /mnt xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect
+
+arch-chroot /mnt groupadd -r autologin plugdev -f
+arch-chroot /mnt useradd -c '${FULLNAME}' -m -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash $USER_NAME
+printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
+arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	pacstrap /mnt xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
+	pacstrap /mnt mesa xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ati") != "" ]]; then		
-	pacstrap /mnt xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
+	pacstrap /mnt mesa xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	pacstrap /mnt xf86-video-nouveau nvidia nvidia-utils libglvnd
+	pacstrap /mnt mesa xf86-video-nouveau nvidia nvidia-utils libglvnd
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
-if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
-	pacstrap /mnt xf86-video-vesa xf86-video-fbdev
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
+	pacstrap /mnt mesa xf86-video-amdgpu libva-mesa-driver
+	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
-#Pakete
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
+	pacstrap /mnt mesa xf86-video-vesa xf86-video-fbdev
+fi
+
+arch-chroot /mnt mkinitcpio -P
+
+arch-chroot /mnt pacman -Syu --noconfirm "grub dosfstools"
+arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
+arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
+arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
+arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
+arch-chroot /mnt sed -E 's/GRUB_CMDLINE_LINUX_DEFAULT="(.*) quiet"/GRUB_CMDLINE_LINUX_DEFAULT="\1"/' /etc/default/grub
+arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_LINUX'"/' /etc/default/grub
+echo "" >> /mnt/etc/default/grub
+echo "# alis" >> /mnt/etc/default/grub
+echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
+
+if [ "$BIOS_TYPE" == "uefi" ]; then
+	arch-chroot /mnt pacman -Syu --noconfirm "efibootmgr"
+	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
+fi
+if [ "$BIOS_TYPE" == "bios" ]; then
+	arch-chroot /mnt grub-install --target=i386-pc --recheck $DEVICE
+fi
+
+arch-chroot /mnt grub-mkconfig -o "$BOOT_DIRECTORY/grub/grub.cfg"
+
+if [ "$VIRTUALBOX" == "true" ]; then
+	echo -n "\EFI\grub\grubx64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
+fi
+
+pacstrap /mnt xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect
 pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince
 pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla
 pacstrap /mnt parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator
-pacstrap /mnt arj file-roller alsa-utils alsa-tools unrar sharutils uudeview p7zip
+pacstrap /mnt arj alsa-utils alsa-tools unrar sharutils uudeview p7zip
 pacstrap /mnt qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb
 pacstrap /mnt pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs
 pacstrap /mnt mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab
 pacstrap /mnt autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine
-#Drucker
 pacstrap /mnt ghostscript gsfonts system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
-arch-chroot /mnt /bin/bash -c "systemctl enable org.cups.cupsd.service"
-#Einstellungen
-arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
-arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
-arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
-sed -i '/%wheel ALL=(ALL) ALL/s/^#//' /mnt/etc/sudoers
-sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
-pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings;arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
+arch-chroot /mnt systemctl enable org.cups.cupsd.service
+arch-chroot /mnt pacman -Syu --noconfirm "lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
+arch-chroot /mnt systemctl enable lightdm.service
 
-#if [[ -e /mnt/home/$USERNAME/.xinitrc ]] && grep -q 'exec' /mnt/home/$USERNAME/.xinitrc; then
-#	sed -i "/exec/ c exec cinnamon-session" /mnt/home/$USERNAME/.xinitrc
-#else
-#	printf "exec cinnamon-session" > /mnt/home/$USERNAME/.xinitrc
-#fi
-#mkdir /mnt/etc/systemd/system/getty@tty1.service.d
-#sed -i "s/root/${USERNAME}/g" /mnt/etc/systemd/system/getty@tty1.service.d/autologin.conf
-#cat > /mnt/home/$USERNAME/.bash_profile << EOF
-#if [[ ! $DISPLAY && $XDG_VTNR -eq 1 ]]; then
-#  exec startx
-#fi
-#EOF
+arch-chroot /mnt pacman -Syu --noconfirm "git"
+arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) ALL/%wheel ALL=(ALL) NOPASSWD: ALL/' /etc/sudoers
+arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
+arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 
-#Zusatz
-mv trizen-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U trizen-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/trizen-any.pkg.tar.xz
-arch-chroot /mnt /bin/bash -c "su - ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
-arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
+if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
+	arch-chroot /mnt pacman -Syu --noconfirm "intel-ucode"
+fi
+CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
+
+aur_install mintstick
+aur_install pamac-aur --noconfirm
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
@@ -223,7 +457,7 @@ sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 [[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 [[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 [[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
-[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'trizen -S anydesk --noconfirm'"
+[[ $TEAM == "YES" ]] && aur_install anydesk
 if [[ $FBOT == "YES" ]]; then		
 	pacstrap /mnt java-openjfx libmediainfo
 	echo '#!/bin/sh' >> /mnt/bin/filebot
@@ -256,17 +490,14 @@ if [[ $JDOW == "YES" ]]; then
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
-#Treiber
 [[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && pacstrap /mnt broadcom-wl
-[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt blueberry bluez bluez-firmware pulseaudio-bluetooth && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt bluez bluez-firmware pulseaudio-bluetooth && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
 [[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
-[[ $HD_SD == "SSD" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable fstrim && systemctl enable fstrim.timer"
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
-#myup
 cat > /mnt/etc/systemd/system/autoupdate.service << EOF
 [Unit]
 Description=Automatic Update
@@ -294,7 +525,7 @@ arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.t
 cat > /mnt/bin/myup << EOF
 #!/bin/sh
 sudo pacman -Syu --noconfirm
-trizen -Syu --noconfirm
+yay -Syu --noconfirm
 sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)
 sudo pacman -Scc --noconfirm
 EOF
@@ -314,16 +545,9 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 EOF
-cp -fv /etc/resolv.conf /mnt/etc/
-if [[ -e /etc/NetworkManager/system-connections ]]; then
-	cp -rvf /etc/NetworkManager/system-connections /mnt/etc/NetworkManager/
-fi
-sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
-arch-chroot /mnt /bin/bash -c "chown -Rf ${USERNAME}:users /home/${USERNAME}"
 arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-#Ende
-swapoff -a
+umount -R /mnt/boot
 umount -R /mnt
 reboot
