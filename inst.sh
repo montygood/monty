@@ -363,7 +363,7 @@ arch-chroot /mnt pacman -Syu --noconfirm  "networkmanager"
 arch-chroot /mnt systemctl enable NetworkManager.service
 
 if [ "$VIRTUALBOX" == "true" ]; then
-	arch-chroot /mnt pacman -Syu --noconfirm "virtualbox-guest-utils virtualbox-guest-modules-arch"
+	#arch-chroot /mnt pacman -Syu --noconfirm "virtualbox-guest-utils virtualbox-guest-modules-arch"
 	#arch-chroot /mnt pacman -Syu --noconfirm "virtualbox-guest-utils virtualbox-guest-dkms" #linux kernel
 fi
 
