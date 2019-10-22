@@ -148,19 +148,6 @@ function systemd() {
     fi
 }
 
-function aur_install() {
-    PACKAGES=$1
-    for VARIABLE in {1..5}
-    do
-        arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed $PACKAGES\""
-        if [ $? == 0 ]; then
-            break
-        else
-            sleep 10
-        fi
-    done
-}
-
 #Benutzer?
 FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 sel_user() {
@@ -172,8 +159,8 @@ sel_user() {
 }
 #PW?
 sel_password() {
-	ROOT_PASSWORD=$(dialog --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
-	RPASSWD2=$(dialog --nocancel --title " Root & $USERNAME " --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
+	ROOT_PASSWORD=$(dialog --nocancel --title " Root & $USER_NAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
+	RPASSWD2=$(dialog --nocancel --title " Root & $USER_NAME " --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
 	if [[ $ROOT_PASSWORD != $RPASSWD2 ]]; then 
 		dialog --title " FEHLER " --msgbox "\nPasswörter stimmen nicht überein" 0 0
 		sel_password
@@ -438,9 +425,8 @@ if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
 	pacstrap /mnt intel-ucode
 fi
 CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
-
-aur_install mintstick
-aur_install pamac-aur --noconfirm
+arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed mintstick\""
+arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed pamac-aur\""
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
@@ -448,7 +434,7 @@ sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 [[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 [[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 [[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
-[[ $TEAM == "YES" ]] && aur_install anydesk
+[[ $TEAM == "YES" ]] && arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed anydesk\""
 if [[ $FBOT == "YES" ]]; then		
 	pacstrap /mnt java-openjfx libmediainfo
 	echo '#!/bin/sh' >> /mnt/bin/filebot
