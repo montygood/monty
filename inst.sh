@@ -195,7 +195,6 @@ if [ "$DEVICE_TRIM" == "true" ]; then
 	sed -i 's/relatime/noatime/' /mnt/etc/fstab
 fi
 genfstab -U /mnt >> /mnt/etc/fstab
-sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 arch-chroot /mnt ln -s -f /usr/share/zoneinfo/Europe/Zurich /etc/localtime
 arch-chroot /mnt hwclock --systohc
 sed -i "s/#de_CH.UTF-8 UTF-8/de_CH.UTF-8 UTF-8/" /mnt/etc/locale.gen
@@ -287,6 +286,7 @@ arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_L
 echo "" >> /mnt/etc/default/grub
 echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
+sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
 	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
