@@ -247,7 +247,7 @@ inpkg+=" system-config-printer hplip cups cups-pdf cups-filters lightdm lightdm-
 [[ $OFFI == "YES" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
 [[ $WINE == "YES" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
 [[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && inpkg+=" broadcom-wl"
-[[ $(dmesg | egrep Bluetooth) != "" ]] && inpkg+=" bluez bluez-firmware pulseaudio-bluetooth"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && inpkg+=" bluez pulseaudio-bluetooth"
 [[ $(dmesg | egrep Touchpad) != "" ]] && inpkg+=" xf86-input-libinput"
 if [[ $FBOT == "YES" ]]; then		
 	inpkg+=" java-openjfx libmediainfo"
