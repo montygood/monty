@@ -353,23 +353,23 @@ arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/su
 
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	pacstrap /mnt mesa xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
+	pacstrap /mnt xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ati") != "" ]]; then		
-	pacstrap /mnt mesa xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
+	pacstrap /mnt xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
 	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	pacstrap /mnt mesa xf86-video-nouveau nvidia nvidia-utils libglvnd
+	pacstrap /mnt xf86-video-nouveau nvidia nvidia-utils libglvnd
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
-	pacstrap /mnt mesa xf86-video-amdgpu libva-mesa-driver
+	pacstrap /mnt xf86-video-amdgpu libva-mesa-driver
 	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
-	pacstrap /mnt mesa xf86-video-vesa xf86-video-fbdev
+	pacstrap /mnt xf86-video-vesa xf86-video-fbdev
 fi
 
 arch-chroot /mnt mkinitcpio -P
@@ -417,26 +417,22 @@ sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/
 arch-chroot /mnt systemctl enable lightdm.service
 
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-#arch-chroot /mnt bash -c "echo \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
 arch-chroot /mnt bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
 
 if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
 	pacstrap /mnt intel-ucode
 fi
 CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
-#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed mintstick\""
 arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S mintstick --noconfirm'"
-#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed pamac-aur\""
-arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
-sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
-sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
-sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
-sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+#arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
+#sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+#sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+#sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+#sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 [[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 [[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 [[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S anydesk --noconfirm'"
-#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed anydesk\""
 if [[ $FBOT == "YES" ]]; then		
 	pacstrap /mnt java-openjfx libmediainfo
 	echo '#!/bin/sh' >> /mnt/bin/filebot
