@@ -222,19 +222,15 @@ fi
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
 	inpkg+=" xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
-	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
 	inpkg+=" xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
-	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
 	inpkg+=" xf86-video-nouveau nvidia nvidia-utils libglvnd"
-	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
 	inpkg+=" xf86-video-amdgpu libva-mesa-driver"
-	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
 	inpkg+=" xf86-video-vesa xf86-video-fbdev"
@@ -286,6 +282,18 @@ arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_L
 echo "" >> /mnt/etc/default/grub
 echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
+	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
+fi
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
+	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
+fi
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
+	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
+fi
+if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
+	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
+fi
 sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
