@@ -266,7 +266,7 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm" 2>/dev/null
+arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
 arch-chroot /mnt systemctl enable NetworkManager.service
 arch-chroot /mnt groupadd -r autologin -f
 arch-chroot /mnt groupadd -r plugdev -f
