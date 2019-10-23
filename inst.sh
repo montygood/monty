@@ -403,7 +403,7 @@ pacstrap /mnt xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop
 pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince
 pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla
 pacstrap /mnt parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator
-pacstrap /mnt arj alsa-utils alsa-tools unrar sharutils uudeview p7zip
+pacstrap /mnt arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git
 pacstrap /mnt qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb
 pacstrap /mnt pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs
 pacstrap /mnt mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab
@@ -412,21 +412,22 @@ pacstrap /mnt system-config-printer hplip gtk3-print-backends cups cups-pdf cups
 arch-chroot /mnt systemctl enable org.cups.cupsd.service
 
 pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
-sed -i 's/'#autologin-user='/'autologin-user=$USERNAME'/g' /mnt/etc/lightdm/lightdm.conf
+sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt systemctl enable lightdm.service
 
-pacstrap /mnt git
-arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) ALL/%wheel ALL=(ALL) NOPASSWD: ALL/' /etc/sudoers
-arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
-arch-chroot /mnt sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+#arch-chroot /mnt bash -c "echo \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
+arch-chroot /mnt bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
 
 if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
 	pacstrap /mnt intel-ucode
 fi
 CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
-arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed mintstick\""
-arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed pamac-aur\""
+#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed mintstick\""
+arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S mintstick --noconfirm'"
+#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed pamac-aur\""
+arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
@@ -434,7 +435,8 @@ sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 [[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
 [[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
 [[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
-[[ $TEAM == "YES" ]] && arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed anydesk\""
+[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S anydesk --noconfirm'"
+#arch-chroot /mnt bash -c "echo -e \"$ROOT_PASSWORD\n$ROOT_PASSWORD\n\" | su $USER_NAME -c \"yay -Syu --noconfirm --needed anydesk\""
 if [[ $FBOT == "YES" ]]; then		
 	pacstrap /mnt java-openjfx libmediainfo
 	echo '#!/bin/sh' >> /mnt/bin/filebot
@@ -522,9 +524,9 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 EOF
-arch-chroot /mnt /bin/bash -c "echo $RPASSWD | su - ${USERNAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-umount -R /mnt/boot
+arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
+sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 umount -R /mnt
 reboot
