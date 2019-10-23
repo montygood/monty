@@ -342,99 +342,46 @@ echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
 
 printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd
 
-arch-chroot /mnt pacman -Syu --noconfirm  "networkmanager"
-arch-chroot /mnt systemctl enable NetworkManager.service
-
-arch-chroot /mnt groupadd -r autologin -f
-arch-chroot /mnt groupadd -r plugdev -f
-arch-chroot /mnt useradd -c '${FULLNAME}' -m -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash $USER_NAME
-printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
-arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
-
+inpkg="networkmanager"
+inpkg+=" grub dosfstools"
+if [ "$BIOS_TYPE" == "uefi" ]; then
+	inpkg+=" efibootmgr"
+fi
+if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
+	inpkg+=" intel-ucode"
+fi
 #Grafikkarte
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	pacstrap /mnt xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl
+	inpkg+=" xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ati") != "" ]]; then		
-	pacstrap /mnt xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl
+	inpkg+=" xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
 	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	pacstrap /mnt xf86-video-nouveau nvidia nvidia-utils libglvnd
+	inpkg+=" xf86-video-nouveau nvidia nvidia-utils libglvnd"
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
-	pacstrap /mnt xf86-video-amdgpu libva-mesa-driver
+	inpkg+=" xf86-video-amdgpu libva-mesa-driver"
 	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
-	pacstrap /mnt xf86-video-vesa xf86-video-fbdev
+	inpkg+=" xf86-video-vesa xf86-video-fbdev"
 fi
-
-arch-chroot /mnt mkinitcpio -P
-
-pacstrap /mnt grub dosfstools
-arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
-arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
-arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
-arch-chroot /mnt sed -E 's/GRUB_CMDLINE_LINUX_DEFAULT="(.*) quiet"/GRUB_CMDLINE_LINUX_DEFAULT="\1"/' /etc/default/grub
-arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_LINUX'"/' /etc/default/grub
-echo "" >> /mnt/etc/default/grub
-echo "# alis" >> /mnt/etc/default/grub
-echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
-
-if [ "$BIOS_TYPE" == "uefi" ]; then
-	pacstrap /mnt efibootmgr
-	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
-fi
-if [ "$BIOS_TYPE" == "bios" ]; then
-	arch-chroot /mnt grub-install --target=i386-pc --recheck $DEVICE
-fi
-
-arch-chroot /mnt grub-mkconfig -o "$BOOT_DIRECTORY/grub/grub.cfg"
-arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
-
-if [ "$VIRTUALBOX" == "true" ]; then
-	echo -n "\EFI\grub\grubx64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
-fi
-
-pacstrap /mnt xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect
-pacstrap /mnt cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince
-pacstrap /mnt firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla
-pacstrap /mnt parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator
-pacstrap /mnt arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git
-pacstrap /mnt qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb
-pacstrap /mnt pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs
-pacstrap /mnt mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab
-pacstrap /mnt autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine
-pacstrap /mnt system-config-printer hplip gtk3-print-backends cups cups-pdf cups-filters
-arch-chroot /mnt systemctl enable org.cups.cupsd.service
-
-pacstrap /mnt lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings
-sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
-sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-arch-chroot /mnt systemctl enable lightdm.service
-
-sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-arch-chroot /mnt bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
-
-if [ "$CPU_INTEL" == "true" -a "$VIRTUALBOX" != "true" ]; then
-	pacstrap /mnt intel-ucode
-fi
-CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
-arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S mintstick --noconfirm'"
-#arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
-#sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
-#sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
-#sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
-#sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-[[ $GIMP == "YES" ]] && pacstrap /mnt gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur
-[[ $OFFI == "YES" ]] && pacstrap /mnt libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de
-[[ $WINE == "YES" ]] && pacstrap /mnt wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd
-[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S anydesk --noconfirm'"
+inpkg+=" xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
+inpkg+=" parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
+inpkg+=" pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp cups-pk-helper splix python-pip python-reportlab"
+inpkg+=" autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine system-config-printer hplip cups cups-pdf cups-filters lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
+[[ $GIMP == "YES" ]] && inpkg+=" gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
+[[ $OFFI == "YES" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
+[[ $WINE == "YES" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
+[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && inpkg+=" broadcom-wl"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && inpkg+=" bluez bluez-firmware pulseaudio-bluetooth"
+[[ $(dmesg | egrep Touchpad) != "" ]] && inpkg+=" xf86-input-libinput"
 if [[ $FBOT == "YES" ]]; then		
-	pacstrap /mnt java-openjfx libmediainfo
+	inpkg+=" java-openjfx libmediainfo"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
 	echo 'cd /mnt/Tools' >> /mnt/bin/filebot
@@ -450,6 +397,57 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
+arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm" 
+#2>/dev/null
+#gtk3-print-backends 
+arch-chroot /mnt systemctl enable NetworkManager.service
+arch-chroot /mnt groupadd -r autologin -f
+arch-chroot /mnt groupadd -r plugdev -f
+arch-chroot /mnt useradd -c '${FULLNAME}' -m -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash $USER_NAME
+printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
+arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
+arch-chroot /mnt mkinitcpio -P
+arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
+arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
+arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
+arch-chroot /mnt sed -E 's/GRUB_CMDLINE_LINUX_DEFAULT="(.*) quiet"/GRUB_CMDLINE_LINUX_DEFAULT="\1"/' /etc/default/grub
+arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_LINUX'"/' /etc/default/grub
+echo "" >> /mnt/etc/default/grub
+echo "# alis" >> /mnt/etc/default/grub
+echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
+
+if [ "$BIOS_TYPE" == "uefi" ]; then
+	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
+fi
+if [ "$BIOS_TYPE" == "bios" ]; then
+	arch-chroot /mnt grub-install --target=i386-pc --recheck $DEVICE
+fi
+
+arch-chroot /mnt grub-mkconfig -o "$BOOT_DIRECTORY/grub/grub.cfg"
+arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
+
+if [ "$VIRTUALBOX" == "true" ]; then
+	echo -n "\EFI\grub\grubx64.efi" > "/mnt$ESP_DIRECTORY/startup.nsh"
+fi
+[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+
+arch-chroot /mnt systemctl enable org.cups.cupsd.service
+
+sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
+sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
+arch-chroot /mnt systemctl enable lightdm.service
+
+sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+arch-chroot /mnt bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
+
+CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
+arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S mintstick --noconfirm'"
+#arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
+#sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
+#sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
+#sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
+#sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S anydesk --noconfirm'"
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -465,9 +463,6 @@ if [[ $JDOW == "YES" ]]; then
 	echo "StartupNotify=false" >> /mnt/usr/share/applications/JDownloader.desktop
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
-[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && pacstrap /mnt broadcom-wl
-[[ $(dmesg | egrep Bluetooth) != "" ]] && pacstrap /mnt bluez bluez-firmware pulseaudio-bluetooth && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-[[ $(dmesg | egrep Touchpad) != "" ]] && pacstrap /mnt xf86-input-libinput
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
 	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
