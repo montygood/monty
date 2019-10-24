@@ -177,10 +177,6 @@ arch-chroot /mnt /bin/bash -c "pacman -Syy"
 sed -i 's/#Color/Color/' /mnt/etc/pacman.conf
 sed -i 's/#TotalDownload/TotalDownload/' /mnt/etc/pacman.conf
 
-if [ "$DEVICE_TRIM" == "true" ]; then
-	arch-chroot /mnt systemctl enable fstrim.timer
-fi
-
 echo "# swap" >> /mnt/etc/fstab
 echo "/swap none swap defaults 0 0" >> /mnt/etc/fstab
 echo "" >> /mnt/etc/fstab
@@ -189,10 +185,10 @@ if [ "$DEVICE_TRIM" == "true" ]; then
 	sed -i 's/relatime/noatime/' /mnt/etc/fstab
 fi
 genfstab -U /mnt >> /mnt/etc/fstab
-arch-chroot /mnt ln -s -f /usr/share/zoneinfo/Europe/Zurich /etc/localtime
-arch-chroot /mnt hwclock --systohc
+arch-chroot /mnt /bin/bash -c "ln -s -f /usr/share/zoneinfo/Europe/Zurich /etc/localtime"
+arch-chroot /mnt /bin/bash -c "hwclock --systohc"
 sed -i "s/#de_CH.UTF-8 UTF-8/de_CH.UTF-8 UTF-8/" /mnt/etc/locale.gen
-arch-chroot /mnt locale-gen
+arch-chroot /mnt /bin/bash -c "locale-gen"
 echo -e "LANG=de_CH.UTF-8\nLANGUAGE=de_DE:de\n" > /mnt/etc/locale.conf
 echo -e "KEYMAP=de_CH-latin1\nFont=lat9w-16" > /mnt/etc/vconsole.conf
 echo $HOSTNAME > /mnt/etc/hostname
@@ -203,7 +199,7 @@ cat > /mnt/etc/hosts <<- EOF
 EOF
 echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
 
-printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd
+printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt /bin/bash -c "passwd"
 
 inpkg="linux-lts linux-lts-headers networkmanager"
 inpkg+=" grub dosfstools"
@@ -266,13 +262,12 @@ if [[ $FBOT == "YES" ]]; then
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
 arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
-arch-chroot /mnt "systemctl enable NetworkManager.service"
-arch-chroot /mnt "groupadd -r autologin -f"
-arch-chroot /mnt "groupadd -r plugdev -f"
-arch-chroot /mnt "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
-printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
+arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
+arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
+arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
+printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt /bin/bash -c "passwd $USER_NAME"
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
-arch-chroot /mnt mkinitcpio -P
+arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
 arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
 arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
 arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
@@ -285,22 +280,17 @@ echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
 #sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
-	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
+	arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck"
 fi
 if [ "$BIOS_TYPE" == "bios" ]; then
-	arch-chroot /mnt grub-install --target=i386-pc --recheck $DEVICE
+	arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck $DEVICE"
 fi
 
-arch-chroot /mnt grub-mkconfig -o "$BOOT_DIRECTORY/grub/grub.cfg"
+arch-chroot /mnt /bin/bash -c "grub-mkconfig -o $BOOT_DIRECTORY/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
-
-[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
-
-arch-chroot /mnt systemctl enable org.cups.cupsd.service
 
 sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-arch-chroot /mnt systemctl enable lightdm.service
 
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
@@ -354,7 +344,6 @@ Unit=autoupdate.service
 [Install]
 WantedBy=multi-user.target
 EOF
-arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 cat > /mnt/bin/myup << EOF
 #!/bin/sh
 sudo pacman -Syu --noconfirm
@@ -378,6 +367,15 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 EOF
+
+[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
+if [ "$DEVICE_TRIM" == "true" ]; then
+	arch-chroot /mnt /bin/bash -c "systemctl enable fstrim.timer"
+fi
+arch-chroot /mnt /bin/bash -c "systemctl enable org.cups.cupsd.service"
+arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager.service"
+arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
+arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 arch-chroot /mnt /bin/bash -c "su ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
