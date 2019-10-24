@@ -66,7 +66,8 @@ options=(1 "Gimp - Grafikprogramm - installieren?" on
 	 3 "AnyDesk - Remotehilfe - installieren?" on
 	 4 "Wine - Windows Spiele & Programme - installieren?" on
 	 5 "FileBot - Mediafiles Manager - installieren?" on
-	 6 "JDownloader2 - Dateien herunterladen - installieren?" on)
+	 6 "Skype - installieren?" on
+	 7 "JDownloader2 - Dateien herunterladen - installieren?" on)
 choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
 clear
 for choice in $choices
@@ -77,7 +78,8 @@ do
 	3) TEAM=YES ;;
 	4) WINE=YES ;;
 	5) FBOT=YES ;;
-	6) JDOW=YES ;;
+	6) SKYP=YES ;;
+	7) JDOW=YES ;;
 	esac
 done
 
@@ -300,6 +302,7 @@ sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/skypeforlinux.git && (cd skypeforlinux && makepkg -si --noconfirm) && rm -rf skypeforlinux\""
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/anydesk.git && (cd anydesk && makepkg -si --noconfirm) && rm -rf anydesk\""
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
