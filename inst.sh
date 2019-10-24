@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# Usage:
-# # loadkeys de_CH-latin1
-# # curl -sL https://bit.ly/2F3CATp | bash
-# # nano alis.conf
-# # ./alis.sh
-
 # global variables (no configuration, don't edit)
 BIOS_TYPE=""
 PARTITION_BIOS=""
@@ -267,10 +261,10 @@ if [[ $FBOT == "YES" ]]; then
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
 arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
-arch-chroot /mnt systemctl enable NetworkManager.service
-arch-chroot /mnt groupadd -r autologin -f
-arch-chroot /mnt groupadd -r plugdev -f
-arch-chroot /mnt useradd -c '${FULLNAME}' -m -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash $USER_NAME
+arch-chroot /mnt "systemctl enable NetworkManager.service"
+arch-chroot /mnt "groupadd -r autologin -f"
+arch-chroot /mnt "groupadd -r plugdev -f"
+arch-chroot /mnt "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
 printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt passwd $USER_NAME
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 arch-chroot /mnt mkinitcpio -P
@@ -294,7 +288,7 @@ fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
 	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
-sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
+#sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
 	arch-chroot /mnt grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck
@@ -315,16 +309,14 @@ sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/
 arch-chroot /mnt systemctl enable lightdm.service
 
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
-arch-chroot /mnt bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/yay.git && (cd yay && makepkg -si --noconfirm) && rm -rf yay\""
-
-CMDLINE_LINUX_ROOT="root=PARTUUID=$PARTUUID_ROOT"
-arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S mintstick --noconfirm'"
-arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S pamac-aur --noconfirm'"
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/mintstick.git && (cd mintstick && makepkg -si --noconfirm) && rm -rf mintstick\""
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/pamac-aur.git && (cd pamac-aur && makepkg -si --noconfirm) && rm -rf pamac-aur\""
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'yay -S anydesk --noconfirm'"
+[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/anydesk.git && (cd anydesk && makepkg -si --noconfirm) && rm -rf anydesk\""
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -372,7 +364,7 @@ arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.t
 cat > /mnt/bin/myup << EOF
 #!/bin/sh
 sudo pacman -Syu --noconfirm
-yay -Syu --noconfirm
+trizen -Syu --noconfirm
 sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)
 sudo pacman -Scc --noconfirm
 EOF
