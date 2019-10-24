@@ -214,17 +214,22 @@ if [ "$CPU_INTEL" == "true" ]; then
 	inpkg+=" intel-ucode"
 fi
 #Grafikkarte
+modul=""
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
 	inpkg+=" xf86-video-intel libva-intel-driver mesa-libgl libvdpau-va-gl"
+	modul=(i915)
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
 	inpkg+=" xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
+	modul=(radeon)
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
 	inpkg+=" xf86-video-nouveau nvidia nvidia-utils libglvnd"
+	modul=(nouveau)
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
 	inpkg+=" xf86-video-amdgpu libva-mesa-driver"
+	modul=(amdgpu)
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then		
 	inpkg+=" xf86-video-vesa xf86-video-fbdev"
@@ -276,18 +281,7 @@ arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_L
 echo "" >> /mnt/etc/default/grub
 echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
-if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
-fi
-if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
-	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
-fi
-if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
-fi
-if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
-	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
-fi
+[[ $(modul) != "" ]] && sed -i 's/MODULES=()/MODULES=${modul}/' /mnt/etc/mkinitcpio.conf
 #sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
@@ -386,7 +380,8 @@ BACKSPACE="guess"
 EOF
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-arch-chroot /mnt /bin/bash -c "su - ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
+arch-chroot /mnt /bin/bash -c "su ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
+swapoff -a
 umount -R /mnt
 reboot
