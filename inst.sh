@@ -291,18 +291,21 @@ fi
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o $BOOT_DIRECTORY/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 
-sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
+sed -i "s/#autologin-user=/autologin-user=$USER_NAME/" /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
-#arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/mintstick.git && (cd mintstick && makepkg -si --noconfirm) && rm -rf mintstick\""
+sleep 5
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/mintstick.git && (cd mintstick && makepkg -si --noconfirm) && rm -rf mintstick\""
+sleep 5
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/pamac-aur.git && (cd pamac-aur && makepkg -si --noconfirm) && rm -rf pamac-aur\""
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
 [[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/skypeforlinux.git && (cd skypeforlinux && makepkg -si --noconfirm) && rm -rf skypeforlinux\""
+sleep 5
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/anydesk.git && (cd anydesk && makepkg -si --noconfirm) && rm -rf anydesk\""
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
