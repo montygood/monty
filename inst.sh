@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 set -e
-
-# global variables (no configuration, don't edit)
 BIOS_TYPE=""
 PARTITION_BIOS=""
 PARTITION_BOOT=""
@@ -16,8 +14,6 @@ PARTUUID_ROOT=""
 CPU_INTEL=""
 DEVICE=""
 DEVICE_TRIM="false"
-
-#Benutzer?
 FULLNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Vornamen & Nachnamen" 0 0 "")
 sel_user() {
 	USER_NAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
@@ -26,7 +22,6 @@ sel_user() {
 		sel_user
 	fi
 }
-#PW?
 sel_password() {
 	ROOT_PASSWORD=$(dialog --nocancel --title " Root & $USER_NAME " --stdout --clear --insecure --passwordbox "Passwort:" 0 0 "")
 	RPASSWD2=$(dialog --nocancel --title " Root & $USER_NAME " --stdout --clear --insecure --passwordbox "Passwort wiederholen:" 0 0 "")
@@ -35,7 +30,6 @@ sel_password() {
 		sel_password
 	fi
 }
-#Host?
 sel_hostname() {
 	HOSTNAME=$(dialog --nocancel --title " Hostname " --stdout --inputbox "PC-Namen:" 0 0 "")
 	if [[ $HOSTNAME =~ \ |\' ]] || [[ $HOSTNAME =~ [^a-z0-9\ ] ]]; then
@@ -43,7 +37,6 @@ sel_hostname() {
 		sel_hostname
 	fi
 }
-#HDD?
 sel_hdd() {
 	devices_list=$(lsblk -lno NAME,SIZE,TYPE | grep 'disk' | awk '{print "/dev/" $1 " " $2}' | sort -u);
 	for i in ${devices_list[@]}; do
@@ -57,7 +50,6 @@ sel_user
 sel_password
 sel_hostname
 sel_hdd
-#Programme Installieren
 cmd=(dialog --title " Programme auch installieren? " --separate-output --checklist "Auswahl:" 22 76 16)
 options=(1 "Gimp - Grafikprogramm - installieren?" on
 	 2 "LibreOffice - Office - installieren?" on
@@ -80,9 +72,7 @@ do
 	7) JDOW=YES ;;
 	esac
 done
-
 set -o xtrace
-
 if [ -d /sys/firmware/efi ]; then
 	if [[ -z $(mount | grep /sys/firmware/efi/efivars) ]]; then
 		mount -t efivarfs efivarfs /sys/firmware/efi/efivars
@@ -91,29 +81,23 @@ if [ -d /sys/firmware/efi ]; then
 else
 	BIOS_TYPE="bios"
 fi
-
 if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
 	modprobe -r -q efivars
 else
 	modprobe -q efivarfs
 fi
-
 if [ -n "$(lscpu | grep GenuineIntel)" ]; then
 	CPU_INTEL="true"
 fi
-
 timedatectl set-ntp true
 reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
 pacman -Syy
-
 if [ -d /mnt/boot ]; then
 	umount /mnt/boot
 	umount /mnt
 fi
-
 sgdisk --zap-all $DEVICE
 wipefs -a $DEVICE
-
 if [ "$BIOS_TYPE" == "uefi" ]; then
 	PARTITION_BOOT="${DEVICE}1"
 	PARTITION_ROOT="${DEVICE}2"
@@ -125,7 +109,6 @@ if [ "$BIOS_TYPE" == "uefi" ]; then
 	mkfs.fat -n ESP -F32 $PARTITION_BOOT
 	mkfs.ext4 -L root $DEVICE_ROOT
 fi
-
 if [ "$BIOS_TYPE" == "bios" ]; then
 	PARTITION_BIOS="${DEVICE}1"
 	PARTITION_BOOT="${DEVICE}2"
@@ -140,31 +123,24 @@ if [ "$BIOS_TYPE" == "bios" ]; then
 	mkfs.ext4 -L boot $PARTITION_BOOT
 	mkfs.ext4 -L root $DEVICE_ROOT
 fi
-
 PARTITION_OPTIONS=""
-
 if [ "$DEVICE_TRIM" == "true" ]; then
 	PARTITION_OPTIONS="defaults,noatime"
 fi
-
 mount -o "$PARTITION_OPTIONS" "$DEVICE_ROOT" /mnt
 mkdir /mnt/boot
 mount -o "$PARTITION_OPTIONS" "$PARTITION_BOOT" /mnt/boot
-
 fallocate -l 2GiB /mnt/swap
 chmod 600 /mnt/swap
 mkswap /mnt/swap
-
 BOOT_DIRECTORY=/boot
 ESP_DIRECTORY=/boot
 UUID_BOOT=$(blkid -s UUID -o value $PARTITION_BOOT)
 UUID_ROOT=$(blkid -s UUID -o value $PARTITION_ROOT)
 PARTUUID_BOOT=$(blkid -s PARTUUID -o value $PARTITION_BOOT)
 PARTUUID_ROOT=$(blkid -s PARTUUID -o value $PARTITION_ROOT)
-
 sed -i 's/#Color/Color/' /etc/pacman.conf
 sed -i 's/#TotalDownload/TotalDownload/' /etc/pacman.conf
-
 pacstrap /mnt base base-devel linux-firmware reflector
 arch-chroot /mnt /bin/bash -c "reflector --verbose --latest 10 --sort rate --save /etc/pacman.d/mirrorlist"
 arch-chroot /mnt /bin/bash -c "pacman-key --init"
@@ -173,14 +149,11 @@ if [ $(uname -m) == x86_64 ]; then
 	echo -e "\n[multilib]" >> /mnt/etc/pacman.conf;echo -e "Include = /etc/pacman.d/mirrorlist\n" >> /mnt/etc/pacman.conf
 fi
 arch-chroot /mnt /bin/bash -c "pacman -Syy"
-
 sed -i 's/#Color/Color/' /mnt/etc/pacman.conf
 sed -i 's/#TotalDownload/TotalDownload/' /mnt/etc/pacman.conf
-
 echo "# swap" >> /mnt/etc/fstab
 echo "/swap none swap defaults 0 0" >> /mnt/etc/fstab
 echo "" >> /mnt/etc/fstab
-
 if [ "$DEVICE_TRIM" == "true" ]; then
 	sed -i 's/relatime/noatime/' /mnt/etc/fstab
 fi
@@ -198,9 +171,7 @@ cat > /mnt/etc/hosts <<- EOF
 127.0.0.1	${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
-
 printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt /bin/bash -c "passwd"
-
 inpkg="linux-lts linux-lts-headers networkmanager"
 inpkg+=" grub dosfstools"
 if [ "$BIOS_TYPE" == "uefi" ]; then
@@ -274,20 +245,16 @@ echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
 [[ $(modul) != "" ]] && sed -i 's/MODULES=()/MODULES=${modul}/' /mnt/etc/mkinitcpio.conf
 sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block  filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
-
 if [ "$BIOS_TYPE" == "uefi" ]; then
 	arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck"
 fi
 if [ "$BIOS_TYPE" == "bios" ]; then
 	arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck $DEVICE"
 fi
-
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o $BOOT_DIRECTORY/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
-
 sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
-
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S mintstick --noconfirm'"
@@ -296,6 +263,7 @@ sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
+[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S skypeforlinux-stable-bin --noconfirm'"
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S anydesk --noconfirm'"
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
@@ -313,7 +281,7 @@ if [[ $JDOW == "YES" ]]; then
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
+	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/ingerprint-gui-any.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
@@ -363,7 +331,6 @@ XKBVARIANT=""
 XKBOPTIONS=""
 BACKSPACE="guess"
 EOF
-
 [[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt /bin/bash -c "systemctl enable bluetooth.service"
 if [ "$DEVICE_TRIM" == "true" ]; then
 	arch-chroot /mnt /bin/bash -c "systemctl enable fstrim.timer"
@@ -374,8 +341,8 @@ arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-arch-chroot /mnt /bin/bash -c "su ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'" > /mnt/1.log
-[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S skypeforlinux-stable-bin --noconfirm'"
+arch-chroot /mnt /bin/bash -c "systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target"
+#arch-chroot /mnt /bin/bash -c "gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false"
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 swapoff -a
 umount -R /mnt
