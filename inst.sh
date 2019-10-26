@@ -296,7 +296,6 @@ sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S skypeforlinux-stable-bin --noconfirm'"
 [[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S anydesk --noconfirm'"
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
@@ -375,7 +374,8 @@ arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
-arch-chroot /mnt /bin/bash -c "su ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
+arch-chroot /mnt /bin/bash -c "su ${USER_NAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'" > /mnt/1.log
+[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S skypeforlinux-stable-bin --noconfirm'"
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 swapoff -a
 umount -R /mnt
