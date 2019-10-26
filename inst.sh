@@ -5,8 +5,6 @@ PARTITION_BIOS=""
 PARTITION_BOOT=""
 PARTITION_ROOT=""
 DEVICE_ROOT=""
-BOOT_DIRECTORY=""
-ESP_DIRECTORY=""
 UUID_BOOT=""
 UUID_ROOT=""
 PARTUUID_BOOT=""
@@ -133,8 +131,6 @@ mount -o "$PARTITION_OPTIONS" "$PARTITION_BOOT" /mnt/boot
 fallocate -l 2GiB /mnt/swap
 chmod 600 /mnt/swap
 mkswap /mnt/swap
-BOOT_DIRECTORY=/boot
-ESP_DIRECTORY=/boot
 UUID_BOOT=$(blkid -s UUID -o value $PARTITION_BOOT)
 UUID_ROOT=$(blkid -s UUID -o value $PARTITION_ROOT)
 PARTUUID_BOOT=$(blkid -s PARTUUID -o value $PARTITION_BOOT)
@@ -240,18 +236,15 @@ printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt /bin/bash -c "passwd 
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
 arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
-echo "" >> /mnt/etc/default/grub
-echo "# alis" >> /mnt/etc/default/grub
-echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
 [[ $(modul) != "" ]] && sed -i 's/MODULES=()/MODULES=${modul}/' /mnt/etc/mkinitcpio.conf
 sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block  filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 if [ "$BIOS_TYPE" == "uefi" ]; then
-	arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck"
+	arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=/boot --recheck"
 fi
 if [ "$BIOS_TYPE" == "bios" ]; then
 	arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck $DEVICE"
 fi
-arch-chroot /mnt /bin/bash -c "grub-mkconfig -o $BOOT_DIRECTORY/grub/grub.cfg"
+arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
@@ -338,6 +331,7 @@ fi
 arch-chroot /mnt /bin/bash -c "systemctl enable org.cups.cupsd.service"
 arch-chroot /mnt /bin/bash -c "systemctl enable NetworkManager.service"
 arch-chroot /mnt /bin/bash -c "systemctl enable lightdm.service"
+arch-chroot /mnt /bin/bash -c "systemctl enable haveged.service"
 arch-chroot /mnt /bin/bash -c "systemctl enable /etc/systemd/system/autoupdate.timer"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
