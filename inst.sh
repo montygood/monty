@@ -234,7 +234,7 @@ inpkg+=" xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-dete
 inpkg+=" firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
 inpkg+=" parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git"
 inpkg+=" qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
-inpkg+=" pavucontrol gnome-system-monitor gnome-screenshot eog gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp"
+inpkg+=" pavucontrol gnome-system-monitor gnome-screenshot eog eog-plugins gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp"
 inpkg+=" cups-pk-helper splix python-pip python-reportlab nano haveged bash-completion"
 inpkg+=" autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 inpkg+=" system-config-printer hplip cups cups-pdf cups-filters lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
@@ -261,7 +261,7 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-arch-chroot /mnt bash -c "pacman -S $inpkg" # --needed --noconfirm"
+arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
@@ -314,7 +314,7 @@ if [[ $JDOW == "YES" ]]; then
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui-any.pkg.tar.xz
+	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/ingerprint-gui-any.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
