@@ -261,7 +261,7 @@ if [[ $FBOT == "YES" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
+arch-chroot /mnt bash -c "pacman -S $inpkg" # --needed --noconfirm"
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
