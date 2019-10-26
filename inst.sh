@@ -14,8 +14,6 @@ UUID_ROOT=""
 PARTUUID_BOOT=""
 PARTUUID_ROOT=""
 CPU_INTEL=""
-CMDLINE_LINUX_ROOT=""
-CMDLINE_LINUX=""
 DEVICE=""
 DEVICE_TRIM="false"
 
@@ -266,20 +264,16 @@ fi
 arch-chroot /mnt bash -c "pacman -S $inpkg --needed --noconfirm"
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
-arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
+arch-chroot /mnt /bin/bash -c "useradd -c ${FULLNAME} ${USER_NAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
 printf "$ROOT_PASSWORD\n$ROOT_PASSWORD" | arch-chroot /mnt /bin/bash -c "passwd $USER_NAME"
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
-arch-chroot /mnt sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/' /etc/default/grub
-arch-chroot /mnt sed -i 's/#GRUB_SAVEDEFAULT="true"/GRUB_SAVEDEFAULT="true"/' /etc/default/grub
 arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
-arch-chroot /mnt sed -E 's/GRUB_CMDLINE_LINUX_DEFAULT="(.*) quiet"/GRUB_CMDLINE_LINUX_DEFAULT="\1"/' /etc/default/grub
-arch-chroot /mnt sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="'$CMDLINE_LINUX'"/' /etc/default/grub
 echo "" >> /mnt/etc/default/grub
 echo "# alis" >> /mnt/etc/default/grub
 echo "GRUB_DISABLE_SUBMENU=y" >> /mnt/etc/default/grub
 [[ $(modul) != "" ]] && sed -i 's/MODULES=()/MODULES=${modul}/' /mnt/etc/mkinitcpio.conf
-#sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
+sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block  filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 
 if [ "$BIOS_TYPE" == "uefi" ]; then
 	arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=$ESP_DIRECTORY --recheck"
@@ -291,19 +285,19 @@ fi
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o $BOOT_DIRECTORY/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 
-sed -i "s/#autologin-user=/autologin-user=$USER_NAME/" /mnt/etc/lightdm/lightdm.conf
+sed -i 's/'#autologin-user='/'autologin-user=$USER_NAME'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i "s/#autologin-user-timeout=0/autologin-user-timeout=0/" /mnt/etc/lightdm/lightdm.conf
 
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
-#arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/mintstick.git && (cd mintstick && makepkg -si --noconfirm) && rm -rf mintstick\""
-arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/pamac-aur.git && (cd pamac-aur && makepkg -si --noconfirm) && rm -rf pamac-aur\""
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S mintstick --noconfirm'"
+arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S pamac-aur --noconfirm'"
 sed -i 's/^#EnableAUR/EnableAUR/g' /mnt/etc/pamac.conf
 sed -i 's/^#SearchInAURByDefault/SearchInAURByDefault/g' /mnt/etc/pamac.conf
 sed -i 's/^#CheckAURUpdates/CheckAURUpdates/g' /mnt/etc/pamac.conf
 sed -i 's/^#NoConfirmBuild/NoConfirmBuild/g' /mnt/etc/pamac.conf
-[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/skypeforlinux.git && (cd skypeforlinux && makepkg -si --noconfirm) && rm -rf skypeforlinux\""
-[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c \"cd /home/$USER_NAME && git clone https://aur.archlinux.org/anydesk.git && (cd anydesk && makepkg -si --noconfirm) && rm -rf anydesk\""
+[[ $SKYP == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S skypeforlinux --noconfirm'"
+[[ $TEAM == "YES" ]] && arch-chroot /mnt /bin/bash -c "su $USER_NAME -c 'trizen -S anydesk --noconfirm'"
 if [[ $JDOW == "YES" ]]; then		
 	mkdir -p /mnt/opt/JDownloader/
 	wget -c -O /mnt/opt/JDownloader/JDownloader.jar http://installer.jdownloader.org/JDownloader.jar
@@ -320,7 +314,7 @@ if [[ $JDOW == "YES" ]]; then
 	echo "Categories=Network;Application;" >> /mnt/usr/share/applications/JDownloader.desktop
 fi
 if [[ $(lsusb | grep Fingerprint) != "" ]]; then		
-	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui.pkg.tar.xz --needed --noconfirm" && rm /mnt/fingerprint-gui.pkg.tar.xz
+	mv fingerprint-gui-any.pkg.tar.xz /mnt && arch-chroot /mnt /bin/bash -c "pacman -U fingerprint-gui-any.pkg.tar.xz --needed --noconfirm" && rm /mnt/ingerprint-gui-any.pkg.tar.xz
 	if ! (</mnt/etc/pam.d/sudo grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/sudo ; fi
 	if ! (</mnt/etc/pam.d/su grep "pam_fingerprint-gui.so"); then sed -i '2 i\auth\t\tsufficient\tpam_fingerprint-gui.so' /mnt/etc/pam.d/su ; fi
 fi
