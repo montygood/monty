@@ -232,7 +232,7 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "VMware") != "" ]]; then
 fi
 inpkg+=" xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
 inpkg+=" firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla"
-inpkg+=" parole vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git"
+inpkg+=" vlc handbrake mkvtoolnix-gui meld picard simple-scan geany geany-plugins gnome-calculator arj alsa-utils alsa-tools unrar sharutils uudeview p7zip git"
 inpkg+=" qbittorrent alsa-firmware gst-libav gst-plugins-bad gst-plugins-ugly libdvdcss gthumb"
 inpkg+=" pavucontrol gnome-system-monitor gnome-screenshot eog eog-plugins gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler nfs-utils rsync wget libmtp"
 inpkg+=" cups-pk-helper splix python-pip python-reportlab nano haveged bash-completion"
