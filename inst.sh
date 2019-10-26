@@ -240,7 +240,7 @@ inpkg+=" autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galcula
 inpkg+=" system-config-printer hplip cups cups-pdf cups-filters lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 [[ $GIMP == "YES" ]] && inpkg+=" gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur"
 [[ $OFFI == "YES" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de"
-[[ $WINE == "YES" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd"
+[[ $WINE == "YES" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd playonlinux"
 [[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && inpkg+=" broadcom-wl"
 [[ $(dmesg | egrep Bluetooth) != "" ]] && inpkg+=" bluez pulseaudio-bluetooth"
 [[ $(dmesg | egrep Touchpad) != "" ]] && inpkg+=" xf86-input-libinput"
