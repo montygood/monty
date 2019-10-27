@@ -79,11 +79,11 @@ if [ -d /sys/firmware/efi ]; then
 else
 	BIOS_TYPE="bios"
 fi
-if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
-	modprobe -r -q efivars
-else
+#if grep -qi 'apple' /sys/class/dmi/id/sys_vendor; then
+#	modprobe -r -q efivars
+#else
 	modprobe -q efivarfs
-fi
+#fi
 if [ -n "$(lscpu | grep GenuineIntel)" ]; then
 	CPU_INTEL="true"
 fi
