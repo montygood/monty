@@ -178,7 +178,7 @@ inpkg+=" unace unrar p7zip zip unzip sharutils uudeview arj cabextract file-roll
 inpkg+=" gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 [[ $PRIN == "true" ]] && inpkg+=" system-config-printer hplip cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts gutenprint gtk3-print-backends libcups splix"
 [[ $GIMP == "true" ]] && inpkg+=" gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur xsane-gimp"
-[[ $OFFI == "true" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de libreoffice-extension-languagetool"
+[[ $OFFI == "true" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de"
 [[ $WINE == "true" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd playonlinux"
 [[ $BREN == "true" ]] && inpkg+=" xfburn"
 [[ $SCAN == "true" ]] && inpkg+=" simple-scan xsane gocr"
