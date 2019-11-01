@@ -167,7 +167,7 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then
 	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect haveged bash-completion gnome-system-monitor nano tlp"
-arch-chroot /mnt bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince ttf-dejavu"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm vlc handbrake mkvtoolnix-gui meld picard geany geany-plugins gthumb gnome-screenshot eog eog-plugins simplescreenrecorder"
@@ -184,7 +184,7 @@ arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 g
 [[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm bluez bluez-utils bluez-libs blueberry pulseaudio-bluetooth"
 [[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
 if [[ $FBOT == "true" ]]; then		
-	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm java8-openjfx libmediainfo gvfs libzen ttf-dejavu"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm java8-openjfx libmediainfo gvfs libzen"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
 	echo 'cd /mnt/Tools' >> /mnt/bin/filebot
@@ -212,7 +212,7 @@ sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block 
 [[ $BIOS_TYPE == "bios" ]] && arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck ${DEVICE}"
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
-sed -i 's/#autologin-user='/'autologin-user=$USERNAME/' /mnt/etc/lightdm/lightdm.conf
+sed -i 's/'#autologin-user='/'autologin-user=${USERNAME}'/g' /mnt/etc/lightdm/lightdm.conf
 sed -i 's/#autologin-user-timeout=0/autologin-user-timeout=0/' /mnt/etc/lightdm/lightdm.conf
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 sed -i 's/#autologin-session='/'autologin-session=cinnamon/' /mnt/etc/lightdm/lightdm.conf
