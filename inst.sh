@@ -214,7 +214,6 @@ sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block 
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
 sed -i 's/#autologin-user='/'autologin-user=${USERNAME}/' /mnt/etc/lightdm/lightdm.conf
-sed -i 's/#autologin-session='/'autologin-session=cinnamon/' /mnt/etc/lightdm/lightdm.conf
 sed -i 's/#autologin-user-timeout=0/autologin-user-timeout=0/' /mnt/etc/lightdm/lightdm.conf
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
 arch-chroot /mnt /bin/bash -c "su ${USERNAME} -c \"cd /home/$USERNAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
