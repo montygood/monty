@@ -278,7 +278,6 @@ sudo pacman -Syu --noconfirm
 trizen -Syu --noconfirm
 sudo pacman -Rns --noconfirm $(sudo pacman -Qtdq --noconfirm)
 sudo pacman -Scc --noconfirm
-sudo pacman-optimize
 EOF
 arch-chroot /mnt /bin/bash -c "chmod +x /bin/myup"
 mv monty.tar.gz /mnt && arch-chroot /mnt /bin/bash -c "tar xvf monty.tar.gz" && rm /mnt/monty.tar.gz
@@ -309,7 +308,6 @@ arch-chroot /mnt /bin/bash -c "systemctl set-default graphical.target"
 arch-chroot /mnt /bin/bash -c "gtk-update-icon-cache /usr/share/icons/McOS/"
 arch-chroot /mnt /bin/bash -c "glib-compile-schemas /usr/share/glib-2.0/schemas/"
 arch-chroot /mnt /bin/bash -c "systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target"
-arch-chroot /mnt /bin/bash -c "su ${USERNAME} -c 'gsettings set org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ use-theme-colors false'"
 sed -i 's/%wheel ALL=(ALL) NOPASSWD: ALL/#%wheel ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
 swapoff -a
 umount -R /mnt
