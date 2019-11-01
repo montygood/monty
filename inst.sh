@@ -141,52 +141,51 @@ cat > /mnt/etc/hosts <<- EOF
 EOF
 echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
 arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
-inpkg="linux-lts linux-lts-headers networkmanager"
-inpkg+=" grub dosfstools"
-[[ $BIOS_TYPE == "uefi" ]] && inpkg+=" efibootmgr"
-[[ $CPU_INTEL == "true" ]] && inpkg+=" intel-ucode"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm linux-lts linux-lts-headers networkmanager grub dosfstools"
+[[ $BIOS_TYPE == "uefi" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm efibootmgr"
+[[ $CPU_INTEL == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm intel-ucode"
 #Grafikkarte
 if [ $VIRTUALBOX="true" ]; then
-	inpkg+=" virtualbox-guest-dkms virtualbox-guest-utils mesa-libgl"
-	[[ $(uname -m) == x86_64 ]] && inpkg+=" lib32-mesa-libgl"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm virtualbox-guest-dkms virtualbox-guest-utils mesa-libgl"
+	[[ $(uname -m) == x86_64 ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lib32-mesa-libgl"
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then		
-	inpkg+=" xf86-video-intel libva-intel-driver libvdpau-va-gl intel-media-driver libva-utils libva-vdpau-driver"
-	MODUL='i915'
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-intel libva-intel-driver libvdpau-va-gl intel-media-driver libva-utils libva-vdpau-driver"
+	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	inpkg+=" xf86-video-nouveau nvidia-lts nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-bede nvidia-settings opencl-nvidia"
-	MODUL='nouveau'
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia-lts nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-bede nvidia-settings opencl-nvidia"
+	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
-	inpkg+=" xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
-	[[ $(uname -m) == x86_64 ]] && inpkg+=" lib32-mesa-libgl lib32-mesa-vdpau"
-	MODUL='radeon'
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-ati mesa-libgl mesa-vdpau libvdpau-va-gl"
+	[[ $(uname -m) == x86_64 ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lib32-mesa-libgl lib32-mesa-vdpau"
+	sed -i 's/MODULES=()/MODULES=(radeon)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then		
-	inpkg+=" xf86-video-amdgpu vulkan-radeon mesa-libgl mesa-vdpau libvdpau-va-gl libva-mesa-driver"
-	[[ $(uname -m) == x86_64 ]] && inpkg+=" lib32-mesa-libgl lib32-mesa-vdpau"
-	MODUL='amdgpu'
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-amdgpu vulkan-radeon mesa-libgl mesa-vdpau libvdpau-va-gl libva-mesa-driver"
+	[[ $(uname -m) == x86_64 ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lib32-mesa-libgl lib32-mesa-vdpau"
+	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
-inpkg+=" xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect haveged bash-completion gnome-system-monitor nano tlp"
-inpkg+=" cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
-inpkg+=" lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
-inpkg+=" firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent"
-inpkg+=" vlc handbrake mkvtoolnix-gui meld picard geany geany-plugins gthumb gnome-screenshot eog eog-plugins simplescreenrecorder"
-inpkg+=" alsa-firmware pulseaudio pulseaudio-alsa alsa-utils alsa-plugins alsa-tools alsa-lib gstreamer gst-plugins-base playerctl git nfs-utils rsync wget gst-libav gst-plugins-good gst-plugins-bad gst-plugins-ugly libdvdcss"
-inpkg+=" unace unrar p7zip zip unzip sharutils uudeview arj cabextract file-roller"
-inpkg+=" gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
-[[ $PRIN == "true" ]] && inpkg+=" system-config-printer hplip cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts gutenprint gtk3-print-backends libcups splix"
-[[ $GIMP == "true" ]] && inpkg+=" gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur xsane-gimp"
-[[ $OFFI == "true" ]] && inpkg+=" libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de"
-[[ $WINE == "true" ]] && inpkg+=" wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd playonlinux"
-[[ $BREN == "true" ]] && inpkg+=" xfburn"
-[[ $SCAN == "true" ]] && inpkg+=" simple-scan xsane gocr"
-[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && inpkg+=" broadcom-wl"
-[[ $(dmesg | egrep Bluetooth) != "" ]] && inpkg+=" bluez bluez-utils bluez-libs blueberry pulseaudio-bluetooth"
-[[ $(dmesg | egrep Touchpad) != "" ]] && inpkg+=" xf86-input-libinput"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect haveged bash-completion gnome-system-monitor nano tlp"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm vlc handbrake mkvtoolnix-gui meld picard geany geany-plugins gthumb gnome-screenshot eog eog-plugins simplescreenrecorder"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm alsa-firmware pulseaudio pulseaudio-alsa alsa-utils alsa-plugins alsa-tools alsa-lib gstreamer gst-plugins-base playerctl git nfs-utils rsync wget gst-libav gst-plugins-good gst-plugins-bad gst-plugins-ugly libdvdcss"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm unace unrar p7zip zip unzip sharutils uudeview arj cabextract file-roller"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
+[[ $PRIN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm system-config-printer hplip cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts gutenprint gtk3-print-backends libcups splix"
+[[ $GIMP == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur xsane-gimp"
+[[ $OFFI == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de"
+[[ $WINE == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd playonlinux"
+[[ $BREN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xfburn"
+[[ $SCAN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm simple-scan xsane gocr"
+[[ $(lspci | egrep Wireless | egrep Broadcom) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm broadcom-wl"
+[[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm bluez bluez-utils bluez-libs blueberry pulseaudio-bluetooth"
+[[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
 if [[ $FBOT == "true" ]]; then		
-	inpkg+=" java-openjfx libmediainfo"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
 	echo 'cd /mnt/Tools' >> /mnt/bin/filebot
@@ -202,7 +201,6 @@ if [[ $FBOT == "true" ]]; then
 	echo 'sudo umount /mnt' >> /mnt/bin/plexup
 	arch-chroot /mnt /bin/bash -c "chmod +x /bin/plexup"
 fi
-arch-chroot /mnt bash -c "pacman -S ${inpkg} --needed --noconfirm"
 arch-chroot /mnt /bin/bash -c "groupadd -r autologin -f"
 arch-chroot /mnt /bin/bash -c "groupadd -r plugdev -f"
 arch-chroot /mnt /bin/bash -c "useradd -c '${FULLNAME}' ${USERNAME} -m -g users -G wheel,autologin,storage,power,network,video,audio,lp,optical,scanner,sys,rfkill,plugdev,floppy,log,optical -s /bin/bash"
@@ -210,7 +208,6 @@ arch-chroot /mnt /bin/bash -c "passwd ${USERNAME}" < /tmp/.passwd
 arch-chroot /mnt sed -i 's/# %wheel ALL=(ALL) ALL/%wheel ALL=(ALL) ALL/' /etc/sudoers
 arch-chroot /mnt /bin/bash -c "mkinitcpio -P"
 arch-chroot /mnt sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
-[[ $(MODUL) != "" ]] && sed -i 's/MODULES=()/MODULES=($MODUL)/' /mnt/etc/mkinitcpio.conf
 sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block lvm2 filesystems fsck"/HOOKS="base udev autodetect keyboard keymap consolefont modconf block  filesystems shutdown fsck"/' /mnt/etc/mkinitcpio.conf
 [[ $BIOS_TYPE == "uefi" ]] && arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --bootloader-id=grub --efi-directory=/boot --recheck"
 [[ $BIOS_TYPE == "bios" ]] && arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck ${DEVICE}"
