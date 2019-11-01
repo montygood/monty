@@ -144,7 +144,6 @@ arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm linux-lts linux-lts-headers networkmanager grub dosfstools"
 [[ $BIOS_TYPE == "uefi" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm efibootmgr"
 [[ $CPU_INTEL == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm intel-ucode"
-#Grafikkarte
 if [ $VIRTUALBOX="true" ]; then
 	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm virtualbox-guest-dkms virtualbox-guest-utils mesa-libgl"
 	[[ $(uname -m) == x86_64 ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lib32-mesa-libgl"
@@ -185,7 +184,7 @@ arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 g
 [[ $(dmesg | egrep Bluetooth) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm bluez bluez-utils bluez-libs blueberry pulseaudio-bluetooth"
 [[ $(dmesg | egrep Touchpad) != "" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-input-libinput"
 if [[ $FBOT == "true" ]]; then		
-	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm java-openjfx libmediainfo"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm java8-openjfx libmediainfo gvfs libzen ttf-dejavu"
 	echo '#!/bin/sh' >> /mnt/bin/filebot
 	echo 'sudo mount -t nfs 192.168.1.121:/multimedia /mnt' >> /mnt/bin/filebot
 	echo 'cd /mnt/Tools' >> /mnt/bin/filebot
@@ -213,9 +212,10 @@ sed -i 's/HOOKS="base udev autodetect keyboard keymap consolefont modconf block 
 [[ $BIOS_TYPE == "bios" ]] && arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc --recheck ${DEVICE}"
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg"
 arch-chroot /mnt sed -i "s/timeout=5/timeout=0/" /boot/grub/grub.cfg
-sed -i 's/#autologin-user='/'autologin-user=${USERNAME}/' /mnt/etc/lightdm/lightdm.conf
+sed -i 's/#autologin-user='/'autologin-user=$USERNAME/' /mnt/etc/lightdm/lightdm.conf
 sed -i 's/#autologin-user-timeout=0/autologin-user-timeout=0/' /mnt/etc/lightdm/lightdm.conf
 sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^#//' /mnt/etc/sudoers
+sed -i 's/#autologin-session='/'autologin-session=cinnamon/' /mnt/etc/lightdm/lightdm.conf
 arch-chroot /mnt /bin/bash -c "su ${USERNAME} -c \"cd /home/$USERNAME && git clone https://aur.archlinux.org/trizen.git && (cd trizen && makepkg -si --noconfirm) && rm -rf trizen\""
 arch-chroot /mnt /bin/bash -c "su ${USERNAME} -c 'trizen -S mintstick --noconfirm'"
 arch-chroot /mnt /bin/bash -c "su ${USERNAME} -c 'trizen -S pamac-aur --noconfirm'"
