@@ -153,7 +153,7 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia-lts nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-bede nvidia-settings opencl-nvidia"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia-lts nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-settings opencl-nvidia"
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
