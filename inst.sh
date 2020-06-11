@@ -43,7 +43,7 @@ options=(1 "Gimp - Grafikprogramm - installieren?" on
 	 2 "LibreOffice - Office - installieren?" on
 	 3 "AnyDesk - Remotehilfe - installieren?" on
 	 4 "Wine - Windows Spiele & Programme - installieren?" on
-	 5 "FileBot - Mediafiles Manager - installieren?" off
+	 5 "FileBot - Mediafiles Manager - vorbereiten (Monty netzwerk)?" off
 	 6 "Skype - installieren?" on
 	 7 "CD/DVD Brennen - installieren?" on
 	 8 "Scanner - installieren?" on
