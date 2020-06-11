@@ -166,7 +166,7 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "amdgpu") != "" ]]; then
 	[[ $(uname -m) == x86_64 ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lib32-mesa-libgl lib32-mesa-vdpau"
 	sed -i 's/MODULES=()/MODULES=(amdgpu)/' /mnt/etc/mkinitcpio.conf
 fi
-arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit xf86-input-keyboard xf86-input-mouse laptop-detect haveged bash-completion gnome-system-monitor nano tlp"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xorg-server xorg-xinit laptop-detect haveged bash-completion gnome-system-monitor nano tlp"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm cinnamon cinnamon-translations nemo-fileroller gnome-terminal xdg-user-dirs-gtk evince ttf-dejavu"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm lightdm lightdm-gtk-greeter lightdm-gtk-greeter-settings"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm firefox firefox-i18n-de thunderbird thunderbird-i18n-de filezilla qbittorrent"
