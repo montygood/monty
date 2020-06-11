@@ -153,7 +153,7 @@ if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "intel") != "" ]]; then
 	sed -i 's/MODULES=()/MODULES=(i915)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "nvidia") != "" ]]; then		
-	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia-lts nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-settings opencl-nvidia"
+	arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xf86-video-nouveau nvidia nvidia-utils libva-utils libva-vdpau-driver libvdpau-va-gl nvidia-settings opencl-nvidia"
 	sed -i 's/MODULES=()/MODULES=(nouveau)/' /mnt/etc/mkinitcpio.conf
 fi
 if [[ $(lspci -k | grep -A 2 -E "(VGA|3D)" | grep -i "ATI Technologies") != "" ]]; then		
@@ -175,7 +175,7 @@ arch-chroot /mnt bash -c "pacman -S --needed --noconfirm alsa-firmware pulseaudi
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm unace unrar p7zip zip unzip sharutils uudeview arj cabextract file-roller"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 [[ $PRIN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm system-config-printer hplip cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts gutenprint gtk3-print-backends libcups splix"
-[[ $GIMP == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur xsane-gimp"
+[[ $GIMP == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic xsane-gimp"
 [[ $OFFI == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de"
 [[ $WINE == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm wine wine-mono winetricks lib32-libxcomposite lib32-libglvnd playonlinux"
 [[ $BREN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm xfburn"
