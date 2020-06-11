@@ -173,7 +173,7 @@ arch-chroot /mnt bash -c "pacman -S --needed --noconfirm firefox firefox-i18n-de
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm vlc handbrake mkvtoolnix-gui meld picard geany geany-plugins gthumb gnome-screenshot eog eog-plugins simplescreenrecorder"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm alsa-firmware pulseaudio pulseaudio-alsa alsa-utils alsa-plugins alsa-tools alsa-lib gstreamer gst-plugins-base playerctl git nfs-utils rsync wget gst-libav gst-plugins-good gst-plugins-bad gst-plugins-ugly libdvdcss"
 arch-chroot /mnt bash -c "pacman -S --needed --noconfirm unace unrar p7zip zip unzip sharutils uudeview arj cabextract file-roller"
-arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs ifuse shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gvfs-afc gvfs-gphoto2 gvfs-mtp gvfs-nfs mtpfs tumbler libmtp autofs shotwell ffmpegthumbs ffmpegthumbnailer libopenraw galculator gtk-engine-murrine"
 [[ $PRIN == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm system-config-printer hplip cups cups-pdf cups-filters cups-pk-helper ghostscript gsfonts gutenprint gtk3-print-backends libcups splix"
 [[ $GIMP == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm gimp gimp-help-de gimp-plugin-gmic gimp-plugin-fblur xsane-gimp"
 [[ $OFFI == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm libreoffice-fresh libreoffice-fresh-de hunspell-de aspell-de hyphen-de libmythes mythes-de"
