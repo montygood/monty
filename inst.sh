@@ -141,7 +141,7 @@ cat > /mnt/etc/hosts <<- EOF
 EOF
 echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-sysctl.conf
 arch-chroot /mnt /bin/bash -c "passwd" < /tmp/.passwd
-arch-chroot /mnt bash -c "pacman -S --needed --noconfirm linux-lts linux-lts-headers networkmanager grub dosfstools"
+arch-chroot /mnt bash -c "pacman -S --needed --noconfirm linux linux-headers networkmanager grub dosfstools"
 [[ $BIOS_TYPE == "uefi" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm efibootmgr"
 [[ $CPU_INTEL == "true" ]] && arch-chroot /mnt bash -c "pacman -S --needed --noconfirm intel-ucode"
 if [ $VIRTUALBOX="true" ]; then
