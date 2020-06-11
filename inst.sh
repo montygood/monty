@@ -5,7 +5,7 @@ sel_user() {
 	USERNAME=$(dialog --nocancel --title " Benutzer " --stdout --inputbox "Anmeldenamen" 0 0 "")
 	if [[ $USERNAME =~ \ |\' ]] || [[ $USERNAME =~ [^a-z0-9\ ] ]]; then
 		dialog --title " FEHLER " --msgbox "\nUngültiger Benutzername\n alles in Kleinbuchstaben" 0 0
-		sel_user
+		sel_userfil
 	fi
 }
 sel_password() {
@@ -43,7 +43,7 @@ options=(1 "Gimp - Grafikprogramm - installieren?" on
 	 2 "LibreOffice - Office - installieren?" on
 	 3 "AnyDesk - Remotehilfe - installieren?" on
 	 4 "Wine - Windows Spiele & Programme - installieren?" on
-	 5 "FileBot - Mediafiles Manager - installieren?" on
+	 5 "FileBot - Mediafiles Manager - installieren?" off
 	 6 "Skype - installieren?" on
 	 7 "CD/DVD Brennen - installieren?" on
 	 8 "Scanner - installieren?" on
